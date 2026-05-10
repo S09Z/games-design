@@ -1,0 +1,1030 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<title>Flappy Bird — Prototype</title>
+<style>
+  :root {
+    --sky-top: #4ec0ca;
+    --sky-bottom: #a8e6c8;
+    --ground: #ded895;
+    --ground-dark: #b8a85c;
+    --pipe: #5fc24e;
+    --pipe-dark: #3a8a2c;
+    --panel: #fff5d6;
+    --panel-line: #5b3a17;
+    --ink: #4a2f12;
+    --accent: #ff9b2f;
+    --accent-dark: #d97a16;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+    background: radial-gradient(circle at 50% 30%, #2a2a2a 0%, #000 100%);
+    color: var(--ink);
+    font-family: "Press Start 2P", system-ui, "Segoe UI", Roboto, sans-serif;
+    touch-action: manipulation;
+    user-select: none; -webkit-user-select: none;
+  }
+  #stage {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #frame {
+    position: relative;
+    aspect-ratio: 360 / 640;
+    height: 100vh;
+    max-width: 100vw;
+    /* On wide screens the height-driven width may exceed 100vw; clamp via max-width and let aspect-ratio recompute height. */
+    box-shadow: 0 20px 60px rgba(0,0,0,.6), 0 0 0 4px #222;
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bottom) 100%);
+  }
+  @media (max-aspect-ratio: 360/640) {
+    /* Portrait/narrow: width-bound */
+    #frame { height: auto; width: 100vw; }
+  }
+  canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    image-rendering: pixelated;
+    display: block;
+  }
+
+  .overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 24px;
+    z-index: 10;
+    pointer-events: auto;
+  }
+  .hidden { display: none !important; }
+
+  /* ===== Main Menu ===== */
+  #menu {
+    background:
+      linear-gradient(180deg,
+        #4ec0ca 0%,
+        #a8e6c8 55%,
+        #8fd96f 72%,
+        #ded895 82%,
+        #b8a85c 100%
+      );
+  }
+  #menu .title {
+    font-size: 40px; font-weight: 900; letter-spacing: 1px;
+    color: #ffe14a;
+    text-shadow:
+      -3px 0 0 var(--ink), 3px 0 0 var(--ink),
+      0 -3px 0 var(--ink), 0 3px 0 var(--ink),
+      -3px -3px 0 var(--ink), 3px -3px 0 var(--ink),
+      -3px 3px 0 var(--ink), 3px 3px 0 var(--ink),
+      0 8px 0 rgba(0,0,0,.25);
+    transform: rotate(-4deg);
+    margin-bottom: 8px;
+    text-align: center;
+    line-height: 1.05;
+  }
+  #menu .subtitle {
+    font-size: 12px; color: #fff;
+    text-shadow: 1px 1px 0 var(--ink);
+    margin-bottom: 28px;
+    letter-spacing: 2px;
+  }
+  #menu .bird-preview {
+    width: 96px; height: 96px;
+    margin-bottom: 24px;
+    animation: hover 1.2s ease-in-out infinite alternate;
+    filter: drop-shadow(0 6px 0 rgba(0,0,0,.2));
+  }
+  @keyframes hover { from { transform: translateY(-6px); } to { transform: translateY(6px); } }
+
+  .btn {
+    appearance: none; border: 0;
+    font: inherit; font-size: 14px; font-weight: 700;
+    color: #fff;
+    background: var(--accent);
+    padding: 14px 28px;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 6px 0 var(--accent-dark), 0 8px 12px rgba(0,0,0,.25);
+    transition: transform .06s ease, box-shadow .06s ease;
+    letter-spacing: 1px;
+    min-width: 160px;
+    text-align: center;
+  }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--accent-dark); }
+  .btn.secondary {
+    background: #6cb8ff; box-shadow: 0 6px 0 #3a86d6, 0 8px 12px rgba(0,0,0,.25);
+  }
+  .btn.secondary:active { box-shadow: 0 2px 0 #3a86d6; }
+
+  .btn-row { display: flex; gap: 12px; margin-top: 6px; flex-wrap: wrap; justify-content: center; }
+
+  .hint {
+    margin-top: 22px;
+    font-size: 10px; color: #fff;
+    text-shadow: 1px 1px 0 var(--ink);
+    text-align: center; line-height: 1.6;
+    letter-spacing: 1px;
+  }
+  .hint kbd {
+    background: #fff; color: var(--ink);
+    padding: 2px 6px; border-radius: 4px;
+    border-bottom: 2px solid #aaa;
+    font-family: inherit; font-size: 10px;
+  }
+
+  .best-badge {
+    margin-top: 18px;
+    background: rgba(255,255,255,.85);
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 2px solid var(--ink);
+    font-size: 11px;
+    color: var(--ink);
+    letter-spacing: 1px;
+  }
+
+  /* ===== HUD (Score during play) ===== */
+  #hud {
+    position: absolute; top: 0; left: 0; right: 0;
+    pointer-events: none;
+    z-index: 5;
+    display: flex; flex-direction: column; align-items: center;
+    padding-top: 28px;
+  }
+  #score {
+    font-size: 48px; font-weight: 900; color: #fff;
+    text-shadow:
+      -2px 0 0 var(--ink), 2px 0 0 var(--ink),
+      0 -2px 0 var(--ink), 0 2px 0 var(--ink),
+      0 5px 0 rgba(0,0,0,.35);
+    transition: transform .1s ease;
+  }
+  #score.bump { transform: scale(1.25); }
+  #coins {
+    margin-top: 6px;
+    font-size: 12px; color: #fff;
+    text-shadow: 1px 1px 0 var(--ink);
+    letter-spacing: 1px;
+  }
+  #coins .coin-icon {
+    display: inline-block; width: 14px; height: 14px;
+    background: radial-gradient(circle at 30% 30%, #ffeb74, #d99a1c);
+    border: 2px solid var(--ink);
+    border-radius: 50%;
+    vertical-align: -3px;
+    margin-right: 4px;
+  }
+
+  #pauseBtn {
+    position: absolute; top: 20px; right: 20px;
+    width: 40px; height: 40px;
+    background: rgba(255,255,255,.85);
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    cursor: pointer;
+    z-index: 6;
+  }
+  #pauseBtn::before, #pauseBtn::after {
+    content: ""; width: 5px; height: 16px;
+    background: var(--ink); border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ===== Get-ready prompt ===== */
+  #getReady {
+    position: absolute; inset: 0;
+    z-index: 7;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  #getReady .ready {
+    font-size: 28px; color: #fff; font-weight: 900;
+    text-shadow: -2px 0 0 var(--ink),2px 0 0 var(--ink),0 -2px 0 var(--ink),0 2px 0 var(--ink), 0 6px 0 rgba(0,0,0,.3);
+    margin-bottom: 14px;
+    letter-spacing: 2px;
+  }
+  #getReady .tap {
+    font-size: 11px; color: #fff;
+    text-shadow: 1px 1px 0 var(--ink);
+    letter-spacing: 1px; line-height: 1.6;
+    text-align: center;
+  }
+  #getReady .arrow {
+    width: 60px; height: 60px;
+    margin-top: 16px;
+    border-right: 6px solid #fff;
+    border-bottom: 6px solid #fff;
+    transform: rotate(-135deg);
+    filter: drop-shadow(2px -2px 0 var(--ink));
+    animation: bob 0.8s ease-in-out infinite alternate;
+  }
+  @keyframes bob { to { transform: rotate(-135deg) translate(8px, 8px); } }
+
+  /* ===== Game Over Card ===== */
+  #gameOver { background: rgba(0,0,0,.35); }
+  .card {
+    width: min(280px, 80%);
+    background: var(--panel);
+    border: 4px solid var(--panel-line);
+    border-radius: 14px;
+    padding: 20px 18px;
+    text-align: center;
+    box-shadow: 0 12px 0 rgba(0,0,0,.25), 0 16px 30px rgba(0,0,0,.3);
+    animation: slideIn .5s cubic-bezier(.2,1.5,.4,1) both;
+  }
+  @keyframes slideIn {
+    from { transform: translateY(-160%); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+  }
+  .card .gameover-title {
+    font-size: 20px; font-weight: 900;
+    color: var(--accent-dark);
+    letter-spacing: 1px; margin-bottom: 12px;
+  }
+  .card .row {
+    display: grid; grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 6px 0;
+    border-top: 2px dashed rgba(91,58,23,.35);
+    font-size: 10px; color: var(--ink);
+    letter-spacing: 1px;
+  }
+  .card .row:first-of-type { border-top: 0; }
+  .card .row .val { font-size: 22px; font-weight: 900; color: var(--accent-dark); }
+  .card .medal {
+    display: inline-block;
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    margin: 8px auto;
+    border: 4px solid #fff;
+    box-shadow: 0 0 0 3px var(--ink), inset 0 -8px 0 rgba(0,0,0,.18);
+    background: #ccc;
+    position: relative;
+  }
+  .medal.bronze   { background: radial-gradient(circle at 35% 35%, #f0a868, #8a4a18); }
+  .medal.silver   { background: radial-gradient(circle at 35% 35%, #f4f4f4, #888); }
+  .medal.gold     { background: radial-gradient(circle at 35% 35%, #fff5a0, #c79b14); }
+  .medal.platinum { background: radial-gradient(circle at 35% 35%, #e6f8ff, #4aa6c9); }
+  .medal.none     { background: repeating-linear-gradient(45deg,#aaa,#aaa 4px,#888 4px,#888 8px); }
+  .new-badge {
+    display: inline-block; margin-left: 8px;
+    background: #e63b3b; color: #fff;
+    padding: 2px 6px; border-radius: 6px;
+    font-size: 9px; letter-spacing: 1px;
+    transform: rotate(-6deg);
+    animation: pop .8s ease-in-out infinite alternate;
+  }
+  @keyframes pop { from { transform: rotate(-6deg) scale(1); } to { transform: rotate(-6deg) scale(1.12); } }
+
+  .card .btn-row { margin-top: 16px; }
+  .card .btn { font-size: 11px; padding: 10px 14px; min-width: 0; }
+
+  /* ===== Pause overlay ===== */
+  #pauseOverlay { background: rgba(0,0,0,.45); }
+  #pauseOverlay .card { width: min(240px, 70%); }
+  #pauseOverlay .gameover-title { color: var(--ink); }
+
+  /* ===== Flash ===== */
+  #flash {
+    position: absolute; inset: 0;
+    background: #fff;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 8;
+  }
+  #flash.show {
+    animation: flashFade .35s ease-out forwards;
+  }
+  @keyframes flashFade {
+    0%   { opacity: .85; }
+    100% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+  <div id="stage">
+    <div id="frame">
+      <canvas id="game" width="360" height="640"></canvas>
+
+      <!-- HUD shown during play -->
+      <div id="hud" class="hidden">
+        <div id="score">0</div>
+        <div id="coins"><span class="coin-icon"></span><span id="coinCount">0</span></div>
+      </div>
+      <div id="pauseBtn" class="hidden" title="Pause (P)"></div>
+
+      <!-- Get Ready prompt -->
+      <div id="getReady" class="hidden">
+        <div class="ready">GET READY</div>
+        <div class="tap">TAP / CLICK / PRESS <br/>SPACE or ↑ TO FLAP</div>
+        <div class="arrow"></div>
+      </div>
+
+      <!-- Main Menu -->
+      <div id="menu" class="overlay">
+        <div class="bird-preview">
+          <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="32" cy="34" rx="22" ry="18" fill="#fcd72b" stroke="#3a2210" stroke-width="3"/>
+            <ellipse cx="42" cy="28" rx="7" ry="7" fill="#fff" stroke="#3a2210" stroke-width="2.5"/>
+            <circle cx="44" cy="28" r="3" fill="#3a2210"/>
+            <polygon points="48,34 62,32 48,40" fill="#ff8a1e" stroke="#3a2210" stroke-width="2.5"/>
+            <ellipse cx="24" cy="40" rx="10" ry="6" fill="#ffba32" stroke="#3a2210" stroke-width="2.5"/>
+          </svg>
+        </div>
+        <div class="title">FLAPPY<br/>BIRD</div>
+        <div class="subtitle">PROTOTYPE EDITION</div>
+
+        <div class="btn-row">
+          <button class="btn" id="btnStart">PLAY</button>
+        </div>
+        <div class="best-badge">BEST&nbsp;:&nbsp;<span id="menuBest">0</span></div>
+        <div class="hint">
+          <kbd>SPACE</kbd> / <kbd>↑</kbd> / <kbd>CLICK</kbd> / <kbd>TAP</kbd> to flap<br/>
+          <kbd>P</kbd> to pause
+        </div>
+      </div>
+
+      <!-- Game Over -->
+      <div id="gameOver" class="overlay hidden">
+        <div class="card">
+          <div class="gameover-title">GAME OVER</div>
+          <div class="medal none" id="medal"></div>
+          <div class="row">
+            <div>SCORE</div>
+            <div class="val" id="finalScore">0</div>
+          </div>
+          <div class="row">
+            <div>BEST <span id="newBadge" class="new-badge" style="display:none">NEW!</span></div>
+            <div class="val" id="finalBest">0</div>
+          </div>
+          <div class="row">
+            <div>COINS</div>
+            <div class="val" id="finalCoins">0</div>
+          </div>
+          <div class="btn-row">
+            <button class="btn" id="btnRetry">RETRY</button>
+            <button class="btn secondary" id="btnHome">HOME</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pause -->
+      <div id="pauseOverlay" class="overlay hidden">
+        <div class="card">
+          <div class="gameover-title">PAUSED</div>
+          <div class="btn-row">
+            <button class="btn" id="btnResume">RESUME</button>
+            <button class="btn secondary" id="btnPauseHome">HOME</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="flash"></div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ====== Canvas setup ======
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;   // 360
+  const H = canvas.height;  // 640
+
+  // ====== Constants (from TOR) ======
+  const GRAVITY = 0.35;
+  const FLAP_FORCE = -7.5;
+  const MAX_FALL = 12;
+  const BIRD_X = 80;
+  const BASE_PIPE_SPEED = 2.6;
+  const MAX_PIPE_SPEED = 6;
+  const BASE_GAP = 160;
+  const MIN_GAP = 120;
+  const PIPE_W = 56;
+  const GROUND_H = 112;
+  const GROUND_Y = H - GROUND_H;
+  const SPAWN_INTERVAL_FRAMES = 110;   // ~1.8s @60fps
+  const SPAWN_INTERVAL_FAST  = 86;    // ~1.4s @60fps
+  const POOL_SIZE = 6;
+  const COIN_R = 10;
+
+  // ====== State ======
+  const STATE = { MENU:'MENU', READY:'READY', PLAYING:'PLAYING', PAUSED:'PAUSED', DEAD:'DEAD' };
+  let state = STATE.MENU;
+
+  const bird = {
+    x: BIRD_X, y: H/2, vy: 0, rotation: 0,
+    w: 34, h: 24,
+    wingPhase: 0,
+    spinOnDeath: 0
+  };
+
+  // Object Pool of pipes
+  const pipes = [];
+  for (let i=0;i<POOL_SIZE;i++) pipes.push(makePipe());
+  function makePipe() {
+    return { active:false, x: W+100, gapY: H/2, gap: BASE_GAP, scored:false, hasCoin:true, coinTaken:false };
+  }
+
+  // Coins (one per pipe gap, drawn at gap center)
+  let coinsCollected = 0;
+
+  let score = 0;
+  let best = 0;
+  let frameCount = 0;
+  let spawnTimer = 0;
+  let groundOffset = 0;
+  let bgOffset = 0;
+  let cloudOffset = 0;
+  let lastTs = 0;
+
+  // ====== Storage ======
+  const STORE_KEY = 'flappy_proto_v1';
+  function loadStore() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
+    catch { return {}; }
+  }
+  function saveStore(d) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(d)); } catch {}
+  }
+  const store = loadStore();
+  best = store.highScore || 0;
+  const totalCoins = store.totalCoins || 0;
+
+  // ====== DOM refs ======
+  const $ = id => document.getElementById(id);
+  const menu = $('menu');
+  const hud = $('hud');
+  const pauseBtn = $('pauseBtn');
+  const getReady = $('getReady');
+  const gameOver = $('gameOver');
+  const pauseOverlay = $('pauseOverlay');
+  const scoreEl = $('score');
+  const coinCountEl = $('coinCount');
+  const flash = $('flash');
+
+  $('menuBest').textContent = best;
+
+  // ====== Scene helpers ======
+  function show(el) { el.classList.remove('hidden'); }
+  function hide(el) { el.classList.add('hidden'); }
+
+  function goMenu() {
+    state = STATE.MENU;
+    score = 0; coinsCollected = 0;
+    bird.y = H/2; bird.vy = 0; bird.rotation = 0; bird.spinOnDeath = 0;
+    resetPipes();
+    $('menuBest').textContent = best;
+    show(menu); hide(hud); hide(pauseBtn); hide(getReady); hide(gameOver); hide(pauseOverlay);
+  }
+  function goReady() {
+    state = STATE.READY;
+    score = 0; coinsCollected = 0;
+    bird.y = H/2; bird.vy = 0; bird.rotation = 0; bird.spinOnDeath = 0;
+    resetPipes();
+    scoreEl.textContent = '0'; coinCountEl.textContent = '0';
+    hide(menu); show(hud); hide(pauseBtn); show(getReady); hide(gameOver); hide(pauseOverlay);
+  }
+  function goPlaying() {
+    state = STATE.PLAYING;
+    hide(getReady);
+    show(pauseBtn);
+    spawnTimer = 0;
+    flap(); // initial pop
+  }
+  function goPaused() {
+    if (state !== STATE.PLAYING) return;
+    state = STATE.PAUSED;
+    show(pauseOverlay);
+  }
+  function goResume() {
+    if (state !== STATE.PAUSED) return;
+    state = STATE.PLAYING;
+    hide(pauseOverlay);
+  }
+  function goDead(cause) {
+    if (state === STATE.DEAD) return;
+    state = STATE.DEAD;
+    triggerFlash();
+    bird.spinOnDeath = (Math.random() < .5 ? -1 : 1) * 8;
+    hide(getReady);
+    // settle then show overlay
+    setTimeout(() => {
+      // update best
+      const isNew = score > best;
+      if (isNew) { best = score; }
+      const newTotalCoins = totalCoins + coinsCollected;
+      saveStore({ highScore: best, totalCoins: newTotalCoins });
+
+      $('finalScore').textContent = score;
+      $('finalBest').textContent = best;
+      $('finalCoins').textContent = coinsCollected;
+      $('newBadge').style.display = isNew ? 'inline-block' : 'none';
+
+      const m = $('medal');
+      m.className = 'medal ' + medalFor(score);
+
+      show(gameOver);
+    }, 700);
+  }
+
+  function medalFor(s) {
+    if (s >= 40) return 'platinum';
+    if (s >= 30) return 'gold';
+    if (s >= 20) return 'silver';
+    if (s >= 10) return 'bronze';
+    return 'none';
+  }
+
+  function resetPipes() {
+    for (const p of pipes) { p.active = false; p.x = W + 200; p.scored = false; p.coinTaken = false; }
+  }
+
+  function triggerFlash() {
+    flash.classList.remove('show');
+    void flash.offsetWidth;
+    flash.classList.add('show');
+  }
+
+  // ====== Audio (WebAudio synth — no asset files) ======
+  let audioCtx = null;
+  function ensureAudio() {
+    if (audioCtx) return;
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+  }
+  function beep(freq, dur=0.08, type='square', vol=0.06) {
+    if (!audioCtx) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.value = vol;
+    g.gain.setValueAtTime(vol, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + dur);
+  }
+  const sfx = {
+    flap:  () => beep(620, 0.07, 'square', 0.05),
+    score: () => { beep(880, 0.08, 'triangle', 0.07); setTimeout(()=>beep(1320, 0.09, 'triangle', 0.07), 50); },
+    coin:  () => { beep(1480, 0.05, 'square', 0.05); setTimeout(()=>beep(1980, 0.07, 'square', 0.05), 40); },
+    hit:   () => beep(120, 0.18, 'sawtooth', 0.12),
+    die:   () => { beep(220, 0.18, 'sawtooth', 0.10); setTimeout(()=>beep(110, 0.25, 'sawtooth', 0.10), 160); }
+  };
+
+  // ====== Input ======
+  function flap() {
+    if (state === STATE.READY) goPlaying();
+    if (state !== STATE.PLAYING) return;
+    bird.vy = FLAP_FORCE;
+    bird.rotation = -25;
+    sfx.flap();
+  }
+
+  function onPress(e) {
+    // Ignore presses on UI buttons (they handle their own clicks)
+    const t = e.target;
+    if (t.closest && (t.closest('.btn') || t.closest('#pauseBtn'))) return;
+    ensureAudio();
+    if (state === STATE.READY || state === STATE.PLAYING) {
+      e.preventDefault();
+      flap();
+    }
+  }
+  // Pointer-based input covers mouse + touch (TOR: Pointer Events to avoid 300ms touch delay)
+  window.addEventListener('pointerdown', onPress, { passive:false });
+
+  window.addEventListener('keydown', (e) => {
+    ensureAudio();
+    const k = e.key;
+    if (k === ' ' || k === 'ArrowUp' || k === 'Up' || k === 'w' || k === 'W') {
+      e.preventDefault();
+      flap();
+    } else if (k === 'p' || k === 'P' || k === 'Escape') {
+      e.preventDefault();
+      if (state === STATE.PLAYING) goPaused();
+      else if (state === STATE.PAUSED) goResume();
+    } else if (k === 'Enter') {
+      if (state === STATE.MENU) goReady();
+      else if (state === STATE.DEAD) goReady();
+    }
+  });
+
+  // Buttons
+  $('btnStart').addEventListener('click', () => { ensureAudio(); goReady(); });
+  $('btnRetry').addEventListener('click', () => { ensureAudio(); goReady(); });
+  $('btnHome').addEventListener('click', () => { goMenu(); });
+  $('btnResume').addEventListener('click', () => { goResume(); });
+  $('btnPauseHome').addEventListener('click', () => { goMenu(); });
+  pauseBtn.addEventListener('click', () => {
+    if (state === STATE.PLAYING) goPaused();
+    else if (state === STATE.PAUSED) goResume();
+  });
+
+  // Prevent context menu on long-press
+  window.addEventListener('contextmenu', e => e.preventDefault());
+
+  // ====== Game logic ======
+  function currentSpeed() {
+    // Progressive: 2.6 -> 6 over score 0..40
+    const t = Math.min(1, score / 40);
+    return BASE_PIPE_SPEED + (MAX_PIPE_SPEED - BASE_PIPE_SPEED) * t;
+  }
+  function currentGap() {
+    const t = Math.min(1, score / 40);
+    return Math.max(MIN_GAP, BASE_GAP - (BASE_GAP - MIN_GAP) * t);
+  }
+  function currentSpawnInterval() {
+    return score > 30 ? SPAWN_INTERVAL_FAST : SPAWN_INTERVAL_FRAMES;
+  }
+
+  function spawnPipe() {
+    // Find an inactive pipe in the pool
+    const p = pipes.find(p => !p.active);
+    if (!p) return;
+    p.active = true;
+    p.scored = false;
+    p.coinTaken = false;
+    p.hasCoin = Math.random() < 0.6; // 60% pipes carry a coin
+    p.gap = currentGap();
+    const margin = 80;
+    const minY = margin + p.gap/2;
+    const maxY = GROUND_Y - margin - p.gap/2;
+    p.gapY = minY + Math.random() * (maxY - minY);
+    p.x = W + PIPE_W;
+  }
+
+  function update(dt) {
+    // dt is in frames-equivalent (60fps reference)
+    if (state === STATE.MENU) {
+      // idle bird hover for menu (canvas not used for menu but keep ground scrolling)
+      groundOffset = (groundOffset + 2 * dt) % 24;
+      cloudOffset = (cloudOffset + 0.2 * dt) % W;
+      return;
+    }
+
+    if (state === STATE.READY) {
+      // Hover bird
+      bird.y = H/2 + Math.sin(frameCount * 0.12) * 8;
+      bird.rotation = 0;
+      groundOffset = (groundOffset + 2 * dt) % 24;
+      cloudOffset = (cloudOffset + 0.2 * dt) % W;
+      bird.wingPhase += dt * 0.4;
+      return;
+    }
+
+    if (state === STATE.PAUSED) return;
+
+    if (state === STATE.PLAYING) {
+      const sp = currentSpeed();
+
+      bird.vy += GRAVITY * dt;
+      if (bird.vy > MAX_FALL) bird.vy = MAX_FALL;
+      bird.y += bird.vy * dt;
+      // rotation lerp toward target based on velocity
+      const targetRot = bird.vy < 0 ? -25 : Math.min(90, bird.vy * 6);
+      bird.rotation += (targetRot - bird.rotation) * 0.15 * dt;
+      bird.wingPhase += dt * (bird.vy < 0 ? 0.9 : 0.3);
+
+      // Pipe spawn
+      spawnTimer += dt;
+      if (spawnTimer >= currentSpawnInterval() / 60 * 60) { // frames
+        spawnTimer = 0;
+        spawnPipe();
+      }
+
+      // Move pipes & coin checks & scoring
+      for (const p of pipes) {
+        if (!p.active) continue;
+        p.x -= sp * dt;
+
+        // Score when bird passes the pipe center
+        if (!p.scored && p.x + PIPE_W < bird.x) {
+          p.scored = true;
+          score++;
+          scoreEl.textContent = score;
+          scoreEl.classList.remove('bump'); void scoreEl.offsetWidth; scoreEl.classList.add('bump');
+          sfx.score();
+        }
+
+        // Coin pickup (AABB-ish vs circle in gap)
+        if (p.hasCoin && !p.coinTaken) {
+          const cx = p.x + PIPE_W/2;
+          const cy = p.gapY;
+          const dx = bird.x - cx;
+          const dy = bird.y - cy;
+          if (dx*dx + dy*dy < (COIN_R + 14) * (COIN_R + 14)) {
+            p.coinTaken = true;
+            coinsCollected++;
+            coinCountEl.textContent = coinsCollected;
+            sfx.coin();
+          }
+        }
+
+        // Recycle
+        if (p.x + PIPE_W < -20) p.active = false;
+      }
+
+      // Collision (Narrow phase: shrunken hitbox 82%)
+      const hbW = bird.w * 0.82, hbH = bird.h * 0.82;
+      const bx = bird.x - hbW/2;
+      const by = bird.y - hbH/2;
+
+      // Ground / ceiling
+      if (by + hbH >= GROUND_Y) {
+        bird.y = GROUND_Y - hbH/2;
+        sfx.hit(); sfx.die();
+        return goDead('ground');
+      }
+      if (by < 0) {
+        bird.y = hbH/2;
+        bird.vy = 0;
+      }
+
+      // Pipes
+      for (const p of pipes) {
+        if (!p.active) continue;
+        // Broad phase
+        if (p.x + PIPE_W < bx || p.x > bx + hbW) continue;
+
+        const topRectB = p.gapY - p.gap/2;       // y of bottom edge of TOP pipe
+        const botRectT = p.gapY + p.gap/2;       // y of top edge of BOTTOM pipe
+
+        // Top pipe AABB: x..x+PIPE_W, 0..topRectB
+        // Bottom pipe AABB: x..x+PIPE_W, botRectT..GROUND_Y
+        if (by < topRectB || by + hbH > botRectT) {
+          sfx.hit();
+          setTimeout(sfx.die, 250);
+          return goDead('pipe');
+        }
+      }
+
+      // Parallax scroll
+      groundOffset = (groundOffset + sp * dt) % 24;
+      bgOffset = (bgOffset + sp * 0.3 * dt) % W;
+      cloudOffset = (cloudOffset + 0.4 * dt) % W;
+    }
+
+    if (state === STATE.DEAD) {
+      // Bird tumble & fall
+      bird.vy += GRAVITY * 1.2 * dt;
+      if (bird.vy > MAX_FALL) bird.vy = MAX_FALL;
+      bird.y += bird.vy * dt;
+      bird.rotation += bird.spinOnDeath * dt;
+      if (bird.y + bird.h/2 > GROUND_Y) {
+        bird.y = GROUND_Y - bird.h/2;
+        bird.spinOnDeath = 0;
+      }
+    }
+  }
+
+  // ====== Rendering ======
+  function drawBackground() {
+    // Sky gradient (drawn once per frame)
+    const grad = ctx.createLinearGradient(0,0,0,GROUND_Y);
+    grad.addColorStop(0, '#4ec0ca');
+    grad.addColorStop(1, '#a8e6c8');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,W,GROUND_Y);
+
+    // Distant clouds (parallax)
+    drawClouds();
+
+    // Mid hills
+    drawHills();
+
+    // Foreground bushes
+    drawBushes();
+  }
+
+  function drawClouds() {
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    const baseY = 90;
+    for (let i=0;i<4;i++) {
+      const x = (i * 110 - cloudOffset * 0.6) % (W + 120);
+      const cx = (x + W + 120) % (W + 120) - 60;
+      cloud(cx, baseY + (i%2)*30, 36);
+    }
+    ctx.restore();
+  }
+  function cloud(x,y,r) {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI*2);
+    ctx.arc(x + r*0.8, y + 4, r*0.7, 0, Math.PI*2);
+    ctx.arc(x - r*0.8, y + 6, r*0.6, 0, Math.PI*2);
+    ctx.arc(x + r*0.4, y - r*0.4, r*0.55, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  function drawHills() {
+    ctx.save();
+    ctx.fillStyle = '#8fd96f';
+    const y0 = GROUND_Y - 50;
+    for (let i=-1;i<5;i++) {
+      const x = (i*120 - bgOffset) % (W + 240);
+      const cx = (x + W + 240) % (W + 240) - 120;
+      ctx.beginPath();
+      ctx.moveTo(cx, GROUND_Y);
+      ctx.quadraticCurveTo(cx+60, y0-20, cx+120, GROUND_Y);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawBushes() {
+    ctx.save();
+    ctx.fillStyle = '#6cb84a';
+    const y0 = GROUND_Y - 18;
+    for (let i=-1;i<8;i++) {
+      const x = (i*70 - groundOffset*0.8) % (W + 140);
+      const cx = (x + W + 140) % (W + 140) - 70;
+      ctx.beginPath();
+      ctx.arc(cx+20, y0, 18, Math.PI, 0);
+      ctx.arc(cx+44, y0, 22, Math.PI, 0);
+      ctx.arc(cx+68, y0, 16, Math.PI, 0);
+      ctx.lineTo(cx+84, GROUND_Y);
+      ctx.lineTo(cx, GROUND_Y);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawPipe(x, gapY, gap) {
+    const topH = gapY - gap/2;
+    const botY = gapY + gap/2;
+    // pipe body
+    const drawSeg = (px, py, pw, ph) => {
+      // body
+      ctx.fillStyle = '#5fc24e';
+      ctx.fillRect(px, py, pw, ph);
+      // highlight
+      ctx.fillStyle = '#9be07e';
+      ctx.fillRect(px+4, py, 6, ph);
+      // shadow
+      ctx.fillStyle = '#3a8a2c';
+      ctx.fillRect(px+pw-8, py, 8, ph);
+      // outline
+      ctx.strokeStyle = '#1f5316'; ctx.lineWidth = 2;
+      ctx.strokeRect(px+0.5, py+0.5, pw-1, ph-1);
+    };
+    const drawCap = (px, py) => {
+      const cw = PIPE_W + 8, ch = 22;
+      const cx = px - 4;
+      ctx.fillStyle = '#5fc24e';
+      ctx.fillRect(cx, py, cw, ch);
+      ctx.fillStyle = '#9be07e';
+      ctx.fillRect(cx+4, py, 6, ch);
+      ctx.fillStyle = '#3a8a2c';
+      ctx.fillRect(cx+cw-10, py, 10, ch);
+      ctx.strokeStyle = '#1f5316'; ctx.lineWidth = 2;
+      ctx.strokeRect(cx+0.5, py+0.5, cw-1, ch-1);
+    };
+
+    // Top pipe (down to topH)
+    if (topH > 0) {
+      drawSeg(x, 0, PIPE_W, topH - 22);
+      drawCap(x, topH - 22);
+    }
+    // Bottom pipe
+    drawSeg(x, botY + 22, PIPE_W, GROUND_Y - (botY + 22));
+    drawCap(x, botY);
+  }
+
+  function drawCoin(x, y) {
+    ctx.save();
+    ctx.translate(x, y);
+    const t = Math.cos(frameCount * 0.12);
+    const r = COIN_R * Math.max(0.35, Math.abs(t));
+    // Body
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r, COIN_R, 0, 0, Math.PI*2);
+    ctx.fillStyle = t >= 0 ? '#ffd23f' : '#d99a1c';
+    ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#3a2210';
+    ctx.stroke();
+    // Inner star
+    if (Math.abs(t) > 0.4) {
+      ctx.fillStyle = '#fff5a0';
+      ctx.beginPath();
+      ctx.ellipse(0, -2, r*0.45, COIN_R*0.45, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawBird() {
+    ctx.save();
+    ctx.translate(bird.x, bird.y);
+    ctx.rotate(bird.rotation * Math.PI / 180);
+
+    const w = bird.w, h = bird.h;
+    // Body
+    ctx.fillStyle = '#fcd72b';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, w/2, h/2, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#3a2210';
+    ctx.stroke();
+    // Belly
+    ctx.fillStyle = '#fff5c0';
+    ctx.beginPath();
+    ctx.ellipse(2, 4, w/2 - 6, h/2 - 5, 0, 0, Math.PI*2);
+    ctx.fill();
+    // Eye
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(8, -4, 5, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#3a2210'; ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.fillStyle = '#3a2210';
+    ctx.beginPath();
+    ctx.arc(9.5, -4, 2.2, 0, Math.PI*2);
+    ctx.fill();
+    // Beak
+    ctx.fillStyle = '#ff8a1e';
+    ctx.beginPath();
+    ctx.moveTo(12, 0);
+    ctx.lineTo(22, -2);
+    ctx.lineTo(12, 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#3a2210'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Wing — 3 frame flap
+    const phase = (Math.sin(bird.wingPhase) + 1) / 2; // 0..1
+    const wingY = -2 + phase * 8;
+    const wingTilt = -10 + phase * 30;
+    ctx.save();
+    ctx.translate(-4, wingY);
+    ctx.rotate(wingTilt * Math.PI/180);
+    ctx.fillStyle = '#ffba32';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 10, 6, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#3a2210'; ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  function drawGround() {
+    // Sand band
+    ctx.fillStyle = '#ded895';
+    ctx.fillRect(0, GROUND_Y, W, GROUND_H);
+    // Top accent line
+    ctx.fillStyle = '#7bb04a';
+    ctx.fillRect(0, GROUND_Y, W, 6);
+    // Stripes
+    ctx.fillStyle = '#b8a85c';
+    for (let i=-1; i*24 < W + 24; i++) {
+      const x = i*24 - groundOffset;
+      ctx.fillRect(x, GROUND_Y + 18, 12, 6);
+      ctx.fillRect(x + 6, GROUND_Y + 30, 8, 4);
+    }
+    // Bottom darker
+    ctx.fillStyle = '#a8954a';
+    ctx.fillRect(0, GROUND_Y + GROUND_H - 14, W, 14);
+  }
+
+  function render() {
+    drawBackground();
+
+    // Pipes & coins
+    for (const p of pipes) {
+      if (!p.active) continue;
+      drawPipe(p.x, p.gapY, p.gap);
+      if (p.hasCoin && !p.coinTaken) drawCoin(p.x + PIPE_W/2, p.gapY);
+    }
+
+    drawGround();
+    drawBird();
+  }
+
+  // ====== Main loop ======
+  function loop(ts) {
+    if (!lastTs) lastTs = ts;
+    let dt = (ts - lastTs) / (1000 / 60); // in 60fps frame units
+    lastTs = ts;
+    if (dt > 3) dt = 3; // cap (TOR: cap deltaTime ~50ms)
+
+    frameCount += dt;
+    update(dt);
+    render();
+
+    requestAnimationFrame(loop);
+  }
+
+  // ====== Boot ======
+  goMenu();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
