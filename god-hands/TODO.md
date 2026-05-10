@@ -13,10 +13,12 @@ Living document for cross-session / cross-machine continuity. Update after each 
 | Phase 3 — Juice & Polish | ✅ Done | PR #1 |
 | Phase 3+ — Critical / Respawn / UI extras | ✅ Done | PR #1 |
 | Phase 4 Round A — World basics | ✅ Done | PR #1 (merged) |
-| Phase 4 Round B — House respawn + Necromancer | ⏳ Pending | scope confirmed |
-| Phase 4 Round C — NPC variety | ⏳ Pending | not scoped yet |
+| Phase 4 Round B — House respawn + Necromancer | ✅ Done | PR #2 (merged) + polish in PR #3 |
+| Phase 4 Round B+ — Necromancer AOE, occlusion fix, wander buffer | ✅ Done | PR #3 |
+| Phase 4 Round C1 — NPC visual variety (race/class/gender/age) | ✅ Done | PR #3 |
+| Phase 4 Round C2 — Per-class behavior | ⏳ Pending | not scoped yet |
 
-Current code: ~1400 lines in `game.js`, target 60fps, Canvas 2D + Web Audio synth, no external assets.
+Current code: ~2400 lines in `game.js`, target 60fps, Canvas 2D + Web Audio synth, no external assets.
 
 ---
 
@@ -53,33 +55,32 @@ Current code: ~1400 lines in `game.js`, target 60fps, Canvas 2D + Web Audio synt
 
 ---
 
-## Round C — Pending Scope (not yet confirmed)
+## Round C1 — NPC visual variety (DONE, PR #3)
 
-### NPC variety system (BIG)
-User-requested properties:
-- Gender: male, female
-- Age: middle-age, elder
-- Race: human, elf, dwarf
-- Class: warrior, wizard, ranger, priest
+48 combinations: 2 genders × 2 ages × 3 races × 4 classes
+- Class → body color (warrior red, wizard blue, ranger green, priest white-gold)
+- Race → body proportions (elf tall/slim, dwarf wide/short, human medium)
+- Age elder → forward hunch + gray hair tint
+- Gender female → bun + side strands hairstyle
+- All appearance only; behavior is identical across combinations.
 
-Total: 2 × 2 × 3 × 4 = **48 combinations** of NPC appearance.
+## Round C2 — Per-class behavior (NOT YET SCOPED)
 
-**Open questions:**
-- Visual fidelity per class (subtle color tint vs full sprite redesign)?
-- Class-based behavior (e.g., wizard walks slower, warrior runs)?
-- Race shape differences (elf taller, dwarf shorter, human medium)?
-- Gender visual cue (canvas-drawn — hair length? color hint?)
-
-Probably needs to be split into sub-rounds (C1: appearance only, C2: per-class behavior).
+Open questions for next session:
+- Speed differences (wizard slower? warrior faster? ranger fastest?)
+- Hit/death reactions per class (warrior shouts, wizard fizzles, etc.)
+- Class-specific spell interactions (priest resists fire? wizard resists lightning?)
+- Any class-based AI hooks (warriors fight zombies on contact, etc.)
+- Should age also affect behavior (elders walk slower)?
 
 ---
 
 ## Known Issues / Future Polish
 
-- NPCs walk through buildings (no pathfinding around obstacles) — accepted in Round A
-- Building depth-sort uses back corner; minor overlap artifacts when NPC walks through footprint
+- ~~NPCs walk through buildings~~ — fixed in PR #3 (1-tile wander buffer + occlusion silhouette case B)
 - Decal cap 200 (FIFO) — may visually pop when oldest decal vanishes
 - Corpse takes a slot in `state.npcs` for 30s before becoming DEAD-recyclable; under heavy combat array can grow temporarily up to ~target × 2
+- Hard-retarget when wander step would enter building buffer can cause brief micro-stutter near houses; cosmetic, not blocking
 
 ---
 
@@ -105,4 +106,4 @@ Probably needs to be split into sub-rounds (C1: appearance only, C2: per-class b
 
 ---
 
-*Last updated: PR #1 merged (commit ca1c590). Ready for Round B.*
+*Last updated: PR #3 opened. Round C1 complete. Ready for Round C2 scoping.*
