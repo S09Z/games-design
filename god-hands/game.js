@@ -39,7 +39,7 @@ const CONFIG = {
   METEOR_AOE: 3.0,
   METEOR_FALL_DURATION: 0.55,
   METEOR_HEIGHT: 12,
-  NECROMANCER_RADIUS: 4.0,
+  NECROMANCER_RADIUS: 2.5,
 
   // Death / juice
   DEATH_FLASH_DURATION: 0.08,
@@ -94,6 +94,7 @@ const state = {
   lightningBolts: [],
   bloodDecals: [],
   craterDecals: [],
+  necroCasts: [],
   shake: { intensity: 0, timer: 0, duration: CONFIG.SHAKE_DECAY },
   targetCount: 15,
   totalDeaths: 0,
@@ -466,7 +467,16 @@ function drawTree(t) {
 }
 
 // ---------- NPC ----------
-const NPC_COLORS = ['#c8553d', '#5d8aa8', '#9c6b3c', '#5e9b76', '#a56abd', '#d4a017'];
+const CLASSES  = ['warrior', 'wizard', 'ranger', 'priest'];
+const RACES    = ['human', 'elf', 'dwarf'];
+const GENDERS  = ['male', 'female'];
+const AGES     = ['middle_age', 'elder'];
+const CLASS_COLORS = {
+  warrior: '#8B2020',
+  wizard:  '#4B2080',
+  ranger:  '#2D6B2D',
+  priest:  '#C0A860',
+};
 
 function makeNPC(wx, wy) {
   return {
@@ -476,7 +486,11 @@ function makeNPC(wx, wy) {
     target: { wx, wy },
     timer: Math.random() * 2,
     speed: 1.1 + Math.random() * 0.6,
-    color: NPC_COLORS[Math.floor(Math.random() * NPC_COLORS.length)],
+    npcClass: CLASSES[Math.floor(Math.random() * CLASSES.length)],
+    race:     RACES  [Math.floor(Math.random() * RACES.length)],
+    gender:   GENDERS[Math.floor(Math.random() * GENDERS.length)],
+    age:      AGES   [Math.floor(Math.random() * AGES.length)],
+    get color() { return CLASS_COLORS[this.npcClass]; },
     walkPhase: Math.random() * Math.PI * 2,
     stunTimer: 0,
     fireTimer: 0,
@@ -485,6 +499,8 @@ function makeNPC(wx, wy) {
     deathIntensity: 1.0,
     corpseTimer: 0,
     maxFallSpeed: 0,
+    isZombieType: false,
+    justRespawned: false,
   };
 }
 
@@ -520,6 +536,7 @@ function respawnOne() {
   const { wx, wy } = pickDoorPosition();
   const newNPC = makeNPC(wx, wy);
   newNPC.state = 'WANDER';
+  newNPC.justRespawned = true;
   pickWanderTarget(newNPC);
   for (let i = 0; i < state.npcs.length; i++) {
     if (state.npcs[i].state === 'DEAD') {
@@ -548,13 +565,13 @@ function updateRespawn(dt) {
 
 function pickWanderTarget(npc) {
   const N = CONFIG.MAP_SIZE;
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 16; i++) {
     const angle = Math.random() * Math.PI * 2;
     const dist = 1.5 + Math.random() * 4;
     const nx = npc.pos.wx + Math.cos(angle) * dist;
     const ny = npc.pos.wy + Math.sin(angle) * dist;
     if (nx >= 1 && nx <= N - 1 && ny >= 1 && ny <= N - 1 &&
-        !tileInsideBuilding(nx, ny, 0.1)) {
+        !tileInsideBuilding(nx, ny, 1.0)) {
       npc.target.wx = nx;
       npc.target.wy = ny;
       return;
@@ -582,9 +599,25 @@ function updateNPC(npc, dt) {
         npc.state = 'IDLE';
         npc.timer = 1 + Math.random() * 2;
       } else {
-        npc.pos.wx += (dx / dist) * npc.speed * dt;
-        npc.pos.wy += (dy / dist) * npc.speed * dt;
-        npc.walkPhase += dt * 8;
+        const stepX = (dx / dist) * npc.speed * dt;
+        const stepY = (dy / dist) * npc.speed * dt;
+        const nextX = npc.pos.wx + stepX;
+        const nextY = npc.pos.wy + stepY;
+        if (npc.justRespawned) {
+          npc.pos.wx = nextX;
+          npc.pos.wy = nextY;
+          npc.walkPhase += dt * 8;
+          if (!tileInsideBuilding(npc.pos.wx, npc.pos.wy, 1.0)) {
+            npc.justRespawned = false;
+          }
+        } else if (tileInsideBuilding(nextX, nextY, 1.0)) {
+          // would enter house buffer — pick a new target
+          pickWanderTarget(npc);
+        } else {
+          npc.pos.wx = nextX;
+          npc.pos.wy = nextY;
+          npc.walkPhase += dt * 8;
+        }
       }
       break;
     }
@@ -641,15 +674,43 @@ function updateNPC(npc, dt) {
       }
       break;
 
-    case 'ON_FIRE':
+    case 'ON_FIRE': {
       npc.fireTimer -= dt;
       npc.firePartTimer += dt;
       if (npc.firePartTimer >= 0.05) {
         npc.firePartTimer = 0;
         spawnFireParticle(npc.pos);
       }
-      if (npc.fireTimer <= 0) kill(npc);
+      if (npc.fireTimer <= 0) { kill(npc); break; }
+
+      // flee: pick new flee target every ~1.5s or when reached
+      npc.fleeTimer = (npc.fleeTimer || 0) - dt;
+      const N = CONFIG.MAP_SIZE;
+      if (npc.fleeTimer <= 0 || Math.hypot(npc.target.wx - npc.pos.wx, npc.target.wy - npc.pos.wy) < 0.3) {
+        const ang = Math.random() * Math.PI * 2;
+        const dist = 3 + Math.random() * 4;
+        npc.target.wx = Math.max(1, Math.min(N - 1, npc.pos.wx + Math.cos(ang) * dist));
+        npc.target.wy = Math.max(1, Math.min(N - 1, npc.pos.wy + Math.sin(ang) * dist));
+        npc.fleeTimer = 1.5;
+      }
+      const fdx = npc.target.wx - npc.pos.wx;
+      const fdy = npc.target.wy - npc.pos.wy;
+      const fd = Math.hypot(fdx, fdy);
+      if (fd > 0.01) {
+        npc.pos.wx += (fdx / fd) * npc.speed * 1.6 * dt;
+        npc.pos.wy += (fdy / fd) * npc.speed * 1.6 * dt;
+        npc.walkPhase += dt * 10;
+      }
+
+      // fire spread on contact
+      for (const other of state.npcs) {
+        if (other === npc || other.state === 'ON_FIRE' || !isAlive(other)) continue;
+        if (Math.hypot(other.pos.wx - npc.pos.wx, other.pos.wy - npc.pos.wy) < 0.45) {
+          if (Math.random() < 0.60) ignite(other);
+        }
+      }
       break;
+    }
 
     case 'DYING':
       npc.flashTimer -= dt;
@@ -704,7 +765,7 @@ function drawNPC(npc) {
   ctx.fill();
   ctx.globalAlpha = 1;
 
-  const isZombie = npc.state === 'ZOMBIE';
+  const isZombie = npc.state === 'ZOMBIE' || npc.isZombieType;
 
   let bob = 0;
   if (npc.state === 'WANDER') bob = Math.abs(Math.sin(npc.walkPhase)) * 1.5;
@@ -714,7 +775,15 @@ function drawNPC(npc) {
   if (npc.state === 'GRABBED') rot = Math.sin(performance.now() / 100) * 0.18;
   else if (npc.state === 'AIRBORNE') rot = (npc.vel.x + npc.vel.y) * 0.12;
   else if (npc.state === 'STUNNED' || npc.state === 'CORPSE') rot = Math.PI / 2;
-  else if (isZombie) rot = Math.sin(performance.now() / 600) * 0.12; // gentle lurch sway
+  else if (isZombie) rot = Math.sin(performance.now() / 600) * 0.12;
+  else if (!isZombie && npc.age === 'elder' && rot === 0) rot = 0.07; // elder forward hunch
+
+  // race proportions
+  let scaleX = 1.0, scaleY = 1.0;
+  if (!isZombie) {
+    if (npc.race === 'elf')   { scaleX = 0.82; scaleY = 1.18; }
+    if (npc.race === 'dwarf') { scaleX = 1.30; scaleY = 0.78; }
+  }
 
   let shakeX = 0;
   if (npc.state === 'ON_FIRE') {
@@ -724,7 +793,8 @@ function drawNPC(npc) {
   }
 
   const flash = npc.flashTimer > 0;
-  const skinColor = flash ? '#FFFFFF' : (isZombie ? '#7a8a6a' : '#e9c39a');
+  const baseSkin = (!isZombie && npc.age === 'elder') ? '#d4a878' : '#e9c39a';
+  const skinColor = flash ? '#FFFFFF' : (isZombie ? '#7a8a6a' : baseSkin);
   const bodyColor = flash ? '#FFFFFF' : (isZombie ? '#5a6a4a' : npc.color);
   const legColor  = flash ? '#FFFFFF' : (isZombie ? '#2e3a2e' : '#3a2e1f');
   const armColor  = flash ? '#FFFFFF' : (isZombie ? '#5a6a4a' : npc.color);
@@ -732,6 +802,7 @@ function drawNPC(npc) {
   ctx.save();
   ctx.translate(screen.sx + shakeX, screen.sy - bob);
   ctx.rotate(rot);
+  ctx.scale(scaleX, scaleY);
 
   if (npc.state === 'CORPSE') {
     const fade = npc.corpseTimer < 5 ? Math.max(0, npc.corpseTimer / 5) : 1;
@@ -771,6 +842,32 @@ function drawNPC(npc) {
   ctx.arc(0, -13, 3.5, 0, Math.PI * 2);
   ctx.fill();
 
+  // hair (gender + age) — skip for zombies and flash
+  if (!isZombie && !flash) {
+    const hairColor = npc.age === 'elder' ? '#a8a8a8' : '#2e1a08';
+    ctx.fillStyle = hairColor;
+    if (npc.gender === 'female') {
+      // bun on top
+      ctx.beginPath();
+      ctx.arc(0, -16.5, 2.4, Math.PI, 0);
+      ctx.fill();
+      // side strands
+      ctx.fillRect(-5.5, -15.5, 1.4, 5);
+      ctx.fillRect( 4.1, -15.5, 1.4, 5);
+    } else if (npc.age === 'elder') {
+      // gray temple lines for male elder
+      ctx.fillRect(-4.8, -15.5, 1.2, 3.5);
+      ctx.fillRect( 3.6, -15.5, 1.2, 3.5);
+    }
+  }
+
+  // charring effect: gradually darken body as fire burns
+  if (npc.state === 'ON_FIRE') {
+    const char = Math.max(0, 1 - npc.fireTimer / CONFIG.FIRE_BURN_DURATION);
+    ctx.fillStyle = `rgba(10, 5, 0, ${char * 0.78})`;
+    ctx.fillRect(-5, -17, 10, 26);
+  }
+
   // zombie glowing eyes
   if (isZombie) {
     ctx.save();
@@ -794,6 +891,51 @@ function getMousePos(e) {
 const NON_PICKABLE = new Set(['GRABBED', 'AIRBORNE', 'DEAD', 'DYING', 'CORPSE']);
 function isAlive(npc) {
   return npc.state !== 'DEAD' && npc.state !== 'DYING' && npc.state !== 'CORPSE';
+}
+
+function buildingOccluding(npc) {
+  if (npc.state === 'DEAD' || npc.pos.wz > 0.5) return null;
+  for (const b of state.buildings) {
+    // case A: NPC standing inside the footprint (under the roof)
+    if (npc.pos.wx >= b.wx && npc.pos.wx <= b.wx + b.w &&
+        npc.pos.wy >= b.wy && npc.pos.wy <= b.wy + b.h) return b;
+
+    // case B: NPC behind the building in iso depth, with screen-X overlap
+    const npcDepth = npc.pos.wx + npc.pos.wy;
+    const buildingBackDepth = b.wx + b.wy;
+    if (npcDepth >= buildingBackDepth) continue;
+
+    const dxNpc = npc.pos.wx - npc.pos.wy;
+    const dxMin = b.wx - (b.wy + b.h);
+    const dxMax = (b.wx + b.w) - b.wy;
+    if (dxNpc < dxMin || dxNpc > dxMax) continue;
+
+    return b;
+  }
+  return null;
+}
+
+function drawNPCOccludedSilhouette(npc) {
+  const ctx = state.ctx;
+  const screen = worldToScreen(npc.pos.wx, npc.pos.wy, npc.pos.wz);
+  const pulse = 0.35 + Math.sin(performance.now() * 0.004) * 0.15;
+  ctx.save();
+  ctx.globalAlpha = pulse;
+  ctx.fillStyle = '#ffffff';
+  ctx.translate(screen.sx, screen.sy);
+  // legs
+  ctx.fillRect(-3, 0, 2, 8);
+  ctx.fillRect( 1, 0, 2, 8);
+  // body
+  ctx.fillRect(-4, -10, 8, 10);
+  // arms
+  ctx.fillRect(-6, -9, 2, 6);
+  ctx.fillRect( 4, -9, 2, 6);
+  // head
+  ctx.beginPath();
+  ctx.arc(0, -13, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 function pickNPCAt(sx, sy) {
@@ -1046,21 +1188,128 @@ function castMeteor(npcTarget, targetWorld) {
 
 function castNecromancer(targetWorld) {
   const radius = CONFIG.NECROMANCER_RADIUS;
-  let nearest = null, bestD = radius;
+  const targets = [];
   for (const n of state.npcs) {
-    if (n.state !== 'CORPSE') continue;
+    if (n.state !== 'CORPSE' || n.isZombieType) continue;
     const d = Math.hypot(n.pos.wx - targetWorld.wx, n.pos.wy - targetWorld.wy);
-    if (d < bestD) { bestD = d; nearest = n; }
+    if (d <= radius) targets.push(n);
   }
   playNecromancerSound();
-  if (!nearest) return;
-  nearest.state = 'ZOMBIE';
-  nearest.pos.wz = 0;
-  nearest.vel = { x: 0, y: 0, z: 0 };
-  nearest.speed = 0.65 + Math.random() * 0.15;
-  nearest.walkPhase = 0;
-  spawnSmokeBurst({ wx: nearest.pos.wx, wy: nearest.pos.wy, wz: 0.2 }, 1.2);
-  triggerScreenShake(2, 0.2);
+  if (targets.length === 0) return;
+  for (const t of targets) {
+    t.state = 'ZOMBIE';
+    t.isZombieType = true;
+    t.pos.wz = 0;
+    t.vel = { x: 0, y: 0, z: 0 };
+    t.speed = 0.65 + Math.random() * 0.15;
+    t.walkPhase = 0;
+    spawnSmokeBurst({ wx: t.pos.wx, wy: t.pos.wy, wz: 0.2 }, 1.2);
+    spawnSoulParticles(t.pos);
+    state.necroCasts.push({ wx: t.pos.wx, wy: t.pos.wy, timer: 0, lifetime: 1.8 });
+  }
+  triggerScreenShake(2 + targets.length * 0.4, 0.25);
+}
+
+function spawnSoulParticles(worldPos) {
+  for (let i = 0; i < 14; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const drift = 0.15 + Math.random() * 0.25;
+    state.particles.push({
+      kind: 'soul',
+      pos: { wx: worldPos.wx + (Math.random() - 0.5) * 0.6,
+             wy: worldPos.wy + (Math.random() - 0.5) * 0.6,
+             wz: 0.1 + Math.random() * 0.4 },
+      vel: { x: Math.cos(angle) * drift, y: Math.sin(angle) * drift,
+             z: 0.7 + Math.random() * 1.1 },
+      lifetime: 1.4 + Math.random() * 1.0,
+      timer: 0,
+      size: 2.5 + Math.random() * 2.5,
+    });
+  }
+}
+
+function updateNecroCasts(dt) {
+  for (let i = state.necroCasts.length - 1; i >= 0; i--) {
+    state.necroCasts[i].timer += dt;
+    if (state.necroCasts[i].timer >= state.necroCasts[i].lifetime) {
+      state.necroCasts.splice(i, 1);
+    }
+  }
+}
+
+function drawNecroTargets() {
+  if (state.selectedSpell !== 'NECROMANCER' || !state.hand.visible) return;
+  const cursor = screenToWorld(state.hand.pos.x, state.hand.pos.y);
+  const radius = CONFIG.NECROMANCER_RADIUS;
+  const ctx = state.ctx;
+  const pulse = 1 + Math.sin(performance.now() * 0.007) * 0.15;
+
+  // AOE range ring at cursor — isometric circle projected through worldToScreen
+  ctx.save();
+  ctx.strokeStyle = '#55ee77';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = '#44ff66';
+  ctx.shadowBlur = 12;
+  ctx.globalAlpha = 0.85;
+  ctx.setLineDash([8, 5]);
+  ctx.beginPath();
+  const STEPS = 64;
+  for (let i = 0; i <= STEPS; i++) {
+    const θ = (i / STEPS) * Math.PI * 2;
+    const wx = cursor.wx + Math.cos(θ) * radius;
+    const wy = cursor.wy + Math.sin(θ) * radius;
+    const { sx, sy } = worldToScreen(wx, wy, 0);
+    if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+  }
+  ctx.closePath();
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // highlight rings on revivable corpses inside the AOE
+  for (const npc of state.npcs) {
+    if (npc.state !== 'CORPSE' || npc.isZombieType) continue;
+    const d = Math.hypot(npc.pos.wx - cursor.wx, npc.pos.wy - cursor.wy);
+    if (d > radius) continue;
+    const { sx, sy } = worldToScreen(npc.pos.wx, npc.pos.wy, 0);
+    ctx.save();
+    ctx.strokeStyle = '#aaffcc';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = '#44ff88';
+    ctx.shadowBlur = 14;
+    ctx.globalAlpha = 0.92;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy + 4, 14 * pulse, 7 * pulse, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawNecroCasts() {
+  const ctx = state.ctx;
+  for (const c of state.necroCasts) {
+    const t = c.timer / c.lifetime;
+    const alpha = 1 - t;
+    const { sx, sy } = worldToScreen(c.wx, c.wy, 0);
+    const size = 22 + t * 10;
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.7;
+    ctx.shadowColor = '#44ff66';
+    ctx.shadowBlur = 12;
+    ctx.strokeStyle = '#44ff66';
+    ctx.lineWidth = 2;
+    // vertical beam
+    ctx.beginPath();
+    ctx.moveTo(sx, sy - size);
+    ctx.lineTo(sx, sy + size * 0.5);
+    ctx.stroke();
+    // horizontal beam
+    ctx.beginPath();
+    ctx.moveTo(sx - size * 0.65, sy - size * 0.3);
+    ctx.lineTo(sx + size * 0.65, sy - size * 0.3);
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 function makeBoltSegments(points) {
@@ -1086,6 +1335,7 @@ function ignite(npc) {
   npc.state = 'ON_FIRE';
   npc.fireTimer = CONFIG.FIRE_BURN_DURATION;
   npc.firePartTimer = 0;
+  npc.fleeTimer = 0;
   npc.vel = { x: 0, y: 0, z: 0 };
 }
 
@@ -1493,10 +1743,14 @@ function updateParticles(dt) {
       case 'blood':    gz = -10; break;
       case 'gib':      gz = -14; break;
       case 'bodypart': gz = -14; break;
+      case 'soul':     gz =  0;  break;
     }
     p.vel.z += gz * dt;
 
-    if (p.kind === 'wind') {
+    if (p.kind === 'soul') {
+      p.vel.x *= (1 - dt * 0.8);
+      p.vel.y *= (1 - dt * 0.8);
+    } else if (p.kind === 'wind') {
       p.vel.x *= (1 - dt * 1.4);
       p.vel.y *= (1 - dt * 1.4);
     } else if (p.kind === 'smoke') {
@@ -1637,6 +1891,19 @@ function drawParticle(p) {
           ctx.fillRect(-1.5, -p.size / 2, 3, 2);
           break;
       }
+      ctx.restore();
+      return;
+    }
+    case 'soul': {
+      const pulse = 1 + Math.sin(p.timer * 8) * 0.2;
+      const a = (1 - t) * 0.85;
+      ctx.save();
+      ctx.shadowColor = '#44ff88';
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = `rgba(100, 255, 140, ${a})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, p.size * pulse, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
       return;
     }
@@ -2044,9 +2311,17 @@ function render() {
   drawHoverRing();
 
   const drawables = [];
+  const occludedNPCs = [];
   for (const npc of state.npcs) {
     if (npc.state === 'DEAD') continue;
-    drawables.push({ depth: npc.pos.wx + npc.pos.wy, kind: 'npc', ref: npc });
+    const occluder = buildingOccluding(npc);
+    if (occluder) {
+      // force NPC depth behind the occluding building
+      drawables.push({ depth: occluder.wx + occluder.wy - 0.01, kind: 'npc', ref: npc });
+      occludedNPCs.push(npc);
+    } else {
+      drawables.push({ depth: npc.pos.wx + npc.pos.wy, kind: 'npc', ref: npc });
+    }
   }
   for (const p of state.particles) {
     drawables.push({ depth: p.pos.wx + p.pos.wy + 0.05, kind: 'particle', ref: p });
@@ -2070,9 +2345,14 @@ function render() {
     else if (d.kind === 'tree') drawTree(d.ref);
   }
 
+  // white silhouettes for NPCs occluded by buildings — drawn on top of everything
+  for (const npc of occludedNPCs) drawNPCOccludedSilhouette(npc);
+
   drawLightningBolts();
+  drawNecroCasts();
   ctx.restore();
 
+  drawNecroTargets();
   drawHand();
 }
 
@@ -2088,6 +2368,7 @@ function loop(now) {
   updateParticles(dt);
   updateShake(dt);
   updateRespawn(dt);
+  updateNecroCasts(dt);
 
   state.npcs.sort((a, b) => (a.pos.wx + a.pos.wy) - (b.pos.wx + b.pos.wy));
 
