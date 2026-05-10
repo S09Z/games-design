@@ -196,6 +196,7 @@ html, body {
 .spell-slot[data-spell="FIREBALL"]  { --spell-color: #FF4500; }
 .spell-slot[data-spell="LIGHTNING"] { --spell-color: #FFD700; }
 .spell-slot[data-spell="WIND"]      { --spell-color: #87CEEB; }
+.spell-slot[data-spell="METEOR"]    { --spell-color: #FF6347; }
 
 .spell-icon {
   font-size: 24px;

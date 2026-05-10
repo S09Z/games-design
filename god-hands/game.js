@@ -1,8 +1,14 @@
-// Hand of God — Phase 3 (Juice & Polish)
+// Hand of God — Phase 4 Round A (World basics + death stages + Meteor)
 // Phase 1: Canvas + isometric tiles, NPC wander, hand grab/drop, throw physics.
 // Phase 2: SpellBar UI, Fireball / Lightning / Wind, ON_FIRE + DEAD states.
-// Phase 3: Blood splatter + giblets, hit flash, unified death animation,
-//          blood decals on ground, screen shake, fall death, splat sound.
+// Phase 3: Blood splatter, hit flash, unified death animation, blood decals,
+//          screen shake, fall death, splat sound. Critical (20%) dismemberment.
+//          Respawn 1s/NPC, NPC count slider, info panel, hover ring.
+// Phase 4 Round A:
+//   - Buildings 2x2 random non-clustered, max 60% area
+//   - Trees ringed at outer edges
+//   - 2-stage death: critical (20%) explodes / non-critical leaves CORPSE (fade 30s)
+//   - Meteor spell + crater decal pattern
 
 const CONFIG = {
   TILE_W: 64,
@@ -30,14 +36,28 @@ const CONFIG = {
   LIGHTNING_BOLT_LIFETIME: 0.25,
   WIND_AOE: 4,
   WIND_FORCE: 14,
+  METEOR_AOE: 3.0,
+  METEOR_FALL_DURATION: 0.55,
+  METEOR_HEIGHT: 12,
 
   // Death / juice
   DEATH_FLASH_DURATION: 0.08,
-  FALL_DEATH_THRESHOLD: 10,    // impact |vel.z| > this on landing → kill instead of stun
-  SHAKE_DECAY: 0.3,            // seconds
-  DECAL_MAX: 200,              // FIFO cap to bound memory
-  CRITICAL_CHANCE: 0.20,       // chance of full dismemberment on death
-  RESPAWN_INTERVAL: 1.0,       // seconds between respawns when below target
+  FALL_DEATH_THRESHOLD: 10,
+  SHAKE_DECAY: 0.3,
+  DECAL_MAX: 200,
+  CRITICAL_CHANCE: 0.20,
+  RESPAWN_INTERVAL: 1.0,
+  CORPSE_DURATION: 30.0,
+
+  // World
+  BUILDING_TARGET: 15,
+  BUILDING_SIZE: 2,
+  BUILDING_WALL_HEIGHT: 0.8,    // wall height in wz units (NPC ≈ 0.5 wz, so wall ≈ 1.5x NPC)
+  BUILDING_ROOF_PEAK: 0.55,     // additional peak height above wall (gabled thatch)
+  BUILDING_MAX_COVERAGE: 0.3,
+  BUILDING_GAP: 3,              // minimum tile gap between buildings
+  TREE_COUNT: 25,
+  TREE_BORDER_WIDTH: 2.8,
 };
 
 const SPELL_COLORS = {
@@ -45,7 +65,15 @@ const SPELL_COLORS = {
   FIREBALL:  '#FF4500',
   LIGHTNING: '#FFD700',
   WIND:      '#87CEEB',
+  METEOR:    '#FF6347',
 };
+
+// Medieval cottage palettes: plaster walls + dark timber beams + thatched roof
+const BUILDING_PALETTES = [
+  { wall: '#d4c08e', wallSide: '#b8a575', beam: '#3a2818', roof: '#a07e35', roofShadow: '#7a5e22' },
+  { wall: '#c8a070', wallSide: '#a8855a', beam: '#4a3020', roof: '#946d28', roofShadow: '#6a4a18' },
+  { wall: '#e0d0a0', wallSide: '#c4b58c', beam: '#2a1810', roof: '#b8923f', roofShadow: '#8b6c2c' },
+];
 
 const state = {
   canvas: null,
@@ -56,11 +84,14 @@ const state = {
   originX: 0,
   originY: 0,
   tiles: [],
+  buildings: [],
+  trees: [],
   npcs: [],
   particles: [],
   projectiles: [],
   lightningBolts: [],
   bloodDecals: [],
+  craterDecals: [],
   shake: { intensity: 0, timer: 0, duration: CONFIG.SHAKE_DECAY },
   targetCount: 15,
   totalDeaths: 0,
@@ -140,6 +171,298 @@ function renderTiles() {
   }
 }
 
+// ---------- Buildings ----------
+function tileInsideBuilding(wx, wy, margin = 0) {
+  for (const b of state.buildings) {
+    if (wx >= b.wx - margin && wx < b.wx + b.w + margin &&
+        wy >= b.wy - margin && wy < b.wy + b.h + margin) return true;
+  }
+  return false;
+}
+
+function initBuildings() {
+  state.buildings = [];
+  const N = CONFIG.MAP_SIZE;
+  const mid = Math.floor(N / 2);
+  const w = CONFIG.BUILDING_SIZE, h = CONFIG.BUILDING_SIZE;
+  const totalArea = N * N;
+  const maxArea = totalArea * CONFIG.BUILDING_MAX_COVERAGE;
+  const areaPer = w * h;
+  const limit = Math.min(CONFIG.BUILDING_TARGET, Math.floor(maxArea / areaPer));
+
+  let attempts = 0;
+  while (state.buildings.length < limit && attempts < 1500) {
+    attempts++;
+    const wx = 1 + Math.floor(Math.random() * (N - 2 - w));
+    const wy = 1 + Math.floor(Math.random() * (N - 2 - h));
+
+    // skip if footprint touches center cross path
+    let onPath = false;
+    for (let dx = 0; dx < w && !onPath; dx++) {
+      for (let dy = 0; dy < h && !onPath; dy++) {
+        if (wx + dx === mid || wy + dy === mid) onPath = true;
+      }
+    }
+    if (onPath) continue;
+
+    // require minimum gap from existing buildings
+    const gap = CONFIG.BUILDING_GAP;
+    let tooClose = false;
+    for (const b of state.buildings) {
+      if (wx + w + gap > b.wx && wx < b.wx + b.w + gap &&
+          wy + h + gap > b.wy && wy < b.wy + b.h + gap) {
+        tooClose = true;
+        break;
+      }
+    }
+    if (tooClose) continue;
+
+    state.buildings.push({
+      wx, wy, w, h,
+      wallH: CONFIG.BUILDING_WALL_HEIGHT,
+      roofPeak: CONFIG.BUILDING_ROOF_PEAK,
+      palette: BUILDING_PALETTES[Math.floor(Math.random() * BUILDING_PALETTES.length)],
+    });
+  }
+}
+
+function drawBuilding(b) {
+  const ctx = state.ctx;
+  const x0 = b.wx, y0 = b.wy;
+  const x1 = b.wx + b.w, y1 = b.wy + b.h;
+  const cx = (x0 + x1) / 2;
+  const wallH = b.wallH;
+  const peakZ = wallH + b.roofPeak;
+
+  // Ground & wall-top corners
+  const bNE = worldToScreen(x1, y0, 0);
+  const bSE = worldToScreen(x1, y1, 0);
+  const bSW = worldToScreen(x0, y1, 0);
+  const wNE = worldToScreen(x1, y0, wallH);
+  const wSE = worldToScreen(x1, y1, wallH);
+  const wSW = worldToScreen(x0, y1, wallH);
+
+  // Roof ridge (runs N-S along x=cx)
+  const ridgeN = worldToScreen(cx, y0, peakZ);
+  const ridgeS = worldToScreen(cx, y1, peakZ);
+
+  ctx.lineWidth = 1;
+
+  // === South wall (front, plaster rectangle) ===
+  ctx.fillStyle = b.palette.wall;
+  ctx.beginPath();
+  ctx.moveTo(bSW.sx, bSW.sy);
+  ctx.lineTo(bSE.sx, bSE.sy);
+  ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.lineTo(wSW.sx, wSW.sy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+  ctx.stroke();
+
+  // Corner timber posts (south face)
+  ctx.strokeStyle = b.palette.beam;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(bSW.sx, bSW.sy); ctx.lineTo(wSW.sx, wSW.sy);
+  ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.stroke();
+
+  // Door on south wall (centered)
+  const doorW = 0.5, doorH = wallH * 0.78;
+  const dx0 = x0 + (b.w - doorW) / 2;
+  const dx1 = dx0 + doorW;
+  const dP1 = worldToScreen(dx0, y1, 0);
+  const dP2 = worldToScreen(dx1, y1, 0);
+  const dP3 = worldToScreen(dx1, y1, doorH);
+  const dP4 = worldToScreen(dx0, y1, doorH);
+  ctx.fillStyle = '#3a2515';
+  ctx.beginPath();
+  ctx.moveTo(dP1.sx, dP1.sy);
+  ctx.lineTo(dP2.sx, dP2.sy);
+  ctx.lineTo(dP3.sx, dP3.sy);
+  ctx.lineTo(dP4.sx, dP4.sy);
+  ctx.closePath();
+  ctx.fill();
+  // door arch line
+  ctx.strokeStyle = b.palette.beam;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(dP4.sx, dP4.sy);
+  ctx.lineTo(dP3.sx, dP3.sy);
+  ctx.stroke();
+
+  // === East wall (side, slightly darker plaster) ===
+  ctx.fillStyle = b.palette.wallSide;
+  ctx.beginPath();
+  ctx.moveTo(bSE.sx, bSE.sy);
+  ctx.lineTo(bNE.sx, bNE.sy);
+  ctx.lineTo(wNE.sx, wNE.sy);
+  ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // East NE corner post
+  ctx.strokeStyle = b.palette.beam;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(bNE.sx, bNE.sy); ctx.lineTo(wNE.sx, wNE.sy);
+  ctx.stroke();
+
+  // Window on east wall with cross frame
+  const winSize = 0.32;
+  const winZ0 = wallH * 0.42;
+  const winZ1 = winZ0 + winSize;
+  const wy0 = y0 + (b.h - winSize) / 2;
+  const wy1 = wy0 + winSize;
+  const wP1 = worldToScreen(x1, wy0, winZ0);
+  const wP2 = worldToScreen(x1, wy1, winZ0);
+  const wP3 = worldToScreen(x1, wy1, winZ1);
+  const wP4 = worldToScreen(x1, wy0, winZ1);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath();
+  ctx.moveTo(wP1.sx, wP1.sy);
+  ctx.lineTo(wP2.sx, wP2.sy);
+  ctx.lineTo(wP3.sx, wP3.sy);
+  ctx.lineTo(wP4.sx, wP4.sy);
+  ctx.closePath();
+  ctx.fill();
+  // window cross
+  const wMid = winZ0 + winSize / 2;
+  const wyMid = y0 + b.h / 2;
+  const wm1 = worldToScreen(x1, wy0, wMid);
+  const wm2 = worldToScreen(x1, wy1, wMid);
+  const wm3 = worldToScreen(x1, wyMid, winZ0);
+  const wm4 = worldToScreen(x1, wyMid, winZ1);
+  ctx.strokeStyle = b.palette.beam;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(wm1.sx, wm1.sy); ctx.lineTo(wm2.sx, wm2.sy);
+  ctx.moveTo(wm3.sx, wm3.sy); ctx.lineTo(wm4.sx, wm4.sy);
+  ctx.stroke();
+
+  // === East roof slope (rect, thatched) ===
+  ctx.fillStyle = b.palette.roof;
+  ctx.beginPath();
+  ctx.moveTo(wNE.sx, wNE.sy);
+  ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.lineTo(ridgeS.sx, ridgeS.sy);
+  ctx.lineTo(ridgeN.sx, ridgeN.sy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Thatch texture: lines from eaves up to ridge
+  ctx.strokeStyle = b.palette.roofShadow;
+  ctx.lineWidth = 1;
+  const thatchN = 7;
+  for (let i = 1; i < thatchN; i++) {
+    const t = i / thatchN;
+    const eaveX = wNE.sx + (wSE.sx - wNE.sx) * t;
+    const eaveY = wNE.sy + (wSE.sy - wNE.sy) * t;
+    const ridgeX = ridgeN.sx + (ridgeS.sx - ridgeN.sx) * t;
+    const ridgeY = ridgeN.sy + (ridgeS.sy - ridgeN.sy) * t;
+    ctx.beginPath();
+    ctx.moveTo(eaveX, eaveY);
+    ctx.lineTo(ridgeX, ridgeY);
+    ctx.stroke();
+  }
+  // overhang lip at eave (slightly darker line)
+  ctx.strokeStyle = b.palette.roofShadow;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(wNE.sx, wNE.sy);
+  ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.stroke();
+
+  // === South gable (triangular plaster above south wall) ===
+  ctx.fillStyle = b.palette.wall;
+  ctx.beginPath();
+  ctx.moveTo(wSW.sx, wSW.sy);
+  ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.lineTo(ridgeS.sx, ridgeS.sy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Gable diagonal trim beams (decorative)
+  ctx.strokeStyle = b.palette.beam;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(wSW.sx, wSW.sy);
+  ctx.lineTo(ridgeS.sx, ridgeS.sy);
+  ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.stroke();
+}
+
+// ---------- Trees ----------
+function initTrees() {
+  state.trees = [];
+  const N = CONFIG.MAP_SIZE;
+  const mid = Math.floor(N / 2);
+  const border = CONFIG.TREE_BORDER_WIDTH;
+
+  let attempts = 0;
+  while (state.trees.length < CONFIG.TREE_COUNT && attempts < 1500) {
+    attempts++;
+    const wx = 0.3 + Math.random() * (N - 0.6);
+    const wy = 0.3 + Math.random() * (N - 0.6);
+
+    // outer ring only
+    const distFromBorder = Math.min(wx, wy, N - wx, N - wy);
+    if (distFromBorder > border) continue;
+
+    // skip on path
+    if (Math.abs(wx - mid) < 0.7 || Math.abs(wy - mid) < 0.7) continue;
+
+    // skip near buildings
+    if (tileInsideBuilding(wx, wy, 0.5)) continue;
+
+    // spacing
+    let tooClose = false;
+    for (const t of state.trees) {
+      if (Math.hypot(t.wx - wx, t.wy - wy) < 0.7) { tooClose = true; break; }
+    }
+    if (tooClose) continue;
+
+    state.trees.push({ wx, wy, size: 0.85 + Math.random() * 0.3 });
+  }
+}
+
+function drawTree(t) {
+  const ctx = state.ctx;
+  const { sx, sy } = worldToScreen(t.wx, t.wy, 0);
+  const s = t.size;
+
+  // trunk
+  ctx.fillStyle = '#5a3a20';
+  ctx.fillRect(sx - 2 * s, sy - 8 * s, 4 * s, 8 * s);
+
+  // foliage layered
+  ctx.fillStyle = '#1a4515';
+  ctx.beginPath();
+  ctx.moveTo(sx, sy - 30 * s);
+  ctx.lineTo(sx - 11 * s, sy - 8 * s);
+  ctx.lineTo(sx + 11 * s, sy - 8 * s);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#2a6020';
+  ctx.beginPath();
+  ctx.moveTo(sx + s, sy - 26 * s);
+  ctx.lineTo(sx - 7 * s, sy - 11 * s);
+  ctx.lineTo(sx + 8 * s, sy - 11 * s);
+  ctx.closePath();
+  ctx.fill();
+}
+
 // ---------- NPC ----------
 const NPC_COLORS = ['#c8553d', '#5d8aa8', '#9c6b3c', '#5e9b76', '#a56abd', '#d4a017'];
 
@@ -158,24 +481,32 @@ function makeNPC(wx, wy) {
     firePartTimer: 0,
     flashTimer: 0,
     deathIntensity: 1.0,
+    corpseTimer: 0,
     maxFallSpeed: 0,
   };
 }
 
-function spawnNPCs() {
+function pickFreePosition() {
   const N = CONFIG.MAP_SIZE;
+  let wx = N / 2, wy = N / 2;
+  for (let attempts = 0; attempts < 30; attempts++) {
+    wx = 2 + Math.random() * (N - 4);
+    wy = 2 + Math.random() * (N - 4);
+    if (!tileInsideBuilding(wx, wy, 0.2)) return { wx, wy };
+  }
+  return { wx, wy };
+}
+
+function spawnNPCs() {
   state.npcs = [];
   for (let i = 0; i < state.targetCount; i++) {
-    const wx = 2 + Math.random() * (N - 4);
-    const wy = 2 + Math.random() * (N - 4);
+    const { wx, wy } = pickFreePosition();
     state.npcs.push(makeNPC(wx, wy));
   }
 }
 
 function respawnOne() {
-  const N = CONFIG.MAP_SIZE;
-  const wx = 2 + Math.random() * (N - 4);
-  const wy = 2 + Math.random() * (N - 4);
+  const { wx, wy } = pickFreePosition();
   const newNPC = makeNPC(wx, wy);
   for (let i = 0; i < state.npcs.length; i++) {
     if (state.npcs[i].state === 'DEAD') {
@@ -188,7 +519,9 @@ function respawnOne() {
 
 function updateRespawn(dt) {
   let alive = 0;
-  for (const n of state.npcs) if (n.state !== 'DEAD') alive++;
+  for (const n of state.npcs) {
+    if (n.state !== 'DEAD' && n.state !== 'CORPSE') alive++;
+  }
   if (alive < state.targetCount) {
     state.respawnTimer += dt;
     if (state.respawnTimer >= CONFIG.RESPAWN_INTERVAL) {
@@ -202,12 +535,13 @@ function updateRespawn(dt) {
 
 function pickWanderTarget(npc) {
   const N = CONFIG.MAP_SIZE;
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 8; i++) {
     const angle = Math.random() * Math.PI * 2;
     const dist = 1.5 + Math.random() * 4;
     const nx = npc.pos.wx + Math.cos(angle) * dist;
     const ny = npc.pos.wy + Math.sin(angle) * dist;
-    if (nx >= 1 && nx <= N - 1 && ny >= 1 && ny <= N - 1) {
+    if (nx >= 1 && nx <= N - 1 && ny >= 1 && ny <= N - 1 &&
+        !tileInsideBuilding(nx, ny, 0.1)) {
       npc.target.wx = nx;
       npc.target.wy = ny;
       return;
@@ -264,13 +598,11 @@ function updateNPC(npc, dt) {
         const intensity = Math.min(1, npc.maxFallSpeed / 8);
 
         if (impactZ > CONFIG.FALL_DEATH_THRESHOLD) {
-          // violent splat death — ground impact lethal
           const lethal = Math.min(1.6, impactZ / 10);
           spawnDust(npc.pos, intensity);
           playThud(intensity);
           kill(npc, lethal);
         } else if (impactZ > 2.5) {
-          // bounce
           npc.vel.z *= -CONFIG.BOUNCE_FACTOR;
           npc.vel.x *= CONFIG.FRICTION;
           npc.vel.y *= CONFIG.FRICTION;
@@ -311,8 +643,12 @@ function updateNPC(npc, dt) {
       if (npc.flashTimer <= 0) explodeBody(npc);
       break;
 
+    case 'CORPSE':
+      npc.corpseTimer -= dt;
+      if (npc.corpseTimer <= 0) npc.state = 'DEAD';
+      break;
+
     case 'DEAD':
-      // body removed; remains in array only for HUD count
       break;
   }
 }
@@ -339,7 +675,7 @@ function drawNPC(npc) {
   let rot = 0;
   if (npc.state === 'GRABBED') rot = Math.sin(performance.now() / 100) * 0.18;
   else if (npc.state === 'AIRBORNE') rot = (npc.vel.x + npc.vel.y) * 0.12;
-  else if (npc.state === 'STUNNED') rot = Math.PI / 2;
+  else if (npc.state === 'STUNNED' || npc.state === 'CORPSE') rot = Math.PI / 2;
 
   let shakeX = 0;
   if (npc.state === 'ON_FIRE') {
@@ -358,6 +694,11 @@ function drawNPC(npc) {
   ctx.translate(screen.sx + shakeX, screen.sy - bob);
   ctx.rotate(rot);
 
+  if (npc.state === 'CORPSE') {
+    const fade = npc.corpseTimer < 5 ? Math.max(0, npc.corpseTimer / 5) : 1;
+    ctx.globalAlpha = 0.85 * fade;
+  }
+
   // legs
   let legSplit = 0;
   if (npc.state === 'WANDER') legSplit = Math.sin(npc.walkPhase) * 2;
@@ -371,7 +712,8 @@ function drawNPC(npc) {
 
   // arms
   let armA = 0, armB = 0;
-  if (npc.state === 'GRABBED' || npc.state === 'AIRBORNE' || npc.state === 'ON_FIRE' || npc.state === 'DYING') {
+  if (npc.state === 'GRABBED' || npc.state === 'AIRBORNE' ||
+      npc.state === 'ON_FIRE' || npc.state === 'DYING') {
     armA = Math.sin(performance.now() / 80) * 4;
     armB = -armA;
   }
@@ -394,8 +736,10 @@ function getMousePos(e) {
   return { x: e.clientX - rect.left, y: e.clientY - rect.top };
 }
 
-const NON_PICKABLE = new Set(['GRABBED', 'AIRBORNE', 'DEAD', 'DYING']);
-function isAlive(npc) { return npc.state !== 'DEAD' && npc.state !== 'DYING'; }
+const NON_PICKABLE = new Set(['GRABBED', 'AIRBORNE', 'DEAD', 'DYING', 'CORPSE']);
+function isAlive(npc) {
+  return npc.state !== 'DEAD' && npc.state !== 'DYING' && npc.state !== 'CORPSE';
+}
 
 function pickNPCAt(sx, sy) {
   for (let i = state.npcs.length - 1; i >= 0; i--) {
@@ -438,9 +782,10 @@ function onMouseDown(e) {
     return;
   }
 
-  if (sel === 'FIREBALL')  castFireball(npcUnder, targetWorld);
+  if (sel === 'FIREBALL')       castFireball(npcUnder, targetWorld);
   else if (sel === 'LIGHTNING') castLightning(npcUnder, targetWorld);
   else if (sel === 'WIND')      castWind(targetWorld);
+  else if (sel === 'METEOR')    castMeteor(npcUnder, targetWorld);
 }
 
 function onMouseMove(e) {
@@ -625,6 +970,24 @@ function castWind(targetWorld) {
   playWindSound();
 }
 
+function castMeteor(npcTarget, targetWorld) {
+  const target = npcTarget
+    ? { wx: npcTarget.pos.wx, wy: npcTarget.pos.wy, wz: 0 }
+    : { wx: targetWorld.wx, wy: targetWorld.wy, wz: 0 };
+  const start = { wx: target.wx, wy: target.wy, wz: CONFIG.METEOR_HEIGHT };
+
+  state.projectiles.push({
+    kind: 'meteor',
+    start,
+    target,
+    pos: { ...start },
+    timer: 0,
+    duration: CONFIG.METEOR_FALL_DURATION,
+    trailTimer: 0,
+  });
+  playMeteorWhoosh();
+}
+
 function makeBoltSegments(points) {
   const out = [];
   for (let i = 0; i < points.length - 1; i++) {
@@ -652,7 +1015,7 @@ function ignite(npc) {
 }
 
 function kill(npc, intensity = 1.0) {
-  if (npc.state === 'DEAD' || npc.state === 'DYING') return;
+  if (npc.state === 'DEAD' || npc.state === 'DYING' || npc.state === 'CORPSE') return;
   npc.state = 'DYING';
   npc.flashTimer = CONFIG.DEATH_FLASH_DURATION;
   npc.deathIntensity = intensity;
@@ -663,18 +1026,24 @@ function explodeBody(npc) {
   const i = npc.deathIntensity || 1.0;
   const isCritical = Math.random() < CONFIG.CRITICAL_CHANCE;
 
-  spawnBloodSplatter(npc.pos, i * (isCritical ? 1.6 : 1));
   if (isCritical) {
+    spawnBloodSplatter(npc.pos, i * 1.6);
     spawnBodyParts(npc.pos, npc.color, i);
+    spawnSmokeBurst(npc.pos, 0.5 * i);
+    addBloodDecal(npc.pos, 12 + i * 8, 0.7);
     triggerScreenShake(4 + i * 2.5, 0.4);
+    playSplatSound(i);
+    npc.state = 'DEAD';
   } else {
-    spawnGiblets(npc.pos, i);
-    triggerScreenShake(2 + i * 2, 0.3);
+    // normal death: leave corpse on ground
+    npc.pos.wz = 0;
+    spawnBloodSplatter(npc.pos, i * 0.6);
+    addBloodDecal(npc.pos, 10 + i * 4, 0.55);
+    triggerScreenShake(1.5, 0.2);
+    playSplatSound(i * 0.6);
+    npc.state = 'CORPSE';
+    npc.corpseTimer = CONFIG.CORPSE_DURATION;
   }
-  spawnSmokeBurst(npc.pos, 0.5 * i);
-  addBloodDecal(npc.pos, 12 + i * 8, 0.7);
-  playSplatSound(i);
-  npc.state = 'DEAD';
   state.totalDeaths++;
 }
 
@@ -686,18 +1055,39 @@ function updateProjectiles(dt) {
     p.trailTimer += dt;
 
     const t = Math.min(1, p.timer / p.duration);
-    const arc = 4 * t * (1 - t);
-    p.pos.wx = p.start.wx + (p.target.wx - p.start.wx) * t;
-    p.pos.wy = p.start.wy + (p.target.wy - p.start.wy) * t;
-    p.pos.wz = p.start.wz + (p.target.wz - p.start.wz) * t + arc * 1.5;
+    if (p.kind === 'fireball') {
+      const arc = 4 * t * (1 - t);
+      p.pos.wx = p.start.wx + (p.target.wx - p.start.wx) * t;
+      p.pos.wy = p.start.wy + (p.target.wy - p.start.wy) * t;
+      p.pos.wz = p.start.wz + (p.target.wz - p.start.wz) * t + arc * 1.5;
+    } else if (p.kind === 'meteor') {
+      // straight vertical drop with slight x curve for drama
+      p.pos.wx = p.start.wx + (p.target.wx - p.start.wx) * t;
+      p.pos.wy = p.start.wy + (p.target.wy - p.start.wy) * t;
+      p.pos.wz = p.start.wz + (p.target.wz - p.start.wz) * t;
+    }
 
-    if (p.trailTimer >= 0.03) {
+    const trailRate = p.kind === 'meteor' ? 0.015 : 0.03;
+    if (p.trailTimer >= trailRate) {
       p.trailTimer = 0;
       spawnFireTrail(p.pos);
+      if (p.kind === 'meteor') {
+        spawnFireTrail(p.pos);
+        if (Math.random() < 0.5) {
+          state.particles.push({
+            kind: 'smoke',
+            pos: { ...p.pos },
+            vel: { x: (Math.random()-0.5)*0.5, y: (Math.random()-0.5)*0.5, z: 0.5 },
+            timer: 0, lifetime: 1.0 + Math.random() * 0.5,
+            size: 4 + Math.random() * 3,
+          });
+        }
+      }
     }
 
     if (t >= 1) {
-      explodeFireball(p.target.wx, p.target.wy);
+      if (p.kind === 'fireball') explodeFireball(p.target.wx, p.target.wy);
+      else if (p.kind === 'meteor') explodeMeteor(p.target.wx, p.target.wy);
       state.projectiles.splice(i, 1);
     }
   }
@@ -715,20 +1105,61 @@ function explodeFireball(wx, wy) {
   playExplosionSound();
 }
 
+function explodeMeteor(wx, wy) {
+  spawnFireBurst({ wx, wy, wz: 0.1 }, 60);
+  spawnSmokeBurst({ wx, wy, wz: 0.3 }, 2.5);
+  // outward dust ring
+  for (let i = 0; i < 30; i++) {
+    const ang = (i / 30) * Math.PI * 2;
+    state.particles.push({
+      kind: 'dust',
+      pos: { wx, wy, wz: 0.1 },
+      vel: {
+        x: Math.cos(ang) * (3 + Math.random() * 2),
+        y: Math.sin(ang) * (3 + Math.random() * 2) * 0.6,
+        z: 1 + Math.random() * 1.5,
+      },
+      lifetime: 0.8 + Math.random() * 0.4,
+      timer: 0,
+      size: 3 + Math.random() * 2,
+    });
+  }
+
+  for (const npc of state.npcs) {
+    if (!isAlive(npc)) continue;
+    const d = Math.hypot(npc.pos.wx - wx, npc.pos.wy - wy);
+    if (d < CONFIG.METEOR_AOE) {
+      // mass kill — high intensity boosts critical odds visually
+      kill(npc, 1.4);
+    }
+  }
+
+  addCraterDecal({ wx, wy }, CONFIG.METEOR_AOE);
+  triggerScreenShake(12, 0.5);
+  playMeteorImpact();
+}
+
 function drawProjectile(p) {
   const ctx = state.ctx;
   const { sx, sy } = worldToScreen(p.pos.wx, p.pos.wy, p.pos.wz);
   ctx.save();
-  ctx.shadowColor = '#FF8C00';
-  ctx.shadowBlur = 18;
-  ctx.fillStyle = '#FFC04D';
-  ctx.beginPath();
-  ctx.arc(sx, sy, 7, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#FF4500';
-  ctx.beginPath();
-  ctx.arc(sx, sy, 4, 0, Math.PI * 2);
-  ctx.fill();
+  if (p.kind === 'fireball') {
+    ctx.shadowColor = '#FF8C00';
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = '#FFC04D';
+    ctx.beginPath(); ctx.arc(sx, sy, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FF4500';
+    ctx.beginPath(); ctx.arc(sx, sy, 4, 0, Math.PI * 2); ctx.fill();
+  } else if (p.kind === 'meteor') {
+    ctx.shadowColor = '#FF6347';
+    ctx.shadowBlur = 30;
+    ctx.fillStyle = '#FFA040';
+    ctx.beginPath(); ctx.arc(sx, sy, 13, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FF6347';
+    ctx.beginPath(); ctx.arc(sx, sy, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFFF80';
+    ctx.beginPath(); ctx.arc(sx, sy, 3, 0, Math.PI * 2); ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -934,7 +1365,6 @@ function spawnGiblets(worldPos, intensity = 1) {
 }
 
 function spawnBodyParts(worldPos, npcColor, intensity = 1) {
-  // 6 dismembered parts: head, body, 2 arms, 2 legs
   const parts = [
     { partType: 'head', size: 7,  color: '#e9c39a' },
     { partType: 'body', size: 9,  color: npcColor   },
@@ -999,7 +1429,6 @@ function updateParticles(dt) {
       p.vel.y *= (1 - dt * 0.6);
     }
 
-    // ground interactions
     if (p.kind === 'blood' && p.pos.wz <= 0 && !p.landed) {
       p.pos.wz = 0;
       p.landed = true;
@@ -1112,7 +1541,6 @@ function drawParticle(p) {
           ctx.beginPath();
           ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
           ctx.fill();
-          // tiny eye dot
           ctx.fillStyle = 'rgba(20, 0, 0, 0.7)';
           ctx.beginPath();
           ctx.arc(p.size / 6, -p.size / 8, p.size / 8, 0, Math.PI * 2);
@@ -1120,7 +1548,6 @@ function drawParticle(p) {
           break;
         case 'body':
           ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-          // bloody stump
           ctx.fillStyle = 'rgba(120, 0, 0, 0.85)';
           ctx.fillRect(-p.size / 2, p.size / 2 - 2, p.size, 2);
           break;
@@ -1141,7 +1568,7 @@ function drawParticle(p) {
   }
 }
 
-// ---------- Blood decals ----------
+// ---------- Decals ----------
 function addBloodDecal(pos, size, opacity = 0.7) {
   const satellites = [];
   const satCount = 2 + Math.floor(Math.random() * 4);
@@ -1171,6 +1598,69 @@ function renderBloodDecals() {
     for (const s of d.satellites) {
       ctx.beginPath();
       ctx.ellipse(sx + s.dx, sy + 2 + s.dy, s.r, s.r * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function addCraterDecal(pos, radius) {
+  const cracks = [];
+  const crackCount = 5 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < crackCount; i++) {
+    const ang = (i / crackCount) * Math.PI * 2 + Math.random() * 0.5;
+    cracks.push({
+      angle: ang,
+      length: 0.7 + Math.random() * 0.5,
+    });
+  }
+  state.craterDecals.push({
+    wx: pos.wx, wy: pos.wy, radius, cracks,
+    opacity: 0.85,
+  });
+  if (state.craterDecals.length > 30) state.craterDecals.shift();
+}
+
+function renderCraterDecals() {
+  const ctx = state.ctx;
+  for (const c of state.craterDecals) {
+    const { sx, sy } = worldToScreen(c.wx, c.wy, 0);
+    const screenR = c.radius * CONFIG.TILE_W / 2;
+
+    // outer scorched dirt (large soft ellipse)
+    ctx.fillStyle = `rgba(40, 28, 18, ${c.opacity * 0.7})`;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, screenR, screenR * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // inner crater hole (darker)
+    ctx.fillStyle = `rgba(15, 10, 5, ${c.opacity})`;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, screenR * 0.65, screenR * 0.32, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // cracks (radial dark lines)
+    ctx.strokeStyle = `rgba(0, 0, 0, ${c.opacity})`;
+    ctx.lineWidth = 1.8;
+    for (const k of c.cracks) {
+      const r0 = screenR * 0.4;
+      const r1 = screenR * (0.7 + k.length * 0.4);
+      const x1 = sx + Math.cos(k.angle) * r0;
+      const y1 = sy + Math.sin(k.angle) * r0 * 0.5;
+      const x2 = sx + Math.cos(k.angle) * r1;
+      const y2 = sy + Math.sin(k.angle) * r1 * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+
+    // small ember dots (visual debris)
+    ctx.fillStyle = `rgba(80, 40, 20, ${c.opacity * 0.8})`;
+    for (let i = 0; i < 6; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const r = screenR * (0.5 + Math.random() * 0.5);
+      ctx.beginPath();
+      ctx.arc(sx + Math.cos(ang) * r, sy + Math.sin(ang) * r * 0.5, 2, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -1215,7 +1705,7 @@ function updateShake(dt) {
   }
 }
 
-// ---------- Audio (Web Audio synth) ----------
+// ---------- Audio ----------
 let audioCtx = null;
 function ensureAudio() {
   if (!audioCtx) {
@@ -1345,7 +1835,6 @@ function playSplatSound(intensity = 1) {
   const now = ctx.currentTime;
   const vol = 0.25 + 0.25 * intensity;
 
-  // wet noise burst
   const buf = ctx.createBuffer(1, ctx.sampleRate * 0.18, ctx.sampleRate);
   const d = buf.getChannelData(0);
   for (let i = 0; i < d.length; i++) {
@@ -1361,7 +1850,6 @@ function playSplatSound(intensity = 1) {
   src.connect(lp).connect(ng).connect(ctx.destination);
   src.start(now);
 
-  // low pitch bonk
   const osc = ctx.createOscillator();
   const og = ctx.createGain();
   osc.type = 'sine';
@@ -1373,13 +1861,58 @@ function playSplatSound(intensity = 1) {
   osc.start(now); osc.stop(now + 0.2);
 }
 
+function playMeteorWhoosh() {
+  const ctx = ensureAudio(); if (!ctx) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(900, now);
+  osc.frequency.exponentialRampToValueAtTime(80, now + 0.55);
+  g.gain.setValueAtTime(0.22, now);
+  g.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+  osc.connect(g).connect(ctx.destination);
+  osc.start(now); osc.stop(now + 0.6);
+}
+
+function playMeteorImpact() {
+  const ctx = ensureAudio(); if (!ctx) return;
+  const now = ctx.currentTime;
+
+  // long noise tail
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.7, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) {
+    d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.3));
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 500;
+  const ng = ctx.createGain();
+  ng.gain.value = 0.7;
+  src.connect(lp).connect(ng).connect(ctx.destination);
+  src.start(now);
+
+  // deep sub-bass thump
+  const osc = ctx.createOscillator();
+  const og = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(60, now);
+  osc.frequency.exponentialRampToValueAtTime(20, now + 0.5);
+  og.gain.setValueAtTime(0.85, now);
+  og.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+  osc.connect(og).connect(ctx.destination);
+  osc.start(now); osc.stop(now + 0.75);
+}
+
 // ---------- Render ----------
 function render() {
   const ctx = state.ctx;
   ctx.fillStyle = '#0e0a07';
   ctx.fillRect(0, 0, state.width, state.height);
 
-  // screen shake offset (does not affect hand cursor)
   let shakeX = 0, shakeY = 0;
   if (state.shake.timer > 0 && state.shake.duration > 0) {
     const fade = state.shake.timer / state.shake.duration;
@@ -1393,6 +1926,7 @@ function render() {
 
   renderTiles();
   renderBloodDecals();
+  renderCraterDecals();
   drawHoverRing();
 
   const drawables = [];
@@ -1406,11 +1940,20 @@ function render() {
   for (const pr of state.projectiles) {
     drawables.push({ depth: pr.pos.wx + pr.pos.wy + 0.1, kind: 'projectile', ref: pr });
   }
+  for (const b of state.buildings) {
+    // use back corner so anything in front (higher wx+wy) renders on top
+    drawables.push({ depth: b.wx + b.wy, kind: 'building', ref: b });
+  }
+  for (const t of state.trees) {
+    drawables.push({ depth: t.wx + t.wy + 0.05, kind: 'tree', ref: t });
+  }
   drawables.sort((a, b) => a.depth - b.depth);
   for (const d of drawables) {
     if (d.kind === 'npc') drawNPC(d.ref);
     else if (d.kind === 'particle') drawParticle(d.ref);
-    else drawProjectile(d.ref);
+    else if (d.kind === 'projectile') drawProjectile(d.ref);
+    else if (d.kind === 'building') drawBuilding(d.ref);
+    else if (d.kind === 'tree') drawTree(d.ref);
   }
 
   drawLightningBolts();
@@ -1437,7 +1980,9 @@ function loop(now) {
   render();
 
   let alive = 0;
-  for (const n of state.npcs) if (n.state !== 'DEAD') alive++;
+  for (const n of state.npcs) {
+    if (n.state !== 'DEAD' && n.state !== 'CORPSE') alive++;
+  }
   document.getElementById('hud-villagers').textContent = `${alive} Alive · ${state.totalDeaths} Killed`;
 
   requestAnimationFrame(loop);
@@ -1471,7 +2016,7 @@ function init() {
     s.addEventListener('click', () => { ensureAudio(); selectSpell(s.dataset.spell); });
   });
 
-  const KEY_MAP = { '1': 'HAND', '2': 'FIREBALL', '3': 'LIGHTNING', '4': 'WIND' };
+  const KEY_MAP = { '1': 'HAND', '2': 'FIREBALL', '3': 'LIGHTNING', '4': 'WIND', '5': 'METEOR' };
   window.addEventListener('keydown', (e) => {
     if (KEY_MAP[e.key]) { ensureAudio(); selectSpell(KEY_MAP[e.key]); }
   });
@@ -1495,6 +2040,8 @@ function init() {
   });
 
   initTiles();
+  initBuildings();
+  initTrees();
   spawnNPCs();
 
   state.lastTime = performance.now();
