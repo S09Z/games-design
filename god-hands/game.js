@@ -39,6 +39,7 @@ const CONFIG = {
   METEOR_AOE: 3.0,
   METEOR_FALL_DURATION: 0.55,
   METEOR_HEIGHT: 12,
+  NECROMANCER_RADIUS: 4.0,
 
   // Death / juice
   DEATH_FLASH_DURATION: 0.08,
@@ -61,11 +62,12 @@ const CONFIG = {
 };
 
 const SPELL_COLORS = {
-  HAND:      '#e8e8e8',
-  FIREBALL:  '#FF4500',
-  LIGHTNING: '#FFD700',
-  WIND:      '#87CEEB',
-  METEOR:    '#FF6347',
+  HAND:        '#e8e8e8',
+  FIREBALL:    '#FF4500',
+  LIGHTNING:   '#FFD700',
+  WIND:        '#87CEEB',
+  METEOR:      '#FF6347',
+  NECROMANCER: '#8B3FBF',
 };
 
 // Medieval cottage palettes: plaster walls + dark timber beams + thatched roof
@@ -505,9 +507,20 @@ function spawnNPCs() {
   }
 }
 
+function pickDoorPosition() {
+  if (state.buildings.length > 0) {
+    const b = state.buildings[Math.floor(Math.random() * state.buildings.length)];
+    // south door: centered on south face, one step outside the footprint
+    return { wx: b.wx + b.w / 2, wy: b.wy + b.h + 0.4 };
+  }
+  return pickFreePosition();
+}
+
 function respawnOne() {
-  const { wx, wy } = pickFreePosition();
+  const { wx, wy } = pickDoorPosition();
   const newNPC = makeNPC(wx, wy);
+  newNPC.state = 'WANDER';
+  pickWanderTarget(newNPC);
   for (let i = 0; i < state.npcs.length; i++) {
     if (state.npcs[i].state === 'DEAD') {
       state.npcs[i] = newNPC;
@@ -520,7 +533,7 @@ function respawnOne() {
 function updateRespawn(dt) {
   let alive = 0;
   for (const n of state.npcs) {
-    if (n.state !== 'DEAD' && n.state !== 'CORPSE') alive++;
+    if (n.state !== 'DEAD' && n.state !== 'CORPSE' && n.state !== 'ZOMBIE') alive++;
   }
   if (alive < state.targetCount) {
     state.respawnTimer += dt;
@@ -648,6 +661,28 @@ function updateNPC(npc, dt) {
       if (npc.corpseTimer <= 0) npc.state = 'DEAD';
       break;
 
+    case 'ZOMBIE': {
+      let nearestAlive = null, nearestD = Infinity;
+      for (const n of state.npcs) {
+        if (n === npc || n.state === 'ZOMBIE' || n.state === 'DEAD' ||
+            n.state === 'DYING' || n.state === 'CORPSE') continue;
+        const d = Math.hypot(n.pos.wx - npc.pos.wx, n.pos.wy - npc.pos.wy);
+        if (d < nearestD) { nearestD = d; nearestAlive = n; }
+      }
+      if (nearestAlive) {
+        const dx = nearestAlive.pos.wx - npc.pos.wx;
+        const dy = nearestAlive.pos.wy - npc.pos.wy;
+        if (nearestD < 0.35) {
+          kill(nearestAlive, 0.5);
+        } else {
+          npc.pos.wx += (dx / nearestD) * npc.speed * dt;
+          npc.pos.wy += (dy / nearestD) * npc.speed * dt;
+          npc.walkPhase += dt * 4;
+        }
+      }
+      break;
+    }
+
     case 'DEAD':
       break;
   }
@@ -669,13 +704,17 @@ function drawNPC(npc) {
   ctx.fill();
   ctx.globalAlpha = 1;
 
+  const isZombie = npc.state === 'ZOMBIE';
+
   let bob = 0;
   if (npc.state === 'WANDER') bob = Math.abs(Math.sin(npc.walkPhase)) * 1.5;
+  else if (isZombie) bob = Math.abs(Math.sin(npc.walkPhase)) * 1.0;
 
   let rot = 0;
   if (npc.state === 'GRABBED') rot = Math.sin(performance.now() / 100) * 0.18;
   else if (npc.state === 'AIRBORNE') rot = (npc.vel.x + npc.vel.y) * 0.12;
   else if (npc.state === 'STUNNED' || npc.state === 'CORPSE') rot = Math.PI / 2;
+  else if (isZombie) rot = Math.sin(performance.now() / 600) * 0.12; // gentle lurch sway
 
   let shakeX = 0;
   if (npc.state === 'ON_FIRE') {
@@ -685,10 +724,10 @@ function drawNPC(npc) {
   }
 
   const flash = npc.flashTimer > 0;
-  const skinColor = flash ? '#FFFFFF' : '#e9c39a';
-  const bodyColor = flash ? '#FFFFFF' : npc.color;
-  const legColor  = flash ? '#FFFFFF' : '#3a2e1f';
-  const armColor  = flash ? '#FFFFFF' : npc.color;
+  const skinColor = flash ? '#FFFFFF' : (isZombie ? '#7a8a6a' : '#e9c39a');
+  const bodyColor = flash ? '#FFFFFF' : (isZombie ? '#5a6a4a' : npc.color);
+  const legColor  = flash ? '#FFFFFF' : (isZombie ? '#2e3a2e' : '#3a2e1f');
+  const armColor  = flash ? '#FFFFFF' : (isZombie ? '#5a6a4a' : npc.color);
 
   ctx.save();
   ctx.translate(screen.sx + shakeX, screen.sy - bob);
@@ -702,6 +741,7 @@ function drawNPC(npc) {
   // legs
   let legSplit = 0;
   if (npc.state === 'WANDER') legSplit = Math.sin(npc.walkPhase) * 2;
+  else if (isZombie) legSplit = Math.sin(npc.walkPhase) * 1.2;
   ctx.fillStyle = legColor;
   ctx.fillRect(-3 + legSplit, 0, 2, 8);
   ctx.fillRect( 1 - legSplit, 0, 2, 8);
@@ -716,6 +756,10 @@ function drawNPC(npc) {
       npc.state === 'ON_FIRE' || npc.state === 'DYING') {
     armA = Math.sin(performance.now() / 80) * 4;
     armB = -armA;
+  } else if (isZombie) {
+    // arms outstretched forward
+    armA = -7;
+    armB = -7;
   }
   ctx.fillStyle = armColor;
   ctx.fillRect(-6, -9 + armA, 2, 6);
@@ -726,6 +770,17 @@ function drawNPC(npc) {
   ctx.beginPath();
   ctx.arc(0, -13, 3.5, 0, Math.PI * 2);
   ctx.fill();
+
+  // zombie glowing eyes
+  if (isZombie) {
+    ctx.save();
+    ctx.shadowColor = '#44ff44';
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = '#88ff88';
+    ctx.beginPath(); ctx.arc(-1.2, -13.5, 1.1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc( 1.2, -13.5, 1.1, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
 
   ctx.restore();
 }
@@ -782,10 +837,11 @@ function onMouseDown(e) {
     return;
   }
 
-  if (sel === 'FIREBALL')       castFireball(npcUnder, targetWorld);
-  else if (sel === 'LIGHTNING') castLightning(npcUnder, targetWorld);
-  else if (sel === 'WIND')      castWind(targetWorld);
-  else if (sel === 'METEOR')    castMeteor(npcUnder, targetWorld);
+  if (sel === 'FIREBALL')          castFireball(npcUnder, targetWorld);
+  else if (sel === 'LIGHTNING')    castLightning(npcUnder, targetWorld);
+  else if (sel === 'WIND')         castWind(targetWorld);
+  else if (sel === 'METEOR')       castMeteor(npcUnder, targetWorld);
+  else if (sel === 'NECROMANCER')  castNecromancer(targetWorld);
 }
 
 function onMouseMove(e) {
@@ -986,6 +1042,25 @@ function castMeteor(npcTarget, targetWorld) {
     trailTimer: 0,
   });
   playMeteorWhoosh();
+}
+
+function castNecromancer(targetWorld) {
+  const radius = CONFIG.NECROMANCER_RADIUS;
+  let nearest = null, bestD = radius;
+  for (const n of state.npcs) {
+    if (n.state !== 'CORPSE') continue;
+    const d = Math.hypot(n.pos.wx - targetWorld.wx, n.pos.wy - targetWorld.wy);
+    if (d < bestD) { bestD = d; nearest = n; }
+  }
+  playNecromancerSound();
+  if (!nearest) return;
+  nearest.state = 'ZOMBIE';
+  nearest.pos.wz = 0;
+  nearest.vel = { x: 0, y: 0, z: 0 };
+  nearest.speed = 0.65 + Math.random() * 0.15;
+  nearest.walkPhase = 0;
+  spawnSmokeBurst({ wx: nearest.pos.wx, wy: nearest.pos.wy, wz: 0.2 }, 1.2);
+  triggerScreenShake(2, 0.2);
 }
 
 function makeBoltSegments(points) {
@@ -1907,6 +1982,45 @@ function playMeteorImpact() {
   osc.start(now); osc.stop(now + 0.75);
 }
 
+function playNecromancerSound() {
+  const ctx = ensureAudio(); if (!ctx) return;
+  const now = ctx.currentTime;
+
+  // low organ drone (root + fifth)
+  const osc1 = ctx.createOscillator();
+  const osc2 = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc1.type = 'sine';
+  osc1.frequency.value = 55;
+  osc2.type = 'sine';
+  osc2.frequency.value = 82.5;
+  g.gain.setValueAtTime(0.001, now);
+  g.gain.linearRampToValueAtTime(0.28, now + 0.25);
+  g.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+  osc1.connect(g); osc2.connect(g); g.connect(ctx.destination);
+  osc1.start(now); osc1.stop(now + 1.0);
+  osc2.start(now); osc2.stop(now + 1.0);
+
+  // eerie noise swell
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.55, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) {
+    const t = i / d.length;
+    d[i] = (Math.random() * 2 - 1) * t * (1 - t) * 4;
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.setValueAtTime(350, now);
+  bp.frequency.linearRampToValueAtTime(180, now + 0.55);
+  bp.Q.value = 2.5;
+  const ng = ctx.createGain();
+  ng.gain.value = 0.38;
+  src.connect(bp).connect(ng).connect(ctx.destination);
+  src.start(now);
+}
+
 // ---------- Render ----------
 function render() {
   const ctx = state.ctx;
@@ -1979,11 +2093,15 @@ function loop(now) {
 
   render();
 
-  let alive = 0;
+  let alive = 0, zombies = 0;
   for (const n of state.npcs) {
-    if (n.state !== 'DEAD' && n.state !== 'CORPSE') alive++;
+    if (n.state === 'ZOMBIE') zombies++;
+    else if (n.state !== 'DEAD' && n.state !== 'CORPSE') alive++;
   }
-  document.getElementById('hud-villagers').textContent = `${alive} Alive · ${state.totalDeaths} Killed`;
+  const hudText = zombies > 0
+    ? `${alive} Alive · ${state.totalDeaths} Killed · ${zombies} Zombies`
+    : `${alive} Alive · ${state.totalDeaths} Killed`;
+  document.getElementById('hud-villagers').textContent = hudText;
 
   requestAnimationFrame(loop);
 }
@@ -2016,7 +2134,7 @@ function init() {
     s.addEventListener('click', () => { ensureAudio(); selectSpell(s.dataset.spell); });
   });
 
-  const KEY_MAP = { '1': 'HAND', '2': 'FIREBALL', '3': 'LIGHTNING', '4': 'WIND', '5': 'METEOR' };
+  const KEY_MAP = { '1': 'HAND', '2': 'FIREBALL', '3': 'LIGHTNING', '4': 'WIND', '5': 'METEOR', '6': 'NECROMANCER' };
   window.addEventListener('keydown', (e) => {
     if (KEY_MAP[e.key]) { ensureAudio(); selectSpell(KEY_MAP[e.key]); }
   });
