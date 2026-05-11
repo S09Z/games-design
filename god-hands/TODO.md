@@ -21,62 +21,49 @@ Living document for cross-session / cross-machine continuity. Update after each 
 | Phase 4 Round E — Mute toggle + tavern theme music + vocal SFX | ✅ Done | PR #4 |
 | Phase 4 Round F — Hamburger settings + appearance filters + minimap + map pan | ✅ Done | PR #4 |
 | Phase 5.4a — Texture first pass (4 tree variants, X-braces, chimney) | ✅ Done | PR #4 |
-| **Phase 5.4b** — **Low-poly polygon trees + 4 building types (cottage/tavern/windmill/farm)** | ⏳ **In progress** | references received, see Mega Prompt below |
+| Phase 5.4b — Low-poly polygon trees + 4 building types (cottage/tavern/windmill/farm) | ✅ Done | PR #6 |
 
-Current code: ~3500 lines in `game.js`, target 60fps, Canvas 2D + Web Audio synth, no external assets.
+**Next up:** Phase 5.1 (HP + attack damage system). See design sketch below — 3 open questions to lock before coding.
 
----
-
-## Round B — Confirmed Scope (next up)
-
-### 1. Respawn from house
-- Replace random respawn → spawn at random building's **south door position**
-- NPC walks "out of the door" then enters WANDER
-- Fallback to random position if no buildings exist
-- Keep 1 NPC / second pacing
-
-### 2. Necromancer spell (slot 6, key `6`)
-- Icon: 💀 / Color: dark purple `#8B3FBF`
-- Cast rule: **Click ground → find nearest CORPSE within radius (~4 wu) → reanimate as zombie**
-- (Direct click on corpse = same path)
-- No cooldown
-- Critical-hit body parts (scattered particles) NOT revivable — only `CORPSE` state bodies
-
-### 3. Zombie state
-- New AI state `ZOMBIE`
-- Visual: pale green-gray skin `#7a8a6a` + glowing eyes + lurching gait
-- Speed: 0.6× normal NPC
-- AI: chase nearest alive NPC, on touch → **kill NPC instantly** (option `a` from scope discussion)
-- Zombies are killable by spells/fall — when killed → become `CORPSE` again (re-revivable)
-- HUD: add `Z Zombies` counter alongside `X Alive · Y Killed`
-
-### Implementation notes for Round B
-- Add slot 6 to `index.html` SpellBar
-- Add `--spell-color: #8B3FBF` for `[data-spell="NECROMANCER"]` in CSS
-- New state: `ZOMBIE` in updateNPC + drawNPC
-- New cast function `castNecromancer` similar to lightning's nearest-target search
-- New audio: necromancer cast (low organ-like / reverse swell)
-- Update `KEY_MAP` to include `'6': 'NECROMANCER'`
+Current code: ~3820 lines in `god-hands/game.js`, target 60fps, Canvas 2D + Web Audio synth, no external assets.
 
 ---
 
-## Round C1 — NPC visual variety (DONE, PR #3)
+## Shipped reference — what each merged PR added
 
-48 combinations: 2 genders × 2 ages × 3 races × 4 classes
-- Class → body color (warrior red, wizard blue, ranger green, priest white-gold)
-- Race → body proportions (elf tall/slim, dwarf wide/short, human medium)
-- Age elder → forward hunch + gray hair tint
-- Gender female → bun + side strands hairstyle
-- All appearance only; behavior is identical across combinations.
+### Round B (PR #2 + #3) — House respawn + Necromancer + zombies
+- Respawn now picks a random building's south-door position; NPC enters WANDER.
+- Slot 6 `NECROMANCER` spell (`#8B3FBF`, key `6`) — click ground → reanimate nearest `CORPSE` within ~4 wu radius. Critical-hit body parts not revivable.
+- `ZOMBIE` state — pale green-gray (`#7a8a6a`), 0.6× speed, chases nearest alive NPC, touch = instant kill. Zombie killed → returns to `CORPSE`.
+- HUD: `Z Zombies` counter.
 
-## Round C2 — Per-class behavior (NOT YET SCOPED)
+### Round B+ (PR #3) — Polish
+- Necromancer became AOE (radius ~2.5).
+- 1-tile wander buffer + occlusion silhouette fix for NPCs behind buildings.
 
-Open questions for next session:
-- Speed differences (wizard slower? warrior faster? ranger fastest?)
-- Hit/death reactions per class (warrior shouts, wizard fizzles, etc.)
-- Class-specific spell interactions (priest resists fire? wizard resists lightning?)
-- Any class-based AI hooks (warriors fight zombies on contact, etc.)
-- Should age also affect behavior (elders walk slower)?
+### Round C1 (PR #3) — NPC visual variety
+48 combinations: 2 genders × 2 ages × 3 races × 4 classes. Class → body color, race → proportions, elder → hunch + gray hair, female → bun + side strands. Appearance only.
+
+### Round C2 (PR #4) — Per-class behavior
+- Class speed mults: warrior 1.10× / wizard 0.85× / ranger 1.25× / priest 1.00×. Elder ×0.75.
+- Warrior: charges nearest `ZOMBIE` within 3 wu and kills on contact.
+- Priest: single-use heal — runs to nearest `ON_FIRE` within 4 wu and extinguishes.
+- Wizard: fire resistance (slower ignite).
+- Ranger: longer wander stride (5–9 wu vs 1.5–5.5 wu).
+
+### Phase 5.4a (PR #4) — Texture first pass
+- 4 pre-rendered tree variants (oak / pine / birch / dead) via offscreen canvas.
+- X-braces and chimney on cottages.
+- Tavern theme music + mute button + burn/death vocal SFX.
+- Hamburger settings panel (NPC slider + appearance filters).
+- Mini-map bottom-left with clipped viewport polygon.
+- Map grew 20→30 tiles; pannable +5 void tiles per side.
+
+### Phase 5.4b (PR #6) — This PR
+- Trees re-rendered as faceted low-poly with 2-tone shading; trunks are 2-trapezoid faceted.
+- Buildings now have a `kind` field: cottage 55% / tavern 20% / windmill 10% / farm 15%.
+- `drawBuilding(b)` is a dispatcher; new `drawCottage/Tavern/Windmill/Farm` functions.
+- Per-kind wallH, roofPeak, palette. 2×2 footprint kept for all kinds.
 
 ---
 
@@ -95,9 +82,13 @@ Open questions for next session:
 - **Respawn interval**: 1.0s (CONFIG.RESPAWN_INTERVAL)
 - **Corpse fade**: 30s lifetime, last 5s alpha ramp
 - **Fall death threshold**: impact `|vel.z| > 10`
-- **Building**: 2×2 footprint, 3-tile gap, 30% max coverage, wall 0.8 wz, peak +0.55 wz
-- **Trees**: 25 on outer ring (within 2.8 tiles of edge)
-- **Map**: 20×20 tiles, center cross path
+- **Buildings**: 2×2 footprint, 3-tile gap, 30% max coverage. Per-kind heights:
+  cottage 0.80 / tavern 1.00 / windmill 2.00 / farm 0.70 wz; roof peak 0.50–0.80.
+- **Building kinds**: cottage 55% / tavern 20% / windmill 10% / farm 15%
+- **Trees**: 25 on outer ring (within 2.8 tiles of edge); pre-rendered to 80×90 sprites
+- **Tree kinds**: oak 45% / pine 30% / birch 17% / dead 8%
+- **Map**: 30×30 tiles, center cross path, +5 pannable void tiles each side
+- **Class speed mults**: warrior 1.10 / wizard 0.85 / ranger 1.25 / priest 1.00; elder ×0.75
 
 ---
 
@@ -193,50 +184,26 @@ Visual feedback during hold: a ring around the cursor fills clockwise; flashes w
 
 ---
 
-### 5.4 Texture rework — trees and houses ✅ DONE (PR #5)
+### 5.4 Texture rework — trees and houses ✅ DONE (PR #4 + #6)
 
-**Shipped in 5.4b**:
-- Trees: 4 faceted low-poly kinds (oak/pine/birch/dead), pre-rendered sprites, 2-tone shading.
-- Buildings: 4 kinds — cottage (55%), tavern (20%), windmill (10%), farm (15%).
-  Tavern: dark wood planks + orange shingle roof + hanging mug sign.
-  Windmill: tall stone tower + pyramid cap + 4 wooden blades.
-  Farm: red plank barn + wide double door + hayloft gable window.
+**Shipped in 5.4a (PR #4)**:
+- 4 pre-rendered tree variants (oak / pine / birch / dead) via offscreen canvas.
+- X-braces + chimney decorations on cottages.
 
-### 5.4b Low-poly polygon style + 4 building types (NEXT, references received)
+**Shipped in 5.4b (PR #6)**:
+- Trees re-drawn as faceted low-poly polygons with 2-tone shading.
+  2-trapezoid faceted trunks. Dead-tree branches are thin polygons (not strokes).
+- Buildings now 4 kinds with dispatcher pattern (`drawBuilding(b)` → `drawCottage/Tavern/Windmill/Farm`):
+  - **cottage** (55%, wallH 0.80, roofPeak 0.55) — plaster + thatch + X-braces + chimney.
+  - **tavern** (20%, wallH 1.00, roofPeak 0.55) — dark plank walls, orange chevron shingles, hanging mug sign.
+  - **windmill** (10%, wallH 2.00, roofPeak 0.50) — tall stone tower, 4-sided pyramid cap, 4 static wooden X-blades.
+  - **farm** (15%, wallH 0.70, roofPeak 0.80) — red plank barn, 70%-wide double door, hayloft gable window.
+- All kinds keep the 2×2 footprint → depth-sort and occlusion logic unchanged.
 
-User shared two cartoon reference images:
-- **Trees**: faceted low-poly silhouettes with hard color transitions (no gradients), 2-tone shading (light side + shadow side), visible polygon edges. Bold flat colors. Each tree feels like overlapping flat polygons rather than smooth shapes.
-- **Houses**: 4 distinct types — cottage / **tavern** / **windmill** / **farm**, in a simple cartoon style. Tavern is dark wood + orange shingled roof. Windmill is a tall narrow stone tower with a conical cap and 4 wooden blades. Farm is a wide barn with a large door + hayloft window.
-
-**Trees — visual upgrade** (keep same 4 kinds + pre-render pipeline; rewrite sprite functions):
-- Replace circular foliage clumps with **faceted polygons** (5–8 vertices each).
-- Use 2 flat green tones per crown — base + highlight polygon overlaid offset toward upper-left.
-- Optional shadow facet on lower-right.
-- Trunk also faceted (light side + shadow side trapezoids).
-- Dead tree: branches become thin polygons (not strokes), more chunky/angular.
-
-**Buildings — add 3 new kinds beside the existing cottage** (all should keep the same 2×2 footprint to preserve placement logic; vary `wallH`, `roofPeak`, palette, decorations):
-
-| Kind | Weight | Distinct features |
-|---|---|---|
-| `cottage` | 55% | existing — plaster walls, thatch roof, beam timbers, X-braces, chimney |
-| `tavern` | 20% | dark-wood plank walls, **orange shingle roof** (chevron/diamond rows), slightly taller (`wallH = 1.0`), hanging sign on south wall is optional |
-| `windmill` | 10% | tall narrow **stone tower** (`wallH = 2.0`), conical cap (no gable), 4 **wooden blades** as an X on the south face, single small window |
-| `farm` | 15% | red-wood walls, lower (`wallH = 0.7`), bigger roof (`roofPeak = 0.8`), **large double door** spanning most of the south wall, hayloft **window above the door** |
-
-**Implementation plan**:
-1. Add `BUILDING_KIND`, `BUILDING_KIND_WEIGHTS`, `pickBuildingKind()` near the existing `BUILDING_PALETTES`.
-2. Add `BUILDING_PROFILES = { cottage: {...}, tavern: {...}, windmill: {...}, farm: {...} }` with per-kind `wallH`, `roofPeak`, `palette` (or palette pool).
-3. In `initBuildings()`, attach `b.kind = pickBuildingKind()` and read defaults from `BUILDING_PROFILES[b.kind]`. Keep the 2×2 footprint constant.
-4. Rename current `drawBuilding(b)` to `drawCottage(b)` (and keep its body verbatim).
-5. New `drawBuilding(b)` dispatcher: switch on `b.kind` → `drawCottage` / `drawTavern` / `drawWindmill` / `drawFarm`.
-6. `drawTavern(b)` and `drawFarm(b)` can be cottage-shape variants — copy the cottage code and swap palette, roof-texture pattern, door style, and decorations. To avoid copy-paste sprawl, extract small helpers for wall fills + roof slopes.
-7. `drawWindmill(b)` is its own renderer — no gables, conical roof, stone block pattern, X blades on the south face.
-
-**Open questions** (resolve before coding next session):
-- Windmill blade animation — static or slowly rotating?
-- Farm: hayloft window — small square at gable centre, or larger barn-style?
-- Tavern sign — text "TAVERN" or pictogram (mug)? Or skip entirely for first pass?
+**Deferred (not scoped yet)**:
+- Animated windmill blades.
+- Window lighting at night (would depend on a future 5.6 day/night cycle).
+- Chimney smoke particles.
 
 ---
 
@@ -287,97 +254,4 @@ UI:
 
 ---
 
-*Last updated: PR #4 merged (Round C2 + NPC visual rework + music + minimap + map pan + 5.4a texture first pass). In progress: 5.4b — low-poly tree style + 4 building kinds. See Mega Prompt below.*
-
----
-
-## Mega Prompt — handoff to next session (Phase 5.4b)
-
-Paste this verbatim into a new Claude Code session and it should have everything needed to finish the job.
-
-```
-You are continuing work on "Hand of God", an isometric Canvas-2D game in
-/Users/ittichaib/Documents/GitHub/games-design/god-hands/. The repo uses git
-worktrees under .claude/worktrees/. No external assets; everything is
-procedural Canvas 2D + Web Audio synth. Target: 60 fps with ~30 NPCs.
-
-State as of handoff
-- main is up to date with PR #4. PR #3 + PR #4 are merged.
-- Already shipped (PR #4):
-  * Round C2 per-class behavior (speed mults, warrior charge, wizard fire
-    resist, ranger long stride, priest single-use heal).
-  * NPC visual rework: gendered clothing, per-class weapons + headgear,
-    elf ears, dwarf beard, material/texture palette.
-  * Tavern theme music + mute button. Burn-scream and death-grunt vocal SFX.
-  * Hamburger settings panel with NPC slider + per-category appearance filters.
-  * Mini-map (bottom-left) with viewport polygon clipped to the panel.
-  * Map size 30 × 30 grass, pannable world +5 extra tiles void per side,
-    RTS-style pan with Hand spell.
-  * Texture first pass (5.4a): 4 pre-rendered tree variants (oak / pine /
-    birch / dead) plus X-braces and a chimney on cottages.
-
-Your job: Phase 5.4b
-The user shared two reference images during the previous session showing the
-target visual style:
-- Trees: low-poly faceted cartoon — bold flat colors, visible polygon edges,
-  2-tone shading (light side / shadow side), no gradients, no smooth circles.
-- Houses: 4 distinct types — cottage / tavern / windmill / farm — drawn in a
-  simple cartoon style. Tavern has dark wood walls + orange shingle roof.
-  Windmill is a tall narrow stone tower with a conical cap and 4 wooden
-  blades. Farm is a wide barn with a large door + hayloft window above it.
-
-Concrete tasks
-1. Trees — keep the existing 4 kinds, weights, and pre-render pipeline
-   (initTrees → buildTreeSprite → drawImage). Rewrite the four
-   draw{Oak,Pine,Birch,Dead}Sprite functions so the silhouettes are made of
-   faceted polygons with 2-tone flat shading (highlight overlay + base).
-   Trunks should be 2-trapezoid faceted (light + shadow side). Dead-tree
-   branches become thin polygons, not strokes.
-2. Buildings — add b.kind selection at initBuildings time. Weights:
-   cottage 55%, tavern 20%, windmill 10%, farm 15%. Keep the 2 × 2 footprint
-   for all kinds so placement logic doesn't change. Vary wallH, roofPeak,
-   palette, and decorations per kind. Rename current drawBuilding to
-   drawCottage and write a top-level drawBuilding(b) dispatcher.
-
-Per-kind summary (proposed values, tweak as needed)
-- cottage: wallH 0.8, roofPeak 0.55, current plaster + thatch + X-braces +
-  chimney.
-- tavern:  wallH 1.0, roofPeak 0.55, dark wood plank walls
-  (e.g. wall #6e4524 / wallSide #543518 / beam #2a1808), roof in orange
-  shingles drawn as chevron rows (#c87538 / #8a4818). Optional small
-  pictogram sign hanging off the south wall.
-- windmill: wallH 2.0, roofPeak 0.5, stone walls
-  (#9a9a98 / #7a7a78 / beam #3a3a38) with subtle block lines, conical cap
-  (single 4-sided pyramid in #5a5a58), 4 wooden blades in an X across the
-  south face (rectangles in #8a6038 with darker outline). Static is fine for
-  first pass; animation later.
-- farm: wallH 0.7, roofPeak 0.8, red wood plank walls
-  (#a04030 / #883520 / beam #4a1f15), big double door taking ~70% of the
-  south wall width, hayloft window above the door at gable centre.
-
-Constraints
-- Pure Canvas 2D + Web Audio. No external assets, no images, no fonts.
-- Keep the existing iso projection (worldToScreen / screenToWorld) and the
-  depth-sort drawables loop in render(). Buildings already use back-corner
-  depth so this should stay correct as long as the 2×2 footprint is kept.
-- Match the existing flat-color cartoon style (no gradients, no shadows,
-  hard color transitions only).
-
-Files to edit
-- god-hands/game.js — only file you should need to touch for this round.
-- god-hands/TODO.md — update status table once shipped, mark 5.4b done.
-
-How to ship
-1. Implement and verify visually by opening the worktree's index.html in a
-   browser (file://...). Pre-render runs at init; if performance regresses,
-   reduce polygon count per tree, not the variant count.
-2. Commit, push, open a PR titled "Phase 5.4b: low-poly trees + 4 building
-   kinds". Reference this TODO section in the PR body.
-
-Open scope decisions (ask user before coding if unsure)
-- Windmill blades: static or rotating? Static for first pass is fine.
-- Tavern sign: skip / pictogram / "TAVERN" text? Recommend a tiny mug
-  pictogram hanging off a small arm.
-- Farm hayloft window: small square in gable, or arched? Recommend small
-  square for the cartoon feel.
-```
+*Last updated: PR #6 opened (Phase 5.4b — low-poly trees + 4 building kinds). PRs #1–#5 merged. Phase 5.1 / 5.2 / 5.3 / 5.5 still scoped as design sketches above — awaiting user confirmation before implementation. Recommended next: 5.1 (HP system) — unblocks 5.2.*
