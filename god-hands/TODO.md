@@ -193,12 +193,14 @@ Visual feedback during hold: a ring around the cursor fills clockwise; flashes w
 
 ---
 
-### 5.4a Texture first pass (DONE, PR #4)
+### 5.4 Texture rework — trees and houses ✅ DONE (PR #5)
 
-Already shipped:
-- 4 tree variants with pre-rendered offscreen sprites — `oak` 50% / `pine` 25% / `birch` 15% / `dead` 10% (random per-instance via `pickTreeKind()`).
-- Each tree has its own offscreen `<canvas>` built at `initTrees()`; `drawTree()` is a single `drawImage`.
-- Houses got X-braced half-timber panels next to the door and a 3D brick chimney on the north end of the ridge.
+**Shipped in 5.4b**:
+- Trees: 4 faceted low-poly kinds (oak/pine/birch/dead), pre-rendered sprites, 2-tone shading.
+- Buildings: 4 kinds — cottage (55%), tavern (20%), windmill (10%), farm (15%).
+  Tavern: dark wood planks + orange shingle roof + hanging mug sign.
+  Windmill: tall stone tower + pyramid cap + 4 wooden blades.
+  Farm: red plank barn + wide double door + hayloft gable window.
 
 ### 5.4b Low-poly polygon style + 4 building types (NEXT, references received)
 
