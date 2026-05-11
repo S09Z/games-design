@@ -77,6 +77,10 @@ const BUILDING_PALETTES = [
   { wall: '#c8a070', wallSide: '#a8855a', beam: '#4a3020', roof: '#946d28', roofShadow: '#6a4a18' },
   { wall: '#e0d0a0', wallSide: '#c4b58c', beam: '#2a1810', roof: '#b8923f', roofShadow: '#8b6c2c' },
 ];
+// Per-kind building palettes (tavern / windmill / farm)
+const TAVERN_PALETTE   = { wall: '#6e4524', wallSide: '#543518', beam: '#2a1808', roof: '#c87538', roofShadow: '#8a4818' };
+const WINDMILL_PALETTE = { wall: '#9a9a98', wallSide: '#7a7a78', beam: '#3a3a38', roof: '#5a5a58', roofShadow: '#4a4a48' };
+const FARM_PALETTE     = { wall: '#a04030', wallSide: '#883520', beam: '#4a1f15', roof: '#8a5028', roofShadow: '#6a3818' };
 
 const state = {
   canvas: null,
@@ -246,192 +250,667 @@ function initBuildings() {
     }
     if (tooClose) continue;
 
-    state.buildings.push({
-      wx, wy, w, h,
-      wallH: CONFIG.BUILDING_WALL_HEIGHT,
-      roofPeak: CONFIG.BUILDING_ROOF_PEAK,
-      palette: BUILDING_PALETTES[Math.floor(Math.random() * BUILDING_PALETTES.length)],
-    });
+    // Weighted kind: cottage 55%, tavern 20%, windmill 10%, farm 15%
+    const kr = Math.random();
+    const kind = kr < 0.55 ? 'cottage' : kr < 0.75 ? 'tavern' : kr < 0.85 ? 'windmill' : 'farm';
+    const kindProps = {
+      cottage:  { wallH: 0.80, roofPeak: 0.55, palette: BUILDING_PALETTES[Math.floor(Math.random() * BUILDING_PALETTES.length)] },
+      tavern:   { wallH: 1.00, roofPeak: 0.55, palette: TAVERN_PALETTE   },
+      windmill: { wallH: 2.00, roofPeak: 0.50, palette: WINDMILL_PALETTE },
+      farm:     { wallH: 0.70, roofPeak: 0.80, palette: FARM_PALETTE     },
+    }[kind];
+    state.buildings.push({ wx, wy, w, h, kind, ...kindProps });
   }
 }
 
+// Top-level dispatcher — called every frame from the drawables loop
 function drawBuilding(b) {
+  if      (b.kind === 'tavern')   drawTavern(b);
+  else if (b.kind === 'windmill') drawWindmill(b);
+  else if (b.kind === 'farm')     drawFarm(b);
+  else                            drawCottage(b);
+}
+
+// ---- Shared wall/roof helpers ----------------------------------------
+
+// Compute all standard 2×2 iso corners in one call (used by every kind)
+function buildingCorners(b) {
+  const x0 = b.wx, y0 = b.wy, x1 = b.wx + b.w, y1 = b.wy + b.h;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const wallH = b.wallH, peakZ = wallH + b.roofPeak;
+  return {
+    x0, y0, x1, y1, cx, cy, wallH, peakZ,
+    bNW: worldToScreen(x0, y0, 0),
+    bNE: worldToScreen(x1, y0, 0),
+    bSE: worldToScreen(x1, y1, 0),
+    bSW: worldToScreen(x0, y1, 0),
+    wNE: worldToScreen(x1, y0, wallH),
+    wSE: worldToScreen(x1, y1, wallH),
+    wSW: worldToScreen(x0, y1, wallH),
+    ridgeN: worldToScreen(cx, y0, peakZ),
+    ridgeS: worldToScreen(cx, y1, peakZ),
+    peak:   worldToScreen(cx, cy,  peakZ),
+  };
+}
+
+// Horizontal plank lines on a parallelogram face (south or east wall)
+function drawPlankLines(ctx, p1, p2, p3, p4, nLines, color) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 0.8;
+  for (let i = 1; i < nLines; i++) {
+    const t = i / nLines;
+    ctx.beginPath();
+    ctx.moveTo(p1.sx + (p4.sx - p1.sx) * t, p1.sy + (p4.sy - p1.sy) * t);
+    ctx.lineTo(p2.sx + (p3.sx - p2.sx) * t, p2.sy + (p3.sy - p2.sy) * t);
+    ctx.stroke();
+  }
+}
+
+// Draw a small dark window quad + cross mullion on the east wall
+function drawEastWindow(ctx, b, palette) {
+  const { x1, y0, wallH } = b;
+  const winSize = 0.30, winZ0 = wallH * 0.42, winZ1 = winZ0 + winSize;
+  const wy0 = y0 + (b.h - winSize) / 2, wy1 = wy0 + winSize;
+  const wP1 = worldToScreen(x1, wy0, winZ0), wP2 = worldToScreen(x1, wy1, winZ0);
+  const wP3 = worldToScreen(x1, wy1, winZ1), wP4 = worldToScreen(x1, wy0, winZ1);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath();
+  ctx.moveTo(wP1.sx, wP1.sy); ctx.lineTo(wP2.sx, wP2.sy);
+  ctx.lineTo(wP3.sx, wP3.sy); ctx.lineTo(wP4.sx, wP4.sy);
+  ctx.closePath(); ctx.fill();
+  const wMidZ = winZ0 + winSize / 2, wyMid = y0 + b.h / 2;
+  ctx.strokeStyle = palette.beam; ctx.lineWidth = 1;
+  ctx.beginPath();
+  const wm1 = worldToScreen(x1, wy0, wMidZ), wm2 = worldToScreen(x1, wy1, wMidZ);
+  const wm3 = worldToScreen(x1, wyMid, winZ0), wm4 = worldToScreen(x1, wyMid, winZ1);
+  ctx.moveTo(wm1.sx, wm1.sy); ctx.lineTo(wm2.sx, wm2.sy);
+  ctx.moveTo(wm3.sx, wm3.sy); ctx.lineTo(wm4.sx, wm4.sy);
+  ctx.stroke();
+}
+
+// ---- COTTAGE (original house) ----------------------------------------
+function drawCottage(b) {
   const ctx = state.ctx;
-  const x0 = b.wx, y0 = b.wy;
-  const x1 = b.wx + b.w, y1 = b.wy + b.h;
-  const cx = (x0 + x1) / 2;
-  const wallH = b.wallH;
-  const peakZ = wallH + b.roofPeak;
-
-  // Ground & wall-top corners
-  const bNE = worldToScreen(x1, y0, 0);
-  const bSE = worldToScreen(x1, y1, 0);
-  const bSW = worldToScreen(x0, y1, 0);
-  const wNE = worldToScreen(x1, y0, wallH);
-  const wSE = worldToScreen(x1, y1, wallH);
-  const wSW = worldToScreen(x0, y1, wallH);
-
-  // Roof ridge (runs N-S along x=cx)
-  const ridgeN = worldToScreen(cx, y0, peakZ);
-  const ridgeS = worldToScreen(cx, y1, peakZ);
+  const { x0, y0, x1, y1, cx, wallH, bNE, bSE, bSW, wNE, wSE, wSW, ridgeN, ridgeS } = buildingCorners(b);
 
   ctx.lineWidth = 1;
 
-  // === South wall (front, plaster rectangle) ===
+  // === South wall ===
   ctx.fillStyle = b.palette.wall;
   ctx.beginPath();
-  ctx.moveTo(bSW.sx, bSW.sy);
-  ctx.lineTo(bSE.sx, bSE.sy);
-  ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.lineTo(wSW.sx, wSW.sy);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-  ctx.stroke();
+  ctx.moveTo(bSW.sx, bSW.sy); ctx.lineTo(bSE.sx, bSE.sy);
+  ctx.lineTo(wSE.sx, wSE.sy); ctx.lineTo(wSW.sx, wSW.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.stroke();
 
-  // Corner timber posts (south face)
-  ctx.strokeStyle = b.palette.beam;
-  ctx.lineWidth = 1.6;
+  // Corner timber posts
+  ctx.strokeStyle = b.palette.beam; ctx.lineWidth = 1.6;
   ctx.beginPath();
   ctx.moveTo(bSW.sx, bSW.sy); ctx.lineTo(wSW.sx, wSW.sy);
   ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(wSE.sx, wSE.sy);
   ctx.stroke();
 
-  // Door on south wall (centered)
+  // Door
   const doorW = 0.5, doorH = wallH * 0.78;
-  const dx0 = x0 + (b.w - doorW) / 2;
-  const dx1 = dx0 + doorW;
-  const dP1 = worldToScreen(dx0, y1, 0);
-  const dP2 = worldToScreen(dx1, y1, 0);
-  const dP3 = worldToScreen(dx1, y1, doorH);
-  const dP4 = worldToScreen(dx0, y1, doorH);
+  const ddx0 = x0 + (b.w - doorW) / 2, ddx1 = ddx0 + doorW;
+  const dP1 = worldToScreen(ddx0, y1, 0), dP2 = worldToScreen(ddx1, y1, 0);
+  const dP3 = worldToScreen(ddx1, y1, doorH), dP4 = worldToScreen(ddx0, y1, doorH);
   ctx.fillStyle = '#3a2515';
   ctx.beginPath();
-  ctx.moveTo(dP1.sx, dP1.sy);
-  ctx.lineTo(dP2.sx, dP2.sy);
-  ctx.lineTo(dP3.sx, dP3.sy);
-  ctx.lineTo(dP4.sx, dP4.sy);
-  ctx.closePath();
-  ctx.fill();
-  // door arch line
-  ctx.strokeStyle = b.palette.beam;
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(dP4.sx, dP4.sy);
-  ctx.lineTo(dP3.sx, dP3.sy);
-  ctx.stroke();
+  ctx.moveTo(dP1.sx, dP1.sy); ctx.lineTo(dP2.sx, dP2.sy);
+  ctx.lineTo(dP3.sx, dP3.sy); ctx.lineTo(dP4.sx, dP4.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = b.palette.beam; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(dP4.sx, dP4.sy); ctx.lineTo(dP3.sx, dP3.sy); ctx.stroke();
 
-  // === East wall (side, slightly darker plaster) ===
+  // === East wall ===
   ctx.fillStyle = b.palette.wallSide;
   ctx.beginPath();
-  ctx.moveTo(bSE.sx, bSE.sy);
-  ctx.lineTo(bNE.sx, bNE.sy);
-  ctx.lineTo(wNE.sx, wNE.sy);
-  ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(bNE.sx, bNE.sy);
+  ctx.lineTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.strokeStyle = b.palette.beam; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(bNE.sx, bNE.sy); ctx.lineTo(wNE.sx, wNE.sy); ctx.stroke();
 
-  // East NE corner post
-  ctx.strokeStyle = b.palette.beam;
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.moveTo(bNE.sx, bNE.sy); ctx.lineTo(wNE.sx, wNE.sy);
-  ctx.stroke();
+  drawEastWindow(ctx, b, b.palette);
 
-  // Window on east wall with cross frame
-  const winSize = 0.32;
-  const winZ0 = wallH * 0.42;
-  const winZ1 = winZ0 + winSize;
-  const wy0 = y0 + (b.h - winSize) / 2;
-  const wy1 = wy0 + winSize;
-  const wP1 = worldToScreen(x1, wy0, winZ0);
-  const wP2 = worldToScreen(x1, wy1, winZ0);
-  const wP3 = worldToScreen(x1, wy1, winZ1);
-  const wP4 = worldToScreen(x1, wy0, winZ1);
-  ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath();
-  ctx.moveTo(wP1.sx, wP1.sy);
-  ctx.lineTo(wP2.sx, wP2.sy);
-  ctx.lineTo(wP3.sx, wP3.sy);
-  ctx.lineTo(wP4.sx, wP4.sy);
-  ctx.closePath();
-  ctx.fill();
-  // window cross
-  const wMid = winZ0 + winSize / 2;
-  const wyMid = y0 + b.h / 2;
-  const wm1 = worldToScreen(x1, wy0, wMid);
-  const wm2 = worldToScreen(x1, wy1, wMid);
-  const wm3 = worldToScreen(x1, wyMid, winZ0);
-  const wm4 = worldToScreen(x1, wyMid, winZ1);
-  ctx.strokeStyle = b.palette.beam;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(wm1.sx, wm1.sy); ctx.lineTo(wm2.sx, wm2.sy);
-  ctx.moveTo(wm3.sx, wm3.sy); ctx.lineTo(wm4.sx, wm4.sy);
-  ctx.stroke();
-
-  // === East roof slope (rect, thatched) ===
+  // === East roof slope (thatched) ===
   ctx.fillStyle = b.palette.roof;
   ctx.beginPath();
-  ctx.moveTo(wNE.sx, wNE.sy);
-  ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.lineTo(ridgeS.sx, ridgeS.sy);
-  ctx.lineTo(ridgeN.sx, ridgeN.sy);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  // Thatch texture: lines from eaves up to ridge
-  ctx.strokeStyle = b.palette.roofShadow;
-  ctx.lineWidth = 1;
-  const thatchN = 7;
-  for (let i = 1; i < thatchN; i++) {
-    const t = i / thatchN;
-    const eaveX = wNE.sx + (wSE.sx - wNE.sx) * t;
-    const eaveY = wNE.sy + (wSE.sy - wNE.sy) * t;
-    const ridgeX = ridgeN.sx + (ridgeS.sx - ridgeN.sx) * t;
-    const ridgeY = ridgeN.sy + (ridgeS.sy - ridgeN.sy) * t;
+  ctx.moveTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.lineTo(ridgeS.sx, ridgeS.sy); ctx.lineTo(ridgeN.sx, ridgeN.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.strokeStyle = b.palette.roofShadow; ctx.lineWidth = 1;
+  const thN = 7;
+  for (let i = 1; i < thN; i++) {
+    const t = i / thN;
     ctx.beginPath();
-    ctx.moveTo(eaveX, eaveY);
-    ctx.lineTo(ridgeX, ridgeY);
+    ctx.moveTo(wNE.sx + (wSE.sx - wNE.sx) * t, wNE.sy + (wSE.sy - wNE.sy) * t);
+    ctx.lineTo(ridgeN.sx + (ridgeS.sx - ridgeN.sx) * t, ridgeN.sy + (ridgeS.sy - ridgeN.sy) * t);
     ctx.stroke();
   }
-  // overhang lip at eave (slightly darker line)
-  ctx.strokeStyle = b.palette.roofShadow;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(wNE.sx, wNE.sy);
-  ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.stroke();
+  ctx.strokeStyle = b.palette.roofShadow; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy); ctx.stroke();
 
-  // === South gable (triangular plaster above south wall) ===
+  // === South gable ===
   ctx.fillStyle = b.palette.wall;
   ctx.beginPath();
-  ctx.moveTo(wSW.sx, wSW.sy);
-  ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(wSE.sx, wSE.sy);
   ctx.lineTo(ridgeS.sx, ridgeS.sy);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  // Gable diagonal trim beams (decorative)
-  ctx.strokeStyle = b.palette.beam;
-  ctx.lineWidth = 1.6;
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.strokeStyle = b.palette.beam; ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.moveTo(wSW.sx, wSW.sy);
-  ctx.lineTo(ridgeS.sx, ridgeS.sy);
-  ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(ridgeS.sx, ridgeS.sy); ctx.lineTo(wSE.sx, wSE.sy);
   ctx.stroke();
 }
 
+// ---- TAVERN -----------------------------------------------------------
+function drawTavern(b) {
+  const ctx = state.ctx;
+  const { x0, y0, x1, y1, cx, wallH, bNE, bSE, bSW, wNE, wSE, wSW, ridgeN, ridgeS } = buildingCorners(b);
+  const p = b.palette;
+
+  ctx.lineWidth = 1;
+
+  // === South wall (dark planks) ===
+  ctx.fillStyle = p.wall;
+  ctx.beginPath();
+  ctx.moveTo(bSW.sx, bSW.sy); ctx.lineTo(bSE.sx, bSE.sy);
+  ctx.lineTo(wSE.sx, wSE.sy); ctx.lineTo(wSW.sx, wSW.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.stroke();
+  // Horizontal plank lines on south wall
+  drawPlankLines(ctx, bSW, bSE, wSE, wSW, 5, 'rgba(0,0,0,0.25)');
+  // Corner beam posts
+  ctx.strokeStyle = p.beam; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(bSW.sx, bSW.sy); ctx.lineTo(wSW.sx, wSW.sy);
+  ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.stroke();
+
+  // Wide tavern door (60% of wall width)
+  const tdW = b.w * 0.60, tdH = wallH * 0.82;
+  const tdx0 = x0 + (b.w - tdW) / 2, tdx1 = tdx0 + tdW;
+  const tdP1 = worldToScreen(tdx0, y1, 0), tdP2 = worldToScreen(tdx1, y1, 0);
+  const tdP3 = worldToScreen(tdx1, y1, tdH), tdP4 = worldToScreen(tdx0, y1, tdH);
+  ctx.fillStyle = p.beam;
+  ctx.beginPath();
+  ctx.moveTo(tdP1.sx, tdP1.sy); ctx.lineTo(tdP2.sx, tdP2.sy);
+  ctx.lineTo(tdP3.sx, tdP3.sy); ctx.lineTo(tdP4.sx, tdP4.sy);
+  ctx.closePath(); ctx.fill();
+  // Door centre divider
+  const tdMid = worldToScreen((tdx0 + tdx1) / 2, y1, 0);
+  const tdMidT = worldToScreen((tdx0 + tdx1) / 2, y1, tdH);
+  ctx.strokeStyle = 'rgba(255,200,120,0.35)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(tdMid.sx, tdMid.sy); ctx.lineTo(tdMidT.sx, tdMidT.sy); ctx.stroke();
+
+  // Hanging sign: small rectangle + mug pictogram off south-west quadrant
+  const signAX = x0 + b.w * 0.18, signAY = y1;
+  const signBX = signAX + 0.28;
+  const armTop = worldToScreen(signAX, signAY, wallH * 0.68);
+  const armBot = worldToScreen(signAX, signAY, wallH * 0.42);
+  const sgnTL  = worldToScreen(signAX,  signAY, wallH * 0.62);
+  const sgnTR  = worldToScreen(signBX,  signAY, wallH * 0.62);
+  const sgnBR  = worldToScreen(signBX,  signAY, wallH * 0.44);
+  const sgnBL  = worldToScreen(signAX,  signAY, wallH * 0.44);
+  ctx.strokeStyle = p.beam; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(armTop.sx, armTop.sy); ctx.lineTo(armBot.sx, armBot.sy); ctx.stroke();
+  ctx.fillStyle = '#c8a868';
+  ctx.beginPath();
+  ctx.moveTo(sgnTL.sx, sgnTL.sy); ctx.lineTo(sgnTR.sx, sgnTR.sy);
+  ctx.lineTo(sgnBR.sx, sgnBR.sy); ctx.lineTo(sgnBL.sx, sgnBL.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = p.beam; ctx.lineWidth = 0.8; ctx.stroke();
+  // Mug: tiny circle + handle arc (screen-space, ~4px)
+  const sgnCX = (sgnTL.sx + sgnTR.sx + sgnBR.sx + sgnBL.sx) / 4;
+  const sgnCY = (sgnTL.sy + sgnTR.sy + sgnBR.sy + sgnBL.sy) / 4;
+  ctx.fillStyle = p.beam;
+  ctx.beginPath(); ctx.arc(sgnCX, sgnCY, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = p.beam; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.arc(sgnCX + 2.2, sgnCY, 1.4, -Math.PI * 0.5, Math.PI * 0.5); ctx.stroke();
+
+  // === East wall (darker planks) ===
+  ctx.fillStyle = p.wallSide;
+  ctx.beginPath();
+  ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(bNE.sx, bNE.sy);
+  ctx.lineTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+  drawPlankLines(ctx, bSE, bNE, wNE, wSE, 5, 'rgba(0,0,0,0.22)');
+  ctx.strokeStyle = p.beam; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(bNE.sx, bNE.sy); ctx.lineTo(wNE.sx, wNE.sy); ctx.stroke();
+  drawEastWindow(ctx, b, p);
+
+  // === East roof slope (orange shingles as chevron rows) ===
+  ctx.fillStyle = p.roof;
+  ctx.beginPath();
+  ctx.moveTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.lineTo(ridgeS.sx, ridgeS.sy); ctx.lineTo(ridgeN.sx, ridgeN.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 1; ctx.stroke();
+  // Chevron shingle rows (darker horizontal bands)
+  ctx.strokeStyle = p.roofShadow; ctx.lineWidth = 1.5;
+  const shingleN = 5;
+  for (let i = 1; i < shingleN; i++) {
+    const t = i / shingleN;
+    const ex = wNE.sx + (wSE.sx - wNE.sx) * t, ey = wNE.sy + (wSE.sy - wNE.sy) * t;
+    const rx = ridgeN.sx + (ridgeS.sx - ridgeN.sx) * t, ry = ridgeN.sy + (ridgeS.sy - ridgeN.sy) * t;
+    ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(rx, ry); ctx.stroke();
+  }
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy); ctx.stroke();
+
+  // === South gable (dark wood) ===
+  ctx.fillStyle = p.wall;
+  ctx.beginPath();
+  ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.lineTo(ridgeS.sx, ridgeS.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.strokeStyle = p.beam; ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(ridgeS.sx, ridgeS.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.stroke();
+}
+
+// ---- WINDMILL ---------------------------------------------------------
+function drawWindmill(b) {
+  const ctx = state.ctx;
+  const { x0, y0, x1, y1, cx, cy, wallH, peakZ, bNE, bSE, bSW, wNE, wSE, wSW, peak } = buildingCorners(b);
+  const p = b.palette;
+
+  ctx.lineWidth = 1;
+
+  // === South wall (stone) ===
+  ctx.fillStyle = p.wall;
+  ctx.beginPath();
+  ctx.moveTo(bSW.sx, bSW.sy); ctx.lineTo(bSE.sx, bSE.sy);
+  ctx.lineTo(wSE.sx, wSE.sy); ctx.lineTo(wSW.sx, wSW.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.stroke();
+  // Stone block lines (horizontal courses)
+  ctx.strokeStyle = p.beam; ctx.lineWidth = 0.7;
+  const stoneRowsS = 6;
+  for (let i = 1; i < stoneRowsS; i++) {
+    const t = i / stoneRowsS;
+    ctx.beginPath();
+    ctx.moveTo(bSW.sx + (wSW.sx - bSW.sx) * t, bSW.sy + (wSW.sy - bSW.sy) * t);
+    ctx.lineTo(bSE.sx + (wSE.sx - bSE.sx) * t, bSE.sy + (wSE.sy - bSE.sy) * t);
+    ctx.stroke();
+  }
+
+  // Arched door (narrow, just a dark rect)
+  const wdW = 0.30, wdH = wallH * 0.50;
+  const wdx0 = x0 + (b.w - wdW) / 2, wdx1 = wdx0 + wdW;
+  const wdP1 = worldToScreen(wdx0, y1, 0), wdP2 = worldToScreen(wdx1, y1, 0);
+  const wdP3 = worldToScreen(wdx1, y1, wdH), wdP4 = worldToScreen(wdx0, y1, wdH);
+  ctx.fillStyle = '#1a1210';
+  ctx.beginPath();
+  ctx.moveTo(wdP1.sx, wdP1.sy); ctx.lineTo(wdP2.sx, wdP2.sy);
+  ctx.lineTo(wdP3.sx, wdP3.sy); ctx.lineTo(wdP4.sx, wdP4.sy);
+  ctx.closePath(); ctx.fill();
+
+  // === East wall (stone) ===
+  ctx.fillStyle = p.wallSide;
+  ctx.beginPath();
+  ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(bNE.sx, bNE.sy);
+  ctx.lineTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.strokeStyle = p.beam; ctx.lineWidth = 0.7;
+  for (let i = 1; i < stoneRowsS; i++) {
+    const t = i / stoneRowsS;
+    ctx.beginPath();
+    ctx.moveTo(bSE.sx + (wSE.sx - bSE.sx) * t, bSE.sy + (wSE.sy - bSE.sy) * t);
+    ctx.lineTo(bNE.sx + (wNE.sx - bNE.sx) * t, bNE.sy + (wNE.sy - bNE.sy) * t);
+    ctx.stroke();
+  }
+  drawEastWindow(ctx, b, p);
+
+  // 4 wooden blades in X pattern — drawn in world-space on south face (y = y1)
+  // Blade wheel centre at wallH * 0.72
+  const blCX = cx, blCY = y1, blCZ = wallH * 0.72;
+  const bladeCenter = worldToScreen(blCX, blCY, blCZ);
+  // Each blade: a thin rectangle emanating from centre in iso xz-plane
+  // Represent 4 blades at iso-projected angles (0°=right, 90°=up, 45°, 135°)
+  const blLen = 14, blW = 2.5; // screen px
+  const bladeAngles = [45, 135, 225, 315]; // degrees in screen space
+  for (const deg of bladeAngles) {
+    const rad = deg * Math.PI / 180;
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+    ctx.fillStyle = '#8a6038';
+    ctx.beginPath();
+    ctx.moveTo(bladeCenter.sx + cos * blLen - sin * blW,
+               bladeCenter.sy + sin * blLen + cos * blW);
+    ctx.lineTo(bladeCenter.sx + cos * blLen + sin * blW,
+               bladeCenter.sy + sin * blLen - cos * blW);
+    ctx.lineTo(bladeCenter.sx - cos * blLen + sin * blW,
+               bladeCenter.sy - sin * blLen - cos * blW);
+    ctx.lineTo(bladeCenter.sx - cos * blLen - sin * blW,
+               bladeCenter.sy - sin * blLen + cos * blW);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#5a3a18'; ctx.lineWidth = 0.8; ctx.stroke();
+  }
+  // Hub circle
+  ctx.fillStyle = '#4a3020';
+  ctx.beginPath(); ctx.arc(bladeCenter.sx, bladeCenter.sy, 3, 0, Math.PI * 2); ctx.fill();
+
+  // === Conical cap (4-sided pyramid: south + east faces visible) ===
+  // South face of pyramid
+  ctx.fillStyle = p.roof;
+  ctx.beginPath();
+  ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.lineTo(peak.sx, peak.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+  // East face of pyramid (slightly darker)
+  ctx.fillStyle = p.roofShadow;
+  ctx.beginPath();
+  ctx.moveTo(wSE.sx, wSE.sy); ctx.lineTo(wNE.sx, wNE.sy);
+  ctx.lineTo(peak.sx, peak.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+}
+
+// ---- FARM -------------------------------------------------------------
+function drawFarm(b) {
+  const ctx = state.ctx;
+  const { x0, y0, x1, y1, cx, wallH, bNE, bSE, bSW, wNE, wSE, wSW, ridgeN, ridgeS } = buildingCorners(b);
+  const p = b.palette;
+
+  ctx.lineWidth = 1;
+
+  // === South wall (red planks) ===
+  ctx.fillStyle = p.wall;
+  ctx.beginPath();
+  ctx.moveTo(bSW.sx, bSW.sy); ctx.lineTo(bSE.sx, bSE.sy);
+  ctx.lineTo(wSE.sx, wSE.sy); ctx.lineTo(wSW.sx, wSW.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.stroke();
+  drawPlankLines(ctx, bSW, bSE, wSE, wSW, 4, 'rgba(0,0,0,0.20)');
+
+  // Corner posts
+  ctx.strokeStyle = p.beam; ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(bSW.sx, bSW.sy); ctx.lineTo(wSW.sx, wSW.sy);
+  ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.stroke();
+
+  // Large double barn door (~70% width)
+  const fdW = b.w * 0.70, fdH = wallH * 0.90;
+  const fdx0 = x0 + (b.w - fdW) / 2, fdx1 = fdx0 + fdW;
+  const fdP1 = worldToScreen(fdx0, y1, 0), fdP2 = worldToScreen(fdx1, y1, 0);
+  const fdP3 = worldToScreen(fdx1, y1, fdH), fdP4 = worldToScreen(fdx0, y1, fdH);
+  ctx.fillStyle = '#2a1808';
+  ctx.beginPath();
+  ctx.moveTo(fdP1.sx, fdP1.sy); ctx.lineTo(fdP2.sx, fdP2.sy);
+  ctx.lineTo(fdP3.sx, fdP3.sy); ctx.lineTo(fdP4.sx, fdP4.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = p.beam; ctx.lineWidth = 1; ctx.stroke();
+  // Centre door divider
+  const fdMid  = worldToScreen((fdx0 + fdx1) / 2, y1, 0);
+  const fdMidT = worldToScreen((fdx0 + fdx1) / 2, y1, fdH);
+  ctx.strokeStyle = 'rgba(200,160,80,0.4)'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(fdMid.sx, fdMid.sy); ctx.lineTo(fdMidT.sx, fdMidT.sy); ctx.stroke();
+
+  // === East wall ===
+  ctx.fillStyle = p.wallSide;
+  ctx.beginPath();
+  ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(bNE.sx, bNE.sy);
+  ctx.lineTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
+  drawPlankLines(ctx, bSE, bNE, wNE, wSE, 4, 'rgba(0,0,0,0.18)');
+  ctx.strokeStyle = p.beam; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(bNE.sx, bNE.sy); ctx.lineTo(wNE.sx, wNE.sy); ctx.stroke();
+
+  // === East roof slope (steep, thatched) ===
+  ctx.fillStyle = p.roof;
+  ctx.beginPath();
+  ctx.moveTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.lineTo(ridgeS.sx, ridgeS.sy); ctx.lineTo(ridgeN.sx, ridgeN.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.strokeStyle = p.roofShadow; ctx.lineWidth = 1;
+  for (let i = 1; i < 6; i++) {
+    const t = i / 6;
+    ctx.beginPath();
+    ctx.moveTo(wNE.sx + (wSE.sx - wNE.sx) * t, wNE.sy + (wSE.sy - wNE.sy) * t);
+    ctx.lineTo(ridgeN.sx + (ridgeS.sx - ridgeN.sx) * t, ridgeN.sy + (ridgeS.sy - ridgeN.sy) * t);
+    ctx.stroke();
+  }
+  ctx.lineWidth = 2; ctx.beginPath();
+  ctx.moveTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy); ctx.stroke();
+
+  // === South gable (tall, with hayloft window) ===
+  ctx.fillStyle = p.wall;
+  ctx.beginPath();
+  ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.lineTo(ridgeS.sx, ridgeS.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.strokeStyle = p.beam; ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(ridgeS.sx, ridgeS.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.stroke();
+
+  // Hayloft window: small square in gable centre
+  const hlSize = 0.16;
+  const hlZ    = wallH + b.roofPeak * 0.42;
+  const hlX0 = cx - hlSize / 2, hlX1 = cx + hlSize / 2;
+  const hlP1 = worldToScreen(hlX0, y1, hlZ);
+  const hlP2 = worldToScreen(hlX1, y1, hlZ);
+  const hlP3 = worldToScreen(hlX1, y1, hlZ + hlSize);
+  const hlP4 = worldToScreen(hlX0, y1, hlZ + hlSize);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath();
+  ctx.moveTo(hlP1.sx, hlP1.sy); ctx.lineTo(hlP2.sx, hlP2.sy);
+  ctx.lineTo(hlP3.sx, hlP3.sy); ctx.lineTo(hlP4.sx, hlP4.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = p.beam; ctx.lineWidth = 0.8; ctx.stroke();
+}
+
 // ---------- Trees ----------
+
+// Pick a tree kind with weighted probability
+// oak 45%, pine 30%, birch 17%, dead ~8%  (dead ≈ 1 in 12)
+function pickTreeKind() {
+  const r = Math.random();
+  if (r < 0.45) return 'oak';
+  if (r < 0.75) return 'pine';
+  if (r < 0.92) return 'birch';
+  return 'dead';
+}
+
+// Polygon fill helper — pts = [[x,y], ...]
+function poly(ctx, color, pts) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.closePath();
+  ctx.fill();
+}
+
+// Draw a thin branch as two polygon quads (light / shadow sides)
+function thinBranch(ctx, x0, y0, x1, y1, w, colLight, colDark) {
+  const dx = x1 - x0, dy = y1 - y0;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len * w, ny = dx / len * w;
+  const tip = 0.25; // taper ratio at tip
+  poly(ctx, colLight, [
+    [x0 - nx, y0 - ny], [x0 + nx, y0 + ny],
+    [x1 + nx * tip, y1 + ny * tip], [x1 - nx * tip, y1 - ny * tip],
+  ]);
+  poly(ctx, colDark, [
+    [x0 + nx, y0 + ny], [x0 + nx * 2, y0 + ny * 2],
+    [x1 + nx * 2 * tip, y1 + ny * 2 * tip], [x1 + nx * tip, y1 + ny * tip],
+  ]);
+}
+
+// --- Sprite draw helpers (draw into offscreen ctx at anchor cx, base) ---
+
+function drawOakSprite(ctx, cx, base, s) {
+  const th = 9 * s; // trunk height
+  const tw = 4 * s; // trunk half-width
+  // Trunk — 2 trapezoid facets
+  poly(ctx, '#7a5030', [
+    [cx - tw, base], [cx, base], [cx - tw * 0.5, base - th], [cx - tw * 0.85, base - th],
+  ]);
+  poly(ctx, '#4a2e18', [
+    [cx, base], [cx + tw, base], [cx + tw * 0.85, base - th], [cx - tw * 0.5, base - th],
+  ]);
+
+  // Crown — irregular polygon, 3-tone faceting
+  const cr = base - th;
+  // A=apex  B=upper-left  C=left  D=lower-left  E=bot-left  F=bot-right  G=right  H=upper-right
+  const A  = [cx,         cr - 32*s];
+  const B  = [cx - 9*s,  cr - 24*s];
+  const C  = [cx - 16*s, cr - 14*s];
+  const D  = [cx - 13*s, cr -  4*s];
+  const E  = [cx,        cr -  2*s];
+  const F  = [cx + 13*s, cr -  5*s];
+  const G  = [cx + 15*s, cr - 16*s];
+  const H  = [cx +  7*s, cr - 27*s];
+  // Shadow base (whole crown)
+  poly(ctx, '#1e4a12', [A, B, C, D, E, F, G, H]);
+  // Left / highlight facet
+  poly(ctx, '#3a7226', [A, B, C, D, E, [cx, cr - 4*s], [cx, cr - 28*s]]);
+  // Top-tip brightest
+  poly(ctx, '#52a03c', [A, B, H]);
+  // Outline
+  ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(A[0], A[1]);
+  [B, C, D, E, F, G, H].forEach(p => ctx.lineTo(p[0], p[1]));
+  ctx.closePath();
+  ctx.stroke();
+}
+
+function drawPineSprite(ctx, cx, base, s) {
+  // Trunk — narrow 2-trapezoid
+  const th = 6 * s, tw = 2.5 * s;
+  poly(ctx, '#6a4828', [
+    [cx - tw, base], [cx, base], [cx - tw * 0.6, base - th], [cx - tw * 0.9, base - th],
+  ]);
+  poly(ctx, '#3a2818', [
+    [cx, base], [cx + tw, base], [cx + tw * 0.9, base - th], [cx - tw * 0.6, base - th],
+  ]);
+
+  // 3 triangular tiers (painter: bottom first)
+  const tiers = [
+    { eaveY: base - 8*s,  tipY: base - 22*s, hw: 14*s },
+    { eaveY: base - 18*s, tipY: base - 30*s, hw: 10*s },
+    { eaveY: base - 26*s, tipY: base - 38*s, hw:  6*s },
+  ];
+  for (const tier of tiers) {
+    const { eaveY, tipY, hw } = tier;
+    // full triangle (right/shadow side)
+    poly(ctx, '#0e3a10', [[cx - hw, eaveY], [cx + hw, eaveY], [cx, tipY]]);
+    // left half highlight
+    poly(ctx, '#2a6820', [[cx - hw, eaveY], [cx, eaveY], [cx, tipY]]);
+  }
+  // Tip brightest triangle
+  const top = tiers[2];
+  poly(ctx, '#3e8a30', [[cx, top.tipY], [cx - top.hw * 0.4, top.eaveY], [cx, top.eaveY]]);
+  // Outline each tier
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 0.8;
+  for (const { eaveY, tipY, hw } of tiers) {
+    ctx.beginPath();
+    ctx.moveTo(cx - hw, eaveY); ctx.lineTo(cx + hw, eaveY); ctx.lineTo(cx, tipY);
+    ctx.closePath(); ctx.stroke();
+  }
+}
+
+function drawBirchSprite(ctx, cx, base, s) {
+  // Trunk — tall & pale, 2-facet
+  const th = 16 * s, tw = 2.5 * s;
+  poly(ctx, '#d8d4c0', [
+    [cx - tw, base], [cx, base], [cx - tw * 0.5, base - th], [cx - tw * 0.85, base - th],
+  ]);
+  poly(ctx, '#a0a090', [
+    [cx, base], [cx + tw, base], [cx + tw * 0.85, base - th], [cx - tw * 0.5, base - th],
+  ]);
+  // Dark bark notches (3 horizontal thin rects)
+  for (let i = 0; i < 3; i++) {
+    const ny = base - (5 + i * 4.5) * s;
+    poly(ctx, '#505048', [
+      [cx - tw, ny], [cx + tw * 0.6, ny],
+      [cx + tw * 0.6, ny - 1.5 * s], [cx - tw, ny - 1.5 * s],
+    ]);
+  }
+
+  // Crown — tall slim polygon
+  const cr = base - th;
+  const A  = [cx,         cr - 26*s];
+  const B  = [cx -  6*s,  cr - 19*s];
+  const C  = [cx -  9*s,  cr - 12*s];
+  const D  = [cx -  7*s,  cr -  4*s];
+  const E  = [cx +  7*s,  cr -  4*s];
+  const F  = [cx +  8*s,  cr - 14*s];
+  const G  = [cx +  4*s,  cr - 22*s];
+  poly(ctx, '#1e4a0e', [A, B, C, D, E, F, G]);
+  poly(ctx, '#366018', [A, B, C, D, [cx, cr - 5*s], [cx, cr - 24*s]]);
+  poly(ctx, '#4a7a22', [A, B, G]);
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(A[0], A[1]);
+  [B, C, D, E, F, G].forEach(p => ctx.lineTo(p[0], p[1]));
+  ctx.closePath(); ctx.stroke();
+}
+
+function drawDeadSprite(ctx, cx, base, s) {
+  // Trunk — 2-trapezoid, dark gray-brown
+  const th = 24 * s, tw = 4 * s;
+  poly(ctx, '#5c4838', [
+    [cx - tw, base], [cx, base], [cx - tw * 0.4, base - th], [cx - tw * 0.8, base - th],
+  ]);
+  poly(ctx, '#3a2820', [
+    [cx, base], [cx + tw, base], [cx + tw * 0.8, base - th], [cx - tw * 0.4, base - th],
+  ]);
+
+  // Branches as thin polygon pairs
+  const br = base - th;
+  thinBranch(ctx, cx - tw * 0.1, br,             cx - 18*s, br - 10*s, 3*s, '#5c4838', '#3a2820');
+  thinBranch(ctx, cx + tw * 0.1, br,             cx + 15*s, br -  8*s, 3*s, '#5c4838', '#3a2820');
+  thinBranch(ctx, cx - tw * 0.3, br - th * 0.38, cx - 13*s, br - th * 0.38 - 9*s, 2*s, '#5c4838', '#3a2820');
+  thinBranch(ctx, cx + tw * 0.3, br - th * 0.32, cx + 11*s, br - th * 0.32 - 8*s, 2*s, '#5c4838', '#3a2820');
+  // Sub-branches
+  thinBranch(ctx, cx - 10*s, br - 6*s, cx - 15*s, br - 13*s, 1.4*s, '#3a2820', '#3a2820');
+  thinBranch(ctx, cx +  9*s, br - 5*s, cx + 13*s, br - 11*s, 1.4*s, '#3a2820', '#3a2820');
+  // Trunk outline
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(cx - tw, base); ctx.lineTo(cx + tw, base);
+  ctx.lineTo(cx + tw * 0.8, base - th); ctx.lineTo(cx - tw * 0.8, base - th);
+  ctx.closePath(); ctx.stroke();
+}
+
+// Build a pre-rendered tree sprite; returns { canvas, anchorX, anchorY }
+function buildTreeSprite(kind, size) {
+  const W = 80, H = 90;
+  const oc  = document.createElement('canvas');
+  oc.width  = W;
+  oc.height = H;
+  const ctx = oc.getContext('2d');
+  const cx  = W / 2;    // horizontal centre — also the draw anchor X
+  const base = H - 8;   // base of trunk — also the draw anchor Y
+  switch (kind) {
+    case 'oak':   drawOakSprite(ctx, cx, base, size);   break;
+    case 'pine':  drawPineSprite(ctx, cx, base, size);  break;
+    case 'birch': drawBirchSprite(ctx, cx, base, size); break;
+    case 'dead':  drawDeadSprite(ctx, cx, base, size);  break;
+  }
+  return { canvas: oc, anchorX: cx, anchorY: base };
+}
+
 function initTrees() {
   state.trees = [];
   const N = CONFIG.MAP_SIZE;
@@ -461,35 +940,17 @@ function initTrees() {
     }
     if (tooClose) continue;
 
-    state.trees.push({ wx, wy, size: 0.85 + Math.random() * 0.3 });
+    const size = 0.85 + Math.random() * 0.3;
+    const kind = pickTreeKind();
+    const spr  = buildTreeSprite(kind, size);
+    state.trees.push({ wx, wy, size, kind, sprite: spr.canvas, anchorX: spr.anchorX, anchorY: spr.anchorY });
   }
 }
 
+// drawTree — uses the pre-rendered sprite; O(1) per frame per tree
 function drawTree(t) {
-  const ctx = state.ctx;
   const { sx, sy } = worldToScreen(t.wx, t.wy, 0);
-  const s = t.size;
-
-  // trunk
-  ctx.fillStyle = '#5a3a20';
-  ctx.fillRect(sx - 2 * s, sy - 8 * s, 4 * s, 8 * s);
-
-  // foliage layered
-  ctx.fillStyle = '#1a4515';
-  ctx.beginPath();
-  ctx.moveTo(sx, sy - 30 * s);
-  ctx.lineTo(sx - 11 * s, sy - 8 * s);
-  ctx.lineTo(sx + 11 * s, sy - 8 * s);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.fillStyle = '#2a6020';
-  ctx.beginPath();
-  ctx.moveTo(sx + s, sy - 26 * s);
-  ctx.lineTo(sx - 7 * s, sy - 11 * s);
-  ctx.lineTo(sx + 8 * s, sy - 11 * s);
-  ctx.closePath();
-  ctx.fill();
+  state.ctx.drawImage(t.sprite, Math.round(sx - t.anchorX), Math.round(sy - t.anchorY));
 }
 
 // ---------- NPC ----------

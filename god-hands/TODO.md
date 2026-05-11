@@ -16,9 +16,11 @@ Living document for cross-session / cross-machine continuity. Update after each 
 | Phase 4 Round B — House respawn + Necromancer | ✅ Done | PR #2 (merged) + polish in PR #3 |
 | Phase 4 Round B+ — Necromancer AOE, occlusion fix, wander buffer | ✅ Done | PR #3 |
 | Phase 4 Round C1 — NPC visual variety (race/class/gender/age) | ✅ Done | PR #3 |
-| Phase 4 Round C2 — Per-class behavior | ⏳ Pending | not scoped yet |
+| Phase 4 Round C2 — Per-class behavior | ✅ Done | PR #4 (merged) |
+| Phase 5.4a — Texture first pass (tree variants, cottage details) | ✅ Done | PR #4 (merged) |
+| Phase 5.4b — Low-poly trees + 4 building kinds | ✅ Done | PR #5 |
 
-Current code: ~2400 lines in `game.js`, target 60fps, Canvas 2D + Web Audio synth, no external assets.
+Current code: ~3820 lines in `game.js`, target 60fps, Canvas 2D + Web Audio synth, no external assets.
 
 ---
 
@@ -188,11 +190,14 @@ Visual feedback during hold: a ring around the cursor fills clockwise; flashes w
 
 ---
 
-### 5.4 Texture rework — trees and houses
+### 5.4 Texture rework — trees and houses ✅ DONE (PR #5)
 
-**Today**:
-- Trees: green ellipse + brown trunk rectangle.
-- Houses: 3 palette variants, plaster + timber + thatch, but very flat fills.
+**Shipped in 5.4b**:
+- Trees: 4 faceted low-poly kinds (oak/pine/birch/dead), pre-rendered sprites, 2-tone shading.
+- Buildings: 4 kinds — cottage (55%), tavern (20%), windmill (10%), farm (15%).
+  Tavern: dark wood planks + orange shingle roof + hanging mug sign.
+  Windmill: tall stone tower + pyramid cap + 4 wooden blades.
+  Farm: red plank barn + wide double door + hayloft gable window.
 
 **Proposed**:
 
