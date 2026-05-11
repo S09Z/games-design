@@ -63,3 +63,49 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+---
+
+## 5. Project-specific (Hand of God)
+
+The rules above are universal. The ones below apply only to this codebase. Read them in addition to the universal rules, not instead of them.
+
+**Read first, every session.**
+- `INSTRUCTIONS.md` — architecture, file layout, render pipeline, common patterns. Skim this before any non-trivial change.
+- `MEMORY.md` — cross-session facts about the user and the project's standing decisions. Treat as load-bearing.
+- `TODO.md` — phase status table + design sketches for unshipped work. The latest Mega Prompt lives at the bottom for cross-session handoff.
+
+**No external assets — ever.**
+- All graphics are Canvas 2D primitives. All sounds are Web Audio oscillators. No images, no audio files, no fonts, no libraries.
+- If a feature seems to require an asset, propose a procedural alternative or push back on scope.
+
+**Visual changes need a browser, not a parser.**
+- `node -c game.js` only proves the file parses. It does *not* prove the feature works.
+- For UI / NPC / world changes, the verification step is "open `index.html` in a browser and look at it." Say so when reporting completion.
+- The current worktree's `index.html` is the one to test (see `MEMORY.md` for the path) — do not assume the user's `main` checkout is up to date.
+
+**Match the existing flat-cartoon style.**
+- No gradients. No smooth shading. No soft shadows.
+- Use 2- or 3-tone discrete shading: a base polygon plus a brighter highlight polygon (and optionally a darker shadow polygon).
+- Polygon edges should be visible — that *is* the style.
+
+**Preserve iso invariants.**
+- World coords are always `(wx, wy, wz)`. Screen coords are always derived via `worldToScreen()`.
+- Depth-sort key is `wx + wy`; do not invent a separate sort.
+- Buildings keep a 2×2 footprint. Adding new building kinds = change palette + height + decorations, not footprint.
+
+**Single-file rule.**
+- All gameplay logic lives in `god-hands/game.js`. Resist the urge to extract files for "cleanliness."
+- Sections inside `game.js` are delimited by `// ---------- Title ----------` comments. New sections follow the same convention.
+
+**State is one object.**
+- Everything mutable hangs off the global `state` variable. New per-frame data goes there, not in module-level `let`s.
+
+**Ship rounds, not epics.**
+- The user iterates fast: make a small change, expect feedback, do another small change. Avoid sprawling multi-feature commits when one would do.
+- When a feature has clear sub-parts (e.g. 5.4a vs 5.4b), prefer shipping the simpler half and waiting for the user to confirm before tackling the harder half.
+
+**Git etiquette here.**
+- The user prefers to run git commands themselves. When work is shippable, hand them a single one-liner (commit + push + `gh pr create`) rather than running it.
+- Only run git commands directly when the user explicitly says so ("commit ให้เลย", "ทำให้ที", "do it for me", or similar).
+- The worktree branch diverges from `main` in layout — don't be surprised when "main checkout doesn't see the change." Resolve by confirming PR merge + `git pull`, or by running the game from the worktree path directly.
