@@ -321,6 +321,23 @@ function drawBuilding(b) {
   ctx.lineTo(dP3.sx, dP3.sy);
   ctx.stroke();
 
+  // Half-timber X-braces in the panels on either side of the door
+  ctx.strokeStyle = b.palette.beam;
+  ctx.lineWidth = 1.2;
+  const xbrace = (xL, xR) => {
+    if (xR - xL < 0.2) return;
+    const p1 = worldToScreen(xL, y1, 0);
+    const p2 = worldToScreen(xR, y1, 0);
+    const p3 = worldToScreen(xR, y1, wallH);
+    const p4 = worldToScreen(xL, y1, wallH);
+    ctx.beginPath();
+    ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p3.sx, p3.sy);
+    ctx.moveTo(p2.sx, p2.sy); ctx.lineTo(p4.sx, p4.sy);
+    ctx.stroke();
+  };
+  xbrace(x0, dx0);
+  xbrace(dx1, x1);
+
   // === East wall (side, slightly darker plaster) ===
   ctx.fillStyle = b.palette.wallSide;
   ctx.beginPath();
@@ -429,9 +446,207 @@ function drawBuilding(b) {
   ctx.lineTo(ridgeS.sx, ridgeS.sy);
   ctx.lineTo(wSE.sx, wSE.sy);
   ctx.stroke();
+
+  // === Chimney on the north end of the ridge ===
+  const chW = 0.20, chD = 0.18;
+  const chY = y0 + 0.35;                      // slightly south of the back ridge
+  const chX0 = cx - chW / 2, chX1 = cx + chW / 2;
+  const chZ0 = peakZ - 0.20;                  // dip below the ridge into the roof
+  const chZ1 = peakZ + 0.45;                  // top of the brick stack
+  const capZ = chZ1 + 0.07;                   // cap is slightly above and overhangs
+
+  // Front (south-facing) face
+  const cF0 = worldToScreen(chX0, chY + chD / 2, chZ0);
+  const cF1 = worldToScreen(chX1, chY + chD / 2, chZ0);
+  const cF2 = worldToScreen(chX1, chY + chD / 2, chZ1);
+  const cF3 = worldToScreen(chX0, chY + chD / 2, chZ1);
+  ctx.fillStyle = '#6a4538';
+  ctx.beginPath();
+  ctx.moveTo(cF0.sx, cF0.sy);
+  ctx.lineTo(cF1.sx, cF1.sy);
+  ctx.lineTo(cF2.sx, cF2.sy);
+  ctx.lineTo(cF3.sx, cF3.sy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#3a2418';
+  ctx.lineWidth = 0.7;
+  ctx.stroke();
+
+  // East face (visible side, slightly darker)
+  const cE0 = worldToScreen(chX1, chY + chD / 2, chZ0);
+  const cE1 = worldToScreen(chX1, chY - chD / 2, chZ0);
+  const cE2 = worldToScreen(chX1, chY - chD / 2, chZ1);
+  const cE3 = worldToScreen(chX1, chY + chD / 2, chZ1);
+  ctx.fillStyle = '#523428';
+  ctx.beginPath();
+  ctx.moveTo(cE0.sx, cE0.sy);
+  ctx.lineTo(cE1.sx, cE1.sy);
+  ctx.lineTo(cE2.sx, cE2.sy);
+  ctx.lineTo(cE3.sx, cE3.sy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Brick courses on the front face
+  ctx.strokeStyle = '#3a2418';
+  ctx.lineWidth = 0.55;
+  for (let i = 1; i < 4; i++) {
+    const bz = chZ0 + (chZ1 - chZ0) * (i / 4);
+    const bL = worldToScreen(chX0, chY + chD / 2, bz);
+    const bR = worldToScreen(chX1, chY + chD / 2, bz);
+    ctx.beginPath();
+    ctx.moveTo(bL.sx, bL.sy);
+    ctx.lineTo(bR.sx, bR.sy);
+    ctx.stroke();
+  }
+
+  // Cap — slightly wider overhang stone
+  const capW = chW + 0.08, capD = chD + 0.08;
+  const capX0 = cx - capW / 2, capX1 = cx + capW / 2;
+  const cap0 = worldToScreen(capX0, chY + capD / 2, chZ1);
+  const cap1 = worldToScreen(capX1, chY + capD / 2, chZ1);
+  const cap2 = worldToScreen(capX1, chY + capD / 2, capZ);
+  const cap3 = worldToScreen(capX0, chY + capD / 2, capZ);
+  ctx.fillStyle = '#4a3528';
+  ctx.beginPath();
+  ctx.moveTo(cap0.sx, cap0.sy);
+  ctx.lineTo(cap1.sx, cap1.sy);
+  ctx.lineTo(cap2.sx, cap2.sy);
+  ctx.lineTo(cap3.sx, cap3.sy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
 }
 
 // ---------- Trees ----------
+// 4 variants — oak (round), pine (tiered triangles), birch (white bark),
+// dead (bare branches). Each tree gets a pre-rendered sprite at init so the
+// detailed art is drawn once instead of every frame.
+const TREE_VARIANTS = ['oak',  'pine', 'birch', 'dead'];
+const TREE_WEIGHTS  = [ 0.50,   0.25,    0.15,   0.10 ];
+
+function pickTreeKind() {
+  const r = Math.random();
+  let acc = 0;
+  for (let i = 0; i < TREE_WEIGHTS.length; i++) {
+    acc += TREE_WEIGHTS[i];
+    if (r < acc) return TREE_VARIANTS[i];
+  }
+  return 'oak';
+}
+
+function buildTreeSprite(tree) {
+  const s = tree.size;
+  const off = document.createElement('canvas');
+  off.width  = Math.max(8, Math.round(40 * s));
+  off.height = Math.max(8, Math.round(50 * s));
+  const ctx = off.getContext('2d');
+  ctx.translate(off.width / 2, off.height); // anchor: bottom-center = trunk base
+  switch (tree.kind) {
+    case 'oak':   drawOakSprite(ctx, s);   break;
+    case 'pine':  drawPineSprite(ctx, s);  break;
+    case 'birch': drawBirchSprite(ctx, s); break;
+    case 'dead':  drawDeadSprite(ctx, s);  break;
+  }
+  return off;
+}
+
+function drawOakSprite(ctx, s) {
+  // Thick brown trunk with bark grain
+  ctx.fillStyle = '#5a3a20';
+  ctx.fillRect(-2.5 * s, -9 * s, 5 * s, 9 * s);
+  ctx.fillStyle = '#3a2410';
+  ctx.fillRect(-1.6 * s, -8 * s, 0.5 * s, 7 * s);
+  ctx.fillRect( 0.7 * s, -7 * s, 0.5 * s, 6 * s);
+  // Foliage — 3 overlapping crowns, 2-tone shading
+  ctx.fillStyle = '#1a4515';
+  ctx.beginPath(); ctx.arc( 0,        -22 * s, 11 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(-6 * s,   -16 * s,  8 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc( 6 * s,   -17 * s,  8 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2a6020';
+  ctx.beginPath(); ctx.arc(-3 * s,   -23 * s,  6.5 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc( 4 * s,   -19 * s,  5 * s,   0, Math.PI * 2); ctx.fill();
+  // Sunny highlight specks
+  ctx.fillStyle = '#3a7028';
+  ctx.beginPath(); ctx.arc(-2 * s, -24.5 * s, 1.7 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc( 3 * s, -20.5 * s, 1.3 * s, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawPineSprite(ctx, s) {
+  // Narrow trunk
+  ctx.fillStyle = '#4a2a18';
+  ctx.fillRect(-1.4 * s, -8 * s, 2.8 * s, 8 * s);
+  // 4 stacked triangles, deeper green at the bottom
+  const greens   = ['#264a26', '#234a23', '#1f421f', '#1a3818'];
+  const tierBase = [ 13,        11,        9,         7   ];
+  const tierY    = [ -9,       -14,       -19,       -23  ];
+  const tierH    = [ 6,         5.5,       5,         4.5 ];
+  for (let i = 0; i < 4; i++) {
+    const w = tierBase[i] * s;
+    const y = tierY[i] * s;
+    const h = tierH[i] * s;
+    ctx.fillStyle = greens[i];
+    ctx.beginPath();
+    ctx.moveTo(0, y - h);
+    ctx.lineTo(-w, y);
+    ctx.lineTo( w, y);
+    ctx.closePath();
+    ctx.fill();
+    // shadow band along the tier base
+    ctx.fillStyle = 'rgba(0,0,0,0.20)';
+    ctx.fillRect(-w, y - 0.4 * s, 2 * w, 0.4 * s);
+  }
+}
+
+function drawBirchSprite(ctx, s) {
+  // Tall slim white bark
+  ctx.fillStyle = '#e8e0d0';
+  ctx.fillRect(-1.5 * s, -14 * s, 3 * s, 14 * s);
+  // Dark birch notches
+  ctx.fillStyle = '#2a2418';
+  for (const ny of [-2.2, -5.5, -8.5, -11.5]) {
+    ctx.fillRect(-1.5 * s, ny * s, 3 * s, 0.55 * s);
+  }
+  // Side shading
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(0.6 * s, -14 * s, 0.9 * s, 14 * s);
+  // Light spring-green foliage
+  ctx.fillStyle = '#3a7028';
+  ctx.beginPath(); ctx.arc( 0,      -19 * s, 8 * s,   0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(-4 * s, -17 * s, 5 * s,   0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc( 4 * s, -18 * s, 5 * s,   0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#4a8e34';
+  ctx.beginPath(); ctx.arc(-2 * s, -21 * s, 4 * s,   0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc( 3 * s, -20 * s, 3.5 * s, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawDeadSprite(ctx, s) {
+  // Gray-brown bare trunk with side shadow
+  ctx.fillStyle = '#5a4a3a';
+  ctx.fillRect(-2 * s, -13 * s, 4 * s, 13 * s);
+  ctx.fillStyle = '#3a2e22';
+  ctx.fillRect(0.8 * s, -13 * s, 1.2 * s, 13 * s);
+  // Branches reaching out + small twigs
+  ctx.strokeStyle = '#5a4a3a';
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 1.4 * s;
+  ctx.beginPath();
+  ctx.moveTo(0, -11 * s); ctx.lineTo(-8 * s, -17 * s);
+  ctx.moveTo(0, -12 * s); ctx.lineTo( 7 * s, -19 * s);
+  ctx.moveTo(0, -13 * s); ctx.lineTo( 0,     -21 * s);
+  ctx.stroke();
+  ctx.lineWidth = 0.7 * s;
+  ctx.beginPath();
+  ctx.moveTo(-8 * s, -17 * s); ctx.lineTo(-11 * s, -20 * s);
+  ctx.moveTo(-8 * s, -17 * s); ctx.lineTo(-9 * s,  -21 * s);
+  ctx.moveTo( 7 * s, -19 * s); ctx.lineTo( 9 * s, -23 * s);
+  ctx.moveTo( 7 * s, -19 * s); ctx.lineTo(10 * s, -20 * s);
+  ctx.moveTo( 0,     -21 * s); ctx.lineTo(-2 * s, -23 * s);
+  ctx.moveTo( 0,     -21 * s); ctx.lineTo( 2 * s, -23 * s);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+}
+
 function initTrees() {
   state.trees = [];
   const N = CONFIG.MAP_SIZE;
@@ -461,35 +676,20 @@ function initTrees() {
     }
     if (tooClose) continue;
 
-    state.trees.push({ wx, wy, size: 0.85 + Math.random() * 0.3 });
+    const tree = {
+      wx, wy,
+      size: 0.85 + Math.random() * 0.3,
+      kind: pickTreeKind(),
+    };
+    tree.sprite = buildTreeSprite(tree);
+    state.trees.push(tree);
   }
 }
 
 function drawTree(t) {
-  const ctx = state.ctx;
+  if (!t.sprite) return;
   const { sx, sy } = worldToScreen(t.wx, t.wy, 0);
-  const s = t.size;
-
-  // trunk
-  ctx.fillStyle = '#5a3a20';
-  ctx.fillRect(sx - 2 * s, sy - 8 * s, 4 * s, 8 * s);
-
-  // foliage layered
-  ctx.fillStyle = '#1a4515';
-  ctx.beginPath();
-  ctx.moveTo(sx, sy - 30 * s);
-  ctx.lineTo(sx - 11 * s, sy - 8 * s);
-  ctx.lineTo(sx + 11 * s, sy - 8 * s);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.fillStyle = '#2a6020';
-  ctx.beginPath();
-  ctx.moveTo(sx + s, sy - 26 * s);
-  ctx.lineTo(sx - 7 * s, sy - 11 * s);
-  ctx.lineTo(sx + 8 * s, sy - 11 * s);
-  ctx.closePath();
-  ctx.fill();
+  state.ctx.drawImage(t.sprite, sx - t.sprite.width / 2, sy - t.sprite.height);
 }
 
 // ---------- NPC ----------
