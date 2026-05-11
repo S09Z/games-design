@@ -617,8 +617,8 @@ hand-of-god/
 - [x] Settings panel, mini-map, mute, RTS pan, larger 30×30 map
 
 ### Phase 5 — Planned (see TODO.md for design sketches)
-- [ ] 5.1 HP + attack damage system *(recommended next)*
-- [ ] 5.2 Zombie grab-and-bite *(blocked by 5.1)*
+- [x] 5.1 HP + attack damage system (shipped — `feature/phase-5-1`)
+- [ ] 5.2 Zombie grab-and-bite *(unblocked by 5.1; next up)*
 - [ ] 5.3 Spell level-2 via long-press hold
 - [x] 5.4 Texture rework (5.4a + 5.4b shipped — PR #4 + #6)
 - [ ] 5.5 Achievements + easter eggs
@@ -632,7 +632,7 @@ hand-of-god/
 3. **Day/Night Cycle?** — Not built. Referenced as "future 5.6" in TODO.md; not yet scoped.
 4. ~~**NPC Relationships?**~~ — Partially settled: per-class hooks (warrior vs zombie, priest extinguishes fire) shipped in Round C2.
 5. **God Power Meter?** — No cooldowns / mana yet. Phase 5.3 (spell L2 long-press) is the only proposed cost mechanic.
-6. **HP vs binary alive/dead?** — Still binary today. Phase 5.1 design sketch in TODO.md. **Recommended next.**
+6. ~~**HP vs binary alive/dead?**~~ — ✅ Settled (Phase 5.1, `feature/phase-5-1`). NPCs now have `hp`/`maxHp` (class base × race mod). Spells deal damage (Fireball direct 100 / edge 35, Lightning 70/30, Meteor 200/60), fire ticks at 25 dps (wizards take ×0.5), fall damage = 10 × (peak − threshold), zombie touch kept instant-kill for now (5.2 reworks). Critical (20%) became a ×2 multiplier; dismemberment fires only on crit killing blows. HP bar appears above the head on damage and fades over 3 s.
 
 ---
 

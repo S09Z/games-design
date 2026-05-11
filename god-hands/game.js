@@ -60,6 +60,19 @@ const CONFIG = {
   BUILDING_GAP: 3,              // minimum tile gap between buildings
   TREE_COUNT: 25,
   TREE_BORDER_WIDTH: 2.8,
+
+  // HP / damage (Phase 5.1)
+  DMG_FIREBALL_DIRECT:     100,
+  DMG_FIREBALL_AOE_EDGE:   35,
+  DMG_LIGHTNING_BOLT:      70,
+  DMG_LIGHTNING_CHAIN_HOP: 30,
+  DMG_METEOR_CENTER:       200,
+  DMG_METEOR_EDGE:         60,
+  DMG_FIRE_TICK_PER_SEC:   25,
+  DMG_ZOMBIE_TOUCH:        9999,
+  DMG_FALL_PER_UNIT:       10,
+  CRIT_MULT:               2.0,
+  HP_BAR_DURATION:         3.0,
 };
 
 const SPELL_COLORS = {
@@ -100,6 +113,7 @@ const state = {
   bloodDecals: [],
   craterDecals: [],
   necroCasts: [],
+  windmillAngle: 0,
   shake: { intensity: 0, timer: 0, duration: CONFIG.SHAKE_DECAY },
   targetCount: 15,
   totalDeaths: 0,
@@ -259,7 +273,17 @@ function initBuildings() {
       windmill: { wallH: 2.00, roofPeak: 0.50, palette: WINDMILL_PALETTE },
       farm:     { wallH: 0.70, roofPeak: 0.80, palette: FARM_PALETTE     },
     }[kind];
-    state.buildings.push({ wx, wy, w, h, kind, ...kindProps });
+    const bEntry = { wx, wy, w, h, kind, ...kindProps };
+    // Cottages and taverns have a chimney — bake world position now so the
+    // update loop can spawn smoke without re-computing it every frame.
+    if (kind === 'cottage' || kind === 'tavern') {
+      const peakZ = bEntry.wallH + bEntry.roofPeak;
+      bEntry.chimneyWx = wx + w / 2 + 0.08;
+      bEntry.chimneyWy = wy + h * 0.28;
+      bEntry.chimneyWz = peakZ + 0.32;
+      bEntry.chimneyTimer = Math.random() * 3;
+    }
+    state.buildings.push(bEntry);
   }
 }
 
@@ -373,38 +397,135 @@ function drawCottage(b) {
   ctx.strokeStyle = b.palette.beam; ctx.lineWidth = 1.6;
   ctx.beginPath(); ctx.moveTo(bNE.sx, bNE.sy); ctx.lineTo(wNE.sx, wNE.sy); ctx.stroke();
 
-  drawEastWindow(ctx, b, b.palette);
+  // Two cross-pane windows on east wall
+  for (let wi = 0; wi < 2; wi++) {
+    const winSize = 0.26, winZ0 = wallH * (wi === 0 ? 0.32 : 0.62);
+    const winZ1 = winZ0 + winSize;
+    const wyMid = y0 + b.h / 2, wyw0 = y0 + b.h * 0.25, wyw1 = wyw0 + winSize;
+    const wP1 = worldToScreen(x1, wyw0, winZ0), wP2 = worldToScreen(x1, wyw1, winZ0);
+    const wP3 = worldToScreen(x1, wyw1, winZ1), wP4 = worldToScreen(x1, wyw0, winZ1);
+    ctx.fillStyle = '#ffe8a0';
+    ctx.beginPath();
+    ctx.moveTo(wP1.sx, wP1.sy); ctx.lineTo(wP2.sx, wP2.sy);
+    ctx.lineTo(wP3.sx, wP3.sy); ctx.lineTo(wP4.sx, wP4.sy);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 0.8; ctx.stroke();
+    const wm1 = worldToScreen(x1, wyw0, winZ0 + winSize / 2);
+    const wm2 = worldToScreen(x1, wyw1, winZ0 + winSize / 2);
+    const wm3 = worldToScreen(x1, (wyw0 + wyw1) / 2, winZ0);
+    const wm4 = worldToScreen(x1, (wyw0 + wyw1) / 2, winZ1);
+    ctx.strokeStyle = b.palette.beam; ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(wm1.sx, wm1.sy); ctx.lineTo(wm2.sx, wm2.sy);
+    ctx.moveTo(wm3.sx, wm3.sy); ctx.lineTo(wm4.sx, wm4.sy);
+    ctx.stroke();
+  }
 
-  // === East roof slope (thatched) ===
+  // === East roof slope (thatched — curved straw lines + scalloped eave) ===
   ctx.fillStyle = b.palette.roof;
   ctx.beginPath();
   ctx.moveTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy);
   ctx.lineTo(ridgeS.sx, ridgeS.sy); ctx.lineTo(ridgeN.sx, ridgeN.sy);
   ctx.closePath(); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 1; ctx.stroke();
+
+  // Curved thatch lines (slight outward bow from eave to ridge)
   ctx.strokeStyle = b.palette.roofShadow; ctx.lineWidth = 1;
   const thN = 7;
-  for (let i = 1; i < thN; i++) {
-    const t = i / thN;
+  for (let i = 0; i <= thN; i++) {
+    const t  = i / thN;
+    const ex = wNE.sx + (wSE.sx - wNE.sx) * t;
+    const ey = wNE.sy + (wSE.sy - wNE.sy) * t;
+    const rx = ridgeN.sx + (ridgeS.sx - ridgeN.sx) * t;
+    const ry = ridgeN.sy + (ridgeS.sy - ridgeN.sy) * t;
+    // control point bows outward (away from ridge) by ~2 px for straw curve
+    const cpx = (ex + rx) / 2 + 2.5;
+    const cpy = (ey + ry) / 2 + 1.5;
     ctx.beginPath();
-    ctx.moveTo(wNE.sx + (wSE.sx - wNE.sx) * t, wNE.sy + (wSE.sy - wNE.sy) * t);
-    ctx.lineTo(ridgeN.sx + (ridgeS.sx - ridgeN.sx) * t, ridgeN.sy + (ridgeS.sy - ridgeN.sy) * t);
+    ctx.moveTo(ex, ey);
+    ctx.quadraticCurveTo(cpx, cpy, rx, ry);
     ctx.stroke();
   }
-  ctx.strokeStyle = b.palette.roofShadow; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy); ctx.stroke();
 
-  // === South gable ===
-  ctx.fillStyle = b.palette.wall;
+  // Scalloped eave fringe — darker thatch draping below the eave edge
+  const fringeN = 5;
+  const edx = wSE.sx - wNE.sx, edy = wSE.sy - wNE.sy;
+  ctx.fillStyle = b.palette.roofShadow;
+  ctx.beginPath();
+  ctx.moveTo(wNE.sx, wNE.sy);
+  ctx.lineTo(wSE.sx, wSE.sy);
+  // wavy return path from wSE → wNE, scallops dip below (+y = visually lower)
+  for (let i = 0; i < fringeN; i++) {
+    const t1 = (fringeN - i - 0.5) / fringeN;
+    const t2 = (fringeN - i - 1)   / fringeN;
+    ctx.quadraticCurveTo(
+      wNE.sx + edx * t1, wNE.sy + edy * t1 + 6,
+      wNE.sx + edx * t2, wNE.sy + edy * t2
+    );
+  }
+  ctx.closePath(); ctx.fill();
+
+  // === South gable (thatched triangle with scalloped base) ===
+  ctx.fillStyle = b.palette.roof;
   ctx.beginPath();
   ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(wSE.sx, wSE.sy);
   ctx.lineTo(ridgeS.sx, ridgeS.sy);
   ctx.closePath(); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.strokeStyle = b.palette.beam; ctx.lineWidth = 1.6;
+  ctx.strokeStyle = b.palette.beam; ctx.lineWidth = 1.4;
   ctx.beginPath();
   ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(ridgeS.sx, ridgeS.sy); ctx.lineTo(wSE.sx, wSE.sy);
   ctx.stroke();
+
+  // Gable eave fringe (scalloped, smaller than east slope)
+  const gbdx = wSE.sx - wSW.sx, gbdy = wSE.sy - wSW.sy;
+  ctx.fillStyle = b.palette.roofShadow;
+  ctx.beginPath();
+  ctx.moveTo(wSW.sx, wSW.sy);
+  ctx.lineTo(wSE.sx, wSE.sy);
+  for (let i = 0; i < 3; i++) {
+    const t1 = (3 - i - 0.5) / 3;
+    const t2 = (3 - i - 1)   / 3;
+    ctx.quadraticCurveTo(
+      wSW.sx + gbdx * t1, wSW.sy + gbdy * t1 + 5,
+      wSW.sx + gbdx * t2, wSW.sy + gbdy * t2
+    );
+  }
+  ctx.closePath(); ctx.fill();
+
+  // === Chimney (sits on east slope near the ridge) ===
+  const peakZ = b.wallH + b.roofPeak;
+  const chW = 0.20, chH = 0.34;
+  const chX = cx + 0.06, chY = y0 + b.h * 0.28;
+  const chBZ = peakZ - 0.04, chTZ = peakZ + chH;
+  // South face
+  const cSB1 = worldToScreen(chX,        chY + chW * 0.5, chBZ);
+  const cSB2 = worldToScreen(chX + chW,  chY + chW * 0.5, chBZ);
+  const cST2 = worldToScreen(chX + chW,  chY + chW * 0.5, chTZ);
+  const cST1 = worldToScreen(chX,        chY + chW * 0.5, chTZ);
+  ctx.fillStyle = '#7a6a56';
+  ctx.beginPath();
+  ctx.moveTo(cSB1.sx, cSB1.sy); ctx.lineTo(cSB2.sx, cSB2.sy);
+  ctx.lineTo(cST2.sx, cST2.sy); ctx.lineTo(cST1.sx, cST1.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 0.8; ctx.stroke();
+  // East face (darker)
+  const cEB1 = worldToScreen(chX + chW, chY - chW * 0.5, chBZ);
+  const cEB2 = worldToScreen(chX + chW, chY + chW * 0.5, chBZ);
+  const cET2 = worldToScreen(chX + chW, chY + chW * 0.5, chTZ);
+  const cET1 = worldToScreen(chX + chW, chY - chW * 0.5, chTZ);
+  ctx.fillStyle = '#5a4a38';
+  ctx.beginPath();
+  ctx.moveTo(cEB1.sx, cEB1.sy); ctx.lineTo(cEB2.sx, cEB2.sy);
+  ctx.lineTo(cET2.sx, cET2.sy); ctx.lineTo(cET1.sx, cET1.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 0.8; ctx.stroke();
+  // Top cap (small dark opening)
+  ctx.fillStyle = '#2a1a0e';
+  ctx.beginPath();
+  ctx.moveTo(cST1.sx, cST1.sy); ctx.lineTo(cST2.sx, cST2.sy);
+  ctx.lineTo(cET2.sx, cET2.sy); ctx.lineTo(cET1.sx, cET1.sy);
+  ctx.closePath(); ctx.fill();
 }
 
 // ---- TAVERN -----------------------------------------------------------
@@ -447,30 +568,75 @@ function drawTavern(b) {
   ctx.strokeStyle = 'rgba(255,200,120,0.35)'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(tdMid.sx, tdMid.sy); ctx.lineTo(tdMidT.sx, tdMidT.sy); ctx.stroke();
 
-  // Hanging sign: small rectangle + mug pictogram off south-west quadrant
-  const signAX = x0 + b.w * 0.18, signAY = y1;
-  const signBX = signAX + 0.28;
-  const armTop = worldToScreen(signAX, signAY, wallH * 0.68);
-  const armBot = worldToScreen(signAX, signAY, wallH * 0.42);
-  const sgnTL  = worldToScreen(signAX,  signAY, wallH * 0.62);
-  const sgnTR  = worldToScreen(signBX,  signAY, wallH * 0.62);
+  // Hanging sign — bracket arm + board + beer-mug pictogram
+  const signAX = x0 + b.w * 0.16, signAY = y1;
+  const signBX = signAX + 0.34;
+  const armTop = worldToScreen(signAX, signAY, wallH * 0.76);
+  const armBot = worldToScreen(signAX, signAY, wallH * 0.38);
+  const sgnTL  = worldToScreen(signAX,  signAY, wallH * 0.72);
+  const sgnTR  = worldToScreen(signBX,  signAY, wallH * 0.72);
   const sgnBR  = worldToScreen(signBX,  signAY, wallH * 0.44);
   const sgnBL  = worldToScreen(signAX,  signAY, wallH * 0.44);
-  ctx.strokeStyle = p.beam; ctx.lineWidth = 1;
+  // bracket arm
+  ctx.strokeStyle = p.beam; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(armTop.sx, armTop.sy); ctx.lineTo(armBot.sx, armBot.sy); ctx.stroke();
-  ctx.fillStyle = '#c8a868';
+  // sign board
+  ctx.fillStyle = '#c8a056';
   ctx.beginPath();
   ctx.moveTo(sgnTL.sx, sgnTL.sy); ctx.lineTo(sgnTR.sx, sgnTR.sy);
   ctx.lineTo(sgnBR.sx, sgnBR.sy); ctx.lineTo(sgnBL.sx, sgnBL.sy);
   ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = p.beam; ctx.lineWidth = 0.8; ctx.stroke();
-  // Mug: tiny circle + handle arc (screen-space, ~4px)
-  const sgnCX = (sgnTL.sx + sgnTR.sx + sgnBR.sx + sgnBL.sx) / 4;
-  const sgnCY = (sgnTL.sy + sgnTR.sy + sgnBR.sy + sgnBL.sy) / 4;
-  ctx.fillStyle = p.beam;
-  ctx.beginPath(); ctx.arc(sgnCX, sgnCY, 2.2, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = p.beam; ctx.lineWidth = 0.8;
-  ctx.beginPath(); ctx.arc(sgnCX + 2.2, sgnCY, 1.4, -Math.PI * 0.5, Math.PI * 0.5); ctx.stroke();
+  ctx.strokeStyle = '#7a4a10'; ctx.lineWidth = 1; ctx.stroke();
+  // Beer mug: trapezoid body + foam + handle (screen-space)
+  const sCX = (sgnTL.sx + sgnTR.sx + sgnBR.sx + sgnBL.sx) / 4;
+  const sCY = (sgnTL.sy + sgnTR.sy + sgnBR.sy + sgnBL.sy) / 4;
+  const mW = 4.5, mH = 6;
+  // body (trapezoid — slightly wider at top)
+  ctx.fillStyle = '#d4a030';
+  ctx.beginPath();
+  ctx.moveTo(sCX - mW * 1.1, sCY - mH * 0.5);
+  ctx.lineTo(sCX + mW * 1.1, sCY - mH * 0.5);
+  ctx.lineTo(sCX + mW,       sCY + mH * 0.5);
+  ctx.lineTo(sCX - mW,       sCY + mH * 0.5);
+  ctx.closePath(); ctx.fill();
+  // foam top
+  ctx.fillStyle = '#f5f0e0';
+  ctx.beginPath();
+  ctx.ellipse(sCX, sCY - mH * 0.5, mW * 1.1, mH * 0.28, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // handle arc
+  ctx.strokeStyle = '#7a4a10'; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(sCX + mW + 1.5, sCY, mH * 0.38, -Math.PI * 0.55, Math.PI * 0.55);
+  ctx.stroke();
+  ctx.strokeStyle = '#7a4a10'; ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(sgnTL.sx, sgnTL.sy); ctx.lineTo(sgnTR.sx, sgnTR.sy);
+  ctx.lineTo(sgnBR.sx, sgnBR.sy); ctx.lineTo(sgnBL.sx, sgnBL.sy);
+  ctx.closePath(); ctx.stroke();
+
+  // South wall windows (two small paned windows flanking the door)
+  const winH = wallH * 0.38, winW = b.w * 0.12, winZ0 = wallH * 0.45;
+  for (const wx_off of [x0 + b.w * 0.06, x0 + b.w * 0.78]) {
+    const wP1 = worldToScreen(wx_off,          y1, winZ0);
+    const wP2 = worldToScreen(wx_off + winW,   y1, winZ0);
+    const wP3 = worldToScreen(wx_off + winW,   y1, winZ0 + winH);
+    const wP4 = worldToScreen(wx_off,          y1, winZ0 + winH);
+    ctx.fillStyle = '#ffe8a0';
+    ctx.beginPath();
+    ctx.moveTo(wP1.sx, wP1.sy); ctx.lineTo(wP2.sx, wP2.sy);
+    ctx.lineTo(wP3.sx, wP3.sy); ctx.lineTo(wP4.sx, wP4.sy);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = p.beam; ctx.lineWidth = 0.8; ctx.stroke();
+    // cross pane
+    const wMx = (wP1.sx + wP2.sx) / 2, wMy = (wP1.sy + wP2.sy) / 2;
+    const wTx = (wP4.sx + wP3.sx) / 2, wTy = (wP4.sy + wP3.sy) / 2;
+    const wLx = (wP1.sx + wP4.sx) / 2, wLy = (wP1.sy + wP4.sy) / 2;
+    const wRx = (wP2.sx + wP3.sx) / 2, wRy = (wP2.sy + wP3.sy) / 2;
+    ctx.strokeStyle = p.beam; ctx.lineWidth = 0.6;
+    ctx.beginPath(); ctx.moveTo(wMx, wMy); ctx.lineTo(wTx, wTy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(wLx, wLy); ctx.lineTo(wRx, wRy); ctx.stroke();
+  }
 
   // === East wall (darker planks) ===
   ctx.fillStyle = p.wallSide;
@@ -482,7 +648,23 @@ function drawTavern(b) {
   drawPlankLines(ctx, bSE, bNE, wNE, wSE, 5, 'rgba(0,0,0,0.22)');
   ctx.strokeStyle = p.beam; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(bNE.sx, bNE.sy); ctx.lineTo(wNE.sx, wNE.sy); ctx.stroke();
-  drawEastWindow(ctx, b, p);
+
+  // Round porthole windows on east wall (2 circles, screen-space)
+  for (let wi = 0; wi < 2; wi++) {
+    const winZ  = wallH * (wi === 0 ? 0.30 : 0.62);
+    const wyMid = y0 + b.h * 0.5;
+    const winCtr = worldToScreen(x1, wyMid, winZ + 0.13);
+    const r = 5.5;
+    ctx.fillStyle = '#ffe8a0';
+    ctx.beginPath(); ctx.arc(winCtr.sx, winCtr.sy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = p.beam; ctx.lineWidth = 1.5; ctx.stroke();
+    // cross pane
+    ctx.strokeStyle = p.beam; ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(winCtr.sx - r * 0.7, winCtr.sy); ctx.lineTo(winCtr.sx + r * 0.7, winCtr.sy);
+    ctx.moveTo(winCtr.sx, winCtr.sy - r * 0.7); ctx.lineTo(winCtr.sx, winCtr.sy + r * 0.7);
+    ctx.stroke();
+  }
 
   // === East roof slope (orange shingles as chevron rows) ===
   ctx.fillStyle = p.roof;
@@ -514,102 +696,260 @@ function drawTavern(b) {
   ctx.beginPath();
   ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(ridgeS.sx, ridgeS.sy); ctx.lineTo(wSE.sx, wSE.sy);
   ctx.stroke();
+
+  // === Chimney (brick, east slope near ridge) ===
+  const peakZ = b.wallH + b.roofPeak;
+  const chW = 0.22, chH = 0.38;
+  const chX = cx + 0.10, chY = y0 + b.h * 0.25;
+  const chBZ = peakZ - 0.06, chTZ = peakZ + chH;
+  const cSB1 = worldToScreen(chX,       chY + chW * 0.5, chBZ);
+  const cSB2 = worldToScreen(chX + chW, chY + chW * 0.5, chBZ);
+  const cST2 = worldToScreen(chX + chW, chY + chW * 0.5, chTZ);
+  const cST1 = worldToScreen(chX,       chY + chW * 0.5, chTZ);
+  ctx.fillStyle = '#8a5a44';
+  ctx.beginPath();
+  ctx.moveTo(cSB1.sx, cSB1.sy); ctx.lineTo(cSB2.sx, cSB2.sy);
+  ctx.lineTo(cST2.sx, cST2.sy); ctx.lineTo(cST1.sx, cST1.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 0.8; ctx.stroke();
+  // Brick rows on south face
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 0.6;
+  for (let i = 1; i < 4; i++) {
+    const t = i / 4;
+    ctx.beginPath();
+    ctx.moveTo(cSB1.sx + (cST1.sx - cSB1.sx) * t, cSB1.sy + (cST1.sy - cSB1.sy) * t);
+    ctx.lineTo(cSB2.sx + (cST2.sx - cSB2.sx) * t, cSB2.sy + (cST2.sy - cSB2.sy) * t);
+    ctx.stroke();
+  }
+  const cEB1 = worldToScreen(chX + chW, chY - chW * 0.5, chBZ);
+  const cEB2 = worldToScreen(chX + chW, chY + chW * 0.5, chBZ);
+  const cET2 = worldToScreen(chX + chW, chY + chW * 0.5, chTZ);
+  const cET1 = worldToScreen(chX + chW, chY - chW * 0.5, chTZ);
+  ctx.fillStyle = '#6a3a28';
+  ctx.beginPath();
+  ctx.moveTo(cEB1.sx, cEB1.sy); ctx.lineTo(cEB2.sx, cEB2.sy);
+  ctx.lineTo(cET2.sx, cET2.sy); ctx.lineTo(cET1.sx, cET1.sy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 0.8; ctx.stroke();
+  ctx.fillStyle = '#2a1a0e';
+  ctx.beginPath();
+  ctx.moveTo(cST1.sx, cST1.sy); ctx.lineTo(cST2.sx, cST2.sy);
+  ctx.lineTo(cET2.sx, cET2.sy); ctx.lineTo(cET1.sx, cET1.sy);
+  ctx.closePath(); ctx.fill();
+
+  // === Giant beer mug landmark on roof ridge ===
+  // Centre on the ridge midpoint (halfway between ridgeN and ridgeS)
+  const mgx = (ridgeN.sx + ridgeS.sx) / 2;
+  const mgy = (ridgeN.sy + ridgeS.sy) / 2 + 18;
+  const mgW = 19, mgH = 26;  // half-width, full height
+
+  // Mug body — rounded trapezoid (wider at bottom than top, like a barrel)
+  ctx.fillStyle = '#c8842a';
+  ctx.beginPath();
+  ctx.moveTo(mgx - mgW * 0.88, mgy);
+  ctx.lineTo(mgx + mgW * 0.88, mgy);
+  ctx.quadraticCurveTo(mgx + mgW, mgy, mgx + mgW, mgy - mgH * 0.15);
+  ctx.lineTo(mgx + mgW * 0.82, mgy - mgH);
+  ctx.lineTo(mgx - mgW * 0.82, mgy - mgH);
+  ctx.lineTo(mgx - mgW, mgy - mgH * 0.15);
+  ctx.quadraticCurveTo(mgx - mgW, mgy, mgx - mgW * 0.88, mgy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#7a4010'; ctx.lineWidth = 1.2; ctx.stroke();
+
+  // Vertical stave lines (dark grain)
+  ctx.strokeStyle = 'rgba(80,30,0,0.35)'; ctx.lineWidth = 0.8;
+  for (let si = -2; si <= 2; si++) {
+    const bx = mgx + si * mgW * 0.32;
+    ctx.beginPath();
+    ctx.moveTo(bx - si * 0.5, mgy - 2);
+    ctx.lineTo(bx - si * 1.5, mgy - mgH + 2);
+    ctx.stroke();
+  }
+
+  // Metal bands (2 horizontal dark strips)
+  ctx.fillStyle = '#4a3018';
+  for (const bt of [0.28, 0.68]) {
+    const by = mgy - mgH * bt;
+    ctx.beginPath();
+    ctx.moveTo(mgx - mgW * (1 - bt * 0.08), by + 2);
+    ctx.lineTo(mgx + mgW * (1 - bt * 0.08), by + 2);
+    ctx.lineTo(mgx + mgW * (1 - bt * 0.08) * 0.95, by - 2);
+    ctx.lineTo(mgx - mgW * (1 - bt * 0.08) * 0.95, by - 2);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#2a1808'; ctx.lineWidth = 0.5; ctx.stroke();
+  }
+
+  // Rim highlight at top
+  ctx.fillStyle = '#e8a040';
+  ctx.beginPath();
+  ctx.ellipse(mgx, mgy - mgH + 1.5, mgW * 0.82, 4.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#7a4010'; ctx.lineWidth = 0.8; ctx.stroke();
+
+  // Foam (white frothy top)
+  ctx.fillStyle = '#f5f0e8';
+  ctx.beginPath();
+  ctx.ellipse(mgx, mgy - mgH - 1, mgW * 0.78, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Foam bumps
+  ctx.fillStyle = '#ffffff';
+  for (let fi = -2; fi <= 2; fi++) {
+    ctx.beginPath();
+    ctx.arc(mgx + fi * mgW * 0.28, mgy - mgH - 3, 4.5, Math.PI, 0);
+    ctx.fill();
+  }
+
+  // Handle — thick C-curve arching to the right
+  ctx.strokeStyle = '#7a4010'; ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(mgx + mgW * 0.82, mgy - mgH * 0.25);
+  ctx.quadraticCurveTo(mgx + mgW + 16, mgy - mgH * 0.5, mgx + mgW * 0.82, mgy - mgH * 0.78);
+  ctx.stroke();
+  ctx.strokeStyle = '#c8842a'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(mgx + mgW * 0.82, mgy - mgH * 0.25);
+  ctx.quadraticCurveTo(mgx + mgW + 16, mgy - mgH * 0.5, mgx + mgW * 0.82, mgy - mgH * 0.78);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
 }
 
 // ---- WINDMILL ---------------------------------------------------------
 function drawWindmill(b) {
   const ctx = state.ctx;
-  const { x0, y0, x1, y1, cx, cy, wallH, peakZ, bNE, bSE, bSW, wNE, wSE, wSW, peak } = buildingCorners(b);
+  const { x0, y0, x1, y1, cx, cy, wallH, peakZ, bNE, bSE, bSW } = buildingCorners(b);
   const p = b.palette;
 
-  ctx.lineWidth = 1;
+  // Tapered top corners — tower narrows by 'taper' wu per side, giving an
+  // octagonal-profile round-tower silhouette instead of a plain rectangle.
+  const taper = 0.30;
+  const wtNE = worldToScreen(x1 - taper, y0 + taper, wallH);
+  const wtSE = worldToScreen(x1 - taper, y1 - taper, wallH);
+  const wtSW = worldToScreen(x0 + taper, y1 - taper, wallH);
+  const peak  = worldToScreen(cx, cy, peakZ);
 
-  // === South wall (stone) ===
+  ctx.lineWidth = 1;
+  const stoneRows = 7;
+
+  // === South wall (tapered trapezoid — wider at base) ===
   ctx.fillStyle = p.wall;
   ctx.beginPath();
   ctx.moveTo(bSW.sx, bSW.sy); ctx.lineTo(bSE.sx, bSE.sy);
-  ctx.lineTo(wSE.sx, wSE.sy); ctx.lineTo(wSW.sx, wSW.sy);
+  ctx.lineTo(wtSE.sx, wtSE.sy); ctx.lineTo(wtSW.sx, wtSW.sy);
   ctx.closePath(); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.stroke();
-  // Stone block lines (horizontal courses)
   ctx.strokeStyle = p.beam; ctx.lineWidth = 0.7;
-  const stoneRowsS = 6;
-  for (let i = 1; i < stoneRowsS; i++) {
-    const t = i / stoneRowsS;
+  for (let i = 1; i < stoneRows; i++) {
+    const t = i / stoneRows;
     ctx.beginPath();
-    ctx.moveTo(bSW.sx + (wSW.sx - bSW.sx) * t, bSW.sy + (wSW.sy - bSW.sy) * t);
-    ctx.lineTo(bSE.sx + (wSE.sx - bSE.sx) * t, bSE.sy + (wSE.sy - bSE.sy) * t);
+    ctx.moveTo(bSW.sx + (wtSW.sx - bSW.sx) * t, bSW.sy + (wtSW.sy - bSW.sy) * t);
+    ctx.lineTo(bSE.sx + (wtSE.sx - bSE.sx) * t, bSE.sy + (wtSE.sy - bSE.sy) * t);
     ctx.stroke();
   }
+  // SE corner edge — visible facet line hinting at the octagonal profile
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(wtSE.sx, wtSE.sy); ctx.stroke();
 
-  // Arched door (narrow, just a dark rect)
-  const wdW = 0.30, wdH = wallH * 0.50;
+  // Arched door
+  const wdW = 0.30, wdH = wallH * 0.48;
   const wdx0 = x0 + (b.w - wdW) / 2, wdx1 = wdx0 + wdW;
-  const wdP1 = worldToScreen(wdx0, y1, 0), wdP2 = worldToScreen(wdx1, y1, 0);
+  const wdP1 = worldToScreen(wdx0, y1, 0),   wdP2 = worldToScreen(wdx1, y1, 0);
   const wdP3 = worldToScreen(wdx1, y1, wdH), wdP4 = worldToScreen(wdx0, y1, wdH);
   ctx.fillStyle = '#1a1210';
   ctx.beginPath();
   ctx.moveTo(wdP1.sx, wdP1.sy); ctx.lineTo(wdP2.sx, wdP2.sy);
   ctx.lineTo(wdP3.sx, wdP3.sy); ctx.lineTo(wdP4.sx, wdP4.sy);
   ctx.closePath(); ctx.fill();
+  // Arch: small bezier bump at the top of the door
+  ctx.strokeStyle = p.beam; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(wdP4.sx, wdP4.sy);
+  ctx.quadraticCurveTo((wdP4.sx + wdP3.sx) / 2, wdP4.sy - 4, wdP3.sx, wdP3.sy);
+  ctx.stroke();
 
-  // === East wall (stone) ===
+  // === East wall (tapered, darker stone) ===
   ctx.fillStyle = p.wallSide;
   ctx.beginPath();
   ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(bNE.sx, bNE.sy);
-  ctx.lineTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.lineTo(wtNE.sx, wtNE.sy); ctx.lineTo(wtSE.sx, wtSE.sy);
   ctx.closePath(); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
   ctx.strokeStyle = p.beam; ctx.lineWidth = 0.7;
-  for (let i = 1; i < stoneRowsS; i++) {
-    const t = i / stoneRowsS;
+  for (let i = 1; i < stoneRows; i++) {
+    const t = i / stoneRows;
     ctx.beginPath();
-    ctx.moveTo(bSE.sx + (wSE.sx - bSE.sx) * t, bSE.sy + (wSE.sy - bSE.sy) * t);
-    ctx.lineTo(bNE.sx + (wNE.sx - bNE.sx) * t, bNE.sy + (wNE.sy - bNE.sy) * t);
+    ctx.moveTo(bSE.sx + (wtSE.sx - bSE.sx) * t, bSE.sy + (wtSE.sy - bSE.sy) * t);
+    ctx.lineTo(bNE.sx + (wtNE.sx - bNE.sx) * t, bNE.sy + (wtNE.sy - bNE.sy) * t);
     ctx.stroke();
   }
   drawEastWindow(ctx, b, p);
 
-  // 4 wooden blades in X pattern — drawn in world-space on south face (y = y1)
-  // Blade wheel centre at wallH * 0.72
-  const blCX = cx, blCY = y1, blCZ = wallH * 0.72;
-  const bladeCenter = worldToScreen(blCX, blCY, blCZ);
-  // Each blade: a thin rectangle emanating from centre in iso xz-plane
-  // Represent 4 blades at iso-projected angles (0°=right, 90°=up, 45°, 135°)
-  const blLen = 14, blW = 2.5; // screen px
-  const bladeAngles = [45, 135, 225, 315]; // degrees in screen space
-  for (const deg of bladeAngles) {
-    const rad = deg * Math.PI / 180;
-    const cos = Math.cos(rad), sin = Math.sin(rad);
-    ctx.fillStyle = '#8a6038';
-    ctx.beginPath();
-    ctx.moveTo(bladeCenter.sx + cos * blLen - sin * blW,
-               bladeCenter.sy + sin * blLen + cos * blW);
-    ctx.lineTo(bladeCenter.sx + cos * blLen + sin * blW,
-               bladeCenter.sy + sin * blLen - cos * blW);
-    ctx.lineTo(bladeCenter.sx - cos * blLen + sin * blW,
-               bladeCenter.sy - sin * blLen - cos * blW);
-    ctx.lineTo(bladeCenter.sx - cos * blLen - sin * blW,
-               bladeCenter.sy - sin * blLen + cos * blW);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = '#5a3a18'; ctx.lineWidth = 0.8; ctx.stroke();
-  }
-  // Hub circle
-  ctx.fillStyle = '#4a3020';
-  ctx.beginPath(); ctx.arc(bladeCenter.sx, bladeCenter.sy, 3, 0, Math.PI * 2); ctx.fill();
+  // === 4 spinning windmill blades — flat rectangular boards, X pattern ===
+  // Blade wheel mounted on south face, centred at wallH * 0.72
+  const bladeCenter = worldToScreen(cx, y1, wallH * 0.72);
+  const blLen = 46;   // half-length of each blade arm (screen px) — extends past tower width
+  const blW  = 8;     // half-width of each blade (rectangular boards)
+  const innerGap = 6; // blank zone near hub
 
-  // === Conical cap (4-sided pyramid: south + east faces visible) ===
-  // South face of pyramid
+  ctx.save();
+  ctx.translate(bladeCenter.sx, bladeCenter.sy);
+  ctx.rotate(state.windmillAngle + Math.PI / 4);
+
+  for (let i = 0; i < 4; i++) {
+    ctx.save();
+    ctx.rotate(i * Math.PI / 2);
+
+    // Dark wood outer frame
+    ctx.fillStyle = '#7a5028';
+    ctx.beginPath();
+    ctx.moveTo(-blW, innerGap);
+    ctx.lineTo( blW, innerGap);
+    ctx.lineTo( blW, blLen);
+    ctx.lineTo(-blW, blLen);
+    ctx.closePath(); ctx.fill();
+
+    // Canvas / sail strip (lighter centre)
+    const cw = blW * 0.55;
+    ctx.fillStyle = '#d4c090';
+    ctx.beginPath();
+    ctx.moveTo(-cw, innerGap + 2);
+    ctx.lineTo( cw, innerGap + 2);
+    ctx.lineTo( cw, blLen - 3);
+    ctx.lineTo(-cw, blLen - 3);
+    ctx.closePath(); ctx.fill();
+
+    // Outline
+    ctx.strokeStyle = '#4a2c10'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-blW, innerGap);
+    ctx.lineTo( blW, innerGap);
+    ctx.lineTo( blW, blLen);
+    ctx.lineTo(-blW, blLen);
+    ctx.closePath(); ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // Hub ring — golden circle anchoring all 4 blades
+  ctx.fillStyle = '#c8941a';
+  ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#7a5010'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = '#2a1808';
+  ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+
+  // === Pyramid cap — rests on the tapered tower top ===
   ctx.fillStyle = p.roof;
   ctx.beginPath();
-  ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.moveTo(wtSW.sx, wtSW.sy); ctx.lineTo(wtSE.sx, wtSE.sy);
   ctx.lineTo(peak.sx, peak.sy);
   ctx.closePath(); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.stroke();
-  // East face of pyramid (slightly darker)
+
   ctx.fillStyle = p.roofShadow;
   ctx.beginPath();
-  ctx.moveTo(wSE.sx, wSE.sy); ctx.lineTo(wNE.sx, wNE.sy);
+  ctx.moveTo(wtSE.sx, wtSE.sy); ctx.lineTo(wtNE.sx, wtNE.sy);
   ctx.lineTo(peak.sx, peak.sy);
   ctx.closePath(); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.stroke();
@@ -966,6 +1306,11 @@ const CLASS_COLORS = {
 };
 const CLASS_SPEED = { warrior: 1.10, wizard: 0.85, ranger: 1.25, priest: 1.00 };
 const AGE_SPEED   = { middle_age: 1.00, elder: 0.75 };
+const CLASS_HP    = { warrior: 150, ranger: 110, priest: 100, wizard: 70 };
+const RACE_HP_MOD = { dwarf: 1.15, elf: 0.9, human: 1.0 };
+function computeMaxHp(npcClass, race) {
+  return Math.round((CLASS_HP[npcClass] || 100) * (RACE_HP_MOD[race] || 1.0));
+}
 
 function makeNPC(wx, wy) {
   const f = state.filters || {};
@@ -974,6 +1319,7 @@ function makeNPC(wx, wy) {
   const gender   = pickFiltered(GENDERS, f.genders);
   const age      = pickFiltered(AGES,    f.ages);
   const baseSpeed = 1.1 + Math.random() * 0.6;
+  const maxHp = computeMaxHp(npcClass, race);
   return {
     pos: { wx, wy, wz: 0 },
     vel: { x: 0, y: 0, z: 0 },
@@ -994,6 +1340,9 @@ function makeNPC(wx, wy) {
     isZombieType: false,
     justRespawned: false,
     healUsed: false,
+    maxHp,
+    hp: maxHp,
+    hpFlashTimer: -1,
   };
 }
 
@@ -1125,6 +1474,8 @@ function handleSignatureBehavior(npc, dt) {
 }
 
 function updateNPC(npc, dt) {
+  if (npc.hpFlashTimer > 0) npc.hpFlashTimer -= dt;
+  if (npc.flashTimer > 0 && npc.state !== 'DYING') npc.flashTimer -= dt;
   switch (npc.state) {
     case 'IDLE':
       if (handleSignatureBehavior(npc, dt)) break;
@@ -1188,11 +1539,18 @@ function updateNPC(npc, dt) {
         const impactZ = Math.abs(npc.vel.z);
         const intensity = Math.min(1, npc.maxFallSpeed / 8);
 
-        if (impactZ > CONFIG.FALL_DEATH_THRESHOLD) {
-          const lethal = Math.min(1.6, impactZ / 10);
+        const peakFall = Math.max(impactZ, npc.maxFallSpeed);
+        if (peakFall > CONFIG.FALL_DEATH_THRESHOLD) {
+          const dmg = CONFIG.DMG_FALL_PER_UNIT * (peakFall - CONFIG.FALL_DEATH_THRESHOLD);
           spawnDust(npc.pos, intensity);
           playThud(intensity);
-          kill(npc, lethal);
+          applyDamage(npc, dmg, 'fall');
+          // survivors continue to the bounce / stun branches below
+          if (npc.state === 'DYING' || npc.state === 'DEAD') break;
+          npc.vel.x = 0; npc.vel.y = 0; npc.vel.z = 0;
+          npc.state = 'STUNNED';
+          npc.stunTimer = CONFIG.STUN_DURATION;
+          npc.maxFallSpeed = 0;
         } else if (impactZ > 2.5) {
           npc.vel.z *= -CONFIG.BOUNCE_FACTOR;
           npc.vel.x *= CONFIG.FRICTION;
@@ -1226,7 +1584,9 @@ function updateNPC(npc, dt) {
         npc.firePartTimer = 0;
         spawnFireParticle(npc.pos);
       }
-      if (npc.fireTimer <= 0) { kill(npc); break; }
+      // HP-driven burn: applyDamage handles wizard fire resist (×0.5).
+      applyDamage(npc, CONFIG.DMG_FIRE_TICK_PER_SEC * dt, 'fire');
+      if (npc.state !== 'ON_FIRE') break;
 
       // flee: pick new flee target every ~1.5s or when reached
       npc.fleeTimer = (npc.fleeTimer || 0) - dt;
@@ -1279,7 +1639,7 @@ function updateNPC(npc, dt) {
         const dx = nearestAlive.pos.wx - npc.pos.wx;
         const dy = nearestAlive.pos.wy - npc.pos.wy;
         if (nearestD < 0.35) {
-          kill(nearestAlive, 0.5);
+          applyDamage(nearestAlive, CONFIG.DMG_ZOMBIE_TOUCH, 'zombie');
         } else {
           npc.pos.wx += (dx / nearestD) * npc.speed * dt;
           npc.pos.wy += (dy / nearestD) * npc.speed * dt;
@@ -1859,7 +2219,7 @@ function drawNPCZombieBody(ctx, m) {
 }
 
 function drawNPCCharring(ctx, npc) {
-  const char = Math.max(0, 1 - npc.fireTimer / CONFIG.FIRE_BURN_DURATION);
+  const char = Math.min(1, Math.max(0, 1 - npc.fireTimer / CONFIG.FIRE_BURN_DURATION));
   ctx.fillStyle = `rgba(10, 5, 0, ${char * 0.78})`;
   ctx.fillRect(-5, -17, 10, 26);
 }
@@ -1901,6 +2261,7 @@ function drawNPC(npc) {
     if (npc.state === 'ON_FIRE') drawNPCCharring(ctx, npc);
     drawNPCZombieEyes(ctx);
     ctx.restore();
+    drawNPCHpBar(ctx, npc, screen, m);
     return;
   }
 
@@ -1921,6 +2282,42 @@ function drawNPC(npc) {
   if (npc.state === 'ON_FIRE') drawNPCCharring(ctx, npc);
 
   ctx.restore();
+
+  drawNPCHpBar(ctx, npc, screen, m);
+}
+
+// HP bar above the NPC's head — only-when-damaged, 3 s fade.
+// Drawn in screen space after the body's rotation/scale is restored, so the
+// bar stays axis-aligned. Caller (drawNPC) is invoked from the depth-sorted
+// pass — occluded NPCs never reach drawNPC, so their HP bar is occluded too.
+const HP_BAR_STATES = new Set(['IDLE', 'WANDER', 'STUNNED', 'ON_FIRE', 'ZOMBIE']);
+function drawNPCHpBar(ctx, npc, screen, m) {
+  if (!HP_BAR_STATES.has(npc.state)) return;
+  if (npc.hpFlashTimer <= 0) return;
+  if (npc.hp >= npc.maxHp) return;
+
+  const t = npc.hpFlashTimer;
+  const alpha = t >= 1 ? 1 : t; // full alpha for first 2s, ramp to 0 over the last 1s
+  const ratio = Math.max(0, Math.min(1, npc.hp / npc.maxHp));
+  const W = 18, H = 3;
+  const x = Math.round(screen.sx - W / 2);
+  const y = Math.round(screen.sy - m.bob - 28);
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  // background + outline
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(x - 1, y - 1, W + 2, H + 2);
+  ctx.fillStyle = '#3a1212';
+  ctx.fillRect(x, y, W, H);
+  // fill — red → yellow → green
+  let fill;
+  if      (ratio > 0.6) fill = '#4cd14c';
+  else if (ratio > 0.3) fill = '#e6c63a';
+  else                  fill = '#d83a3a';
+  ctx.fillStyle = fill;
+  ctx.fillRect(x, y, Math.round(W * ratio), H);
+  ctx.restore();
 }
 
 // ---------- Hand ----------
@@ -1935,7 +2332,10 @@ function isAlive(npc) {
 }
 
 function buildingOccluding(npc) {
-  if (npc.state === 'DEAD' || npc.pos.wz > 0.5) return null;
+  // No silhouette for ground-dead states — the hard-coded standing-pose
+  // overlay would otherwise show on corpses / dying bodies behind buildings.
+  if (npc.state === 'DEAD' || npc.state === 'DYING' || npc.state === 'CORPSE' ||
+      npc.pos.wz > 0.5) return null;
   for (const b of state.buildings) {
     // case A: NPC standing inside the footprint (under the roof)
     if (npc.pos.wx >= b.wx && npc.pos.wx <= b.wx + b.w &&
@@ -1984,6 +2384,10 @@ function drawNPCOccludedSilhouette(npc) {
 }
 
 function pickNPCAt(sx, sy) {
+  // Two-pass: first try the normal tight hit box; if nothing matches, fall
+  // back to an enlarged box that covers NPCs visible only as occluded
+  // silhouettes (which are smaller and easier to miss with the tight box).
+  let fallback = null;
   for (let i = state.npcs.length - 1; i >= 0; i--) {
     const npc = state.npcs[i];
     if (NON_PICKABLE.has(npc.state)) continue;
@@ -1991,8 +2395,12 @@ function pickNPCAt(sx, sy) {
     if (sx >= p.sx - 8 && sx <= p.sx + 8 && sy >= p.sy - 18 && sy <= p.sy + 8) {
       return npc;
     }
+    if (!fallback && buildingOccluding(npc) &&
+        sx >= p.sx - 12 && sx <= p.sx + 12 && sy >= p.sy - 22 && sy <= p.sy + 10) {
+      fallback = npc;
+    }
   }
-  return null;
+  return fallback;
 }
 
 function pushHistory(x, y) {
@@ -2152,6 +2560,7 @@ function castFireball(npcTarget, targetWorld) {
     kind: 'fireball',
     start,
     target,
+    directTarget: npcTarget || null,
     pos: { ...start },
     timer: 0,
     duration,
@@ -2201,9 +2610,10 @@ function castLightning(npcTarget, targetWorld) {
     lifetime: CONFIG.LIGHTNING_BOLT_LIFETIME,
   });
 
-  for (const n of chain) {
-    spawnSparks(n.pos);
-    kill(n);
+  for (let i = 0; i < chain.length; i++) {
+    spawnSparks(chain[i].pos);
+    const dmg = i === 0 ? CONFIG.DMG_LIGHTNING_BOLT : CONFIG.DMG_LIGHTNING_CHAIN_HOP;
+    applyDamage(chain[i], dmg, 'lightning');
   }
   triggerScreenShake(3, 0.25);
 }
@@ -2264,6 +2674,9 @@ function castNecromancer(targetWorld) {
     t.vel = { x: 0, y: 0, z: 0 };
     t.speed = 0.65 + Math.random() * 0.15;
     t.walkPhase = 0;
+    t.hp = t.maxHp;
+    t.hpFlashTimer = -1;
+    t._wasCritical = null;
     spawnSmokeBurst({ wx: t.pos.wx, wy: t.pos.wy, wz: 0.2 }, 1.2);
     spawnSoulParticles(t.pos);
     state.necroCasts.push({ wx: t.pos.wx, wy: t.pos.wy, timer: 0, lifetime: 1.8 });
@@ -2285,6 +2698,27 @@ function spawnSoulParticles(worldPos) {
       lifetime: 1.4 + Math.random() * 1.0,
       timer: 0,
       size: 2.5 + Math.random() * 2.5,
+    });
+  }
+}
+
+function updateChimneySmoke(dt) {
+  for (const b of state.buildings) {
+    if (b.chimneyTimer === undefined) continue;
+    b.chimneyTimer -= dt;
+    if (b.chimneyTimer > 0) continue;
+    b.chimneyTimer = 1.8 + Math.random() * 1.2;
+    state.particles.push({
+      kind: 'smoke',
+      pos: { wx: b.chimneyWx + (Math.random() - 0.5) * 0.06,
+             wy: b.chimneyWy + (Math.random() - 0.5) * 0.06,
+             wz: b.chimneyWz },
+      vel: { x: (Math.random() - 0.5) * 0.04,
+             y: (Math.random() - 0.5) * 0.04,
+             z: 0.18 + Math.random() * 0.14 },
+      lifetime: 3.5 + Math.random() * 1.5,
+      timer: 0,
+      size: 5 + Math.random() * 4,
     });
   }
 }
@@ -2394,15 +2828,35 @@ function makeBoltSegments(points) {
 function ignite(npc) {
   if (!isAlive(npc) || npc.state === 'ON_FIRE') return;
   npc.state = 'ON_FIRE';
-  const resist = npc.npcClass === 'wizard' ? 1.5 : 1.0;
-  npc.fireTimer = CONFIG.FIRE_BURN_DURATION * resist;
+  // fireTimer is kept only for visual charring; HP drives actual death now.
+  npc.fireTimer = CONFIG.FIRE_BURN_DURATION;
   npc.firePartTimer = 0;
   npc.fleeTimer = 0;
   npc.vel = { x: 0, y: 0, z: 0 };
   playBurnScream(npc);
 }
 
-function kill(npc, intensity = 1.0) {
+function applyDamage(npc, amount, source) {
+  if (!npc || npc.state === 'DEAD' || npc.state === 'DYING' || npc.state === 'CORPSE') return;
+  if (amount <= 0) return;
+  let dmg = amount;
+  // Wizard fire resist: halve fire-tick damage.
+  if (source === 'fire' && npc.npcClass === 'wizard') dmg *= 0.5;
+  const isCritical = Math.random() < CONFIG.CRITICAL_CHANCE;
+  if (isCritical) dmg *= CONFIG.CRIT_MULT;
+  npc.hp -= dmg;
+  npc.hpFlashTimer = CONFIG.HP_BAR_DURATION;
+  // Skip the white hit-flash for continuous fire ticks — otherwise the
+  // per-frame call leaves the NPC permanently white and looks frozen.
+  if (source !== 'fire') npc.flashTimer = CONFIG.DEATH_FLASH_DURATION;
+  if (npc.hp <= 0) {
+    npc.hp = 0;
+    const intensity = isCritical ? 1.6 : 1.0;
+    kill(npc, intensity, isCritical);
+  }
+}
+
+function kill(npc, intensity = 1.0, wasCritical = null) {
   if (npc.state === 'DEAD' || npc.state === 'DYING' || npc.state === 'CORPSE') return;
   // play "oaff" only when dying from non-fire causes (fire victims already screamed at ignite)
   if (npc.state !== 'ON_FIRE') playDeathGrunt(npc);
@@ -2410,11 +2864,17 @@ function kill(npc, intensity = 1.0) {
   npc.flashTimer = CONFIG.DEATH_FLASH_DURATION;
   npc.deathIntensity = intensity;
   npc.vel = { x: 0, y: 0, z: 0 };
+  npc._wasCritical = wasCritical;
+  npc.hp = 0;
 }
 
 function explodeBody(npc) {
   const i = npc.deathIntensity || 1.0;
-  const isCritical = Math.random() < CONFIG.CRITICAL_CHANCE;
+  // Use the crit decision from applyDamage if it threaded one through;
+  // legacy paths (e.g. void / direct kill() calls) fall back to a random roll.
+  const isCritical = (npc._wasCritical === true || npc._wasCritical === false)
+    ? npc._wasCritical
+    : Math.random() < CONFIG.CRITICAL_CHANCE;
 
   if (isCritical) {
     spawnBloodSplatter(npc.pos, i * 1.6);
@@ -2476,20 +2936,30 @@ function updateProjectiles(dt) {
     }
 
     if (t >= 1) {
-      if (p.kind === 'fireball') explodeFireball(p.target.wx, p.target.wy);
+      if (p.kind === 'fireball') explodeFireball(p.target.wx, p.target.wy, p.directTarget);
       else if (p.kind === 'meteor') explodeMeteor(p.target.wx, p.target.wy);
       state.projectiles.splice(i, 1);
     }
   }
 }
 
-function explodeFireball(wx, wy) {
+function explodeFireball(wx, wy, directTarget) {
   spawnFireBurst({ wx, wy, wz: 0.1 }, 30);
   spawnSmokeBurst({ wx, wy, wz: 0.3 }, 1.2);
+  const DIRECT = CONFIG.DMG_FIREBALL_DIRECT;
+  const EDGE   = CONFIG.DMG_FIREBALL_AOE_EDGE;
   for (const npc of state.npcs) {
     if (!isAlive(npc)) continue;
     const d = Math.hypot(npc.pos.wx - wx, npc.pos.wy - wy);
-    if (d < CONFIG.FIREBALL_AOE) ignite(npc);
+    if (npc === directTarget) {
+      applyDamage(npc, DIRECT, 'fireball');
+      ignite(npc);
+    } else if (d < CONFIG.FIREBALL_AOE) {
+      const t = d / CONFIG.FIREBALL_AOE;
+      const dmg = Math.max(EDGE, DIRECT + (EDGE - DIRECT) * t);
+      applyDamage(npc, dmg, 'fireball');
+      ignite(npc);
+    }
   }
   triggerScreenShake(6, 0.35);
   playExplosionSound();
@@ -2515,12 +2985,15 @@ function explodeMeteor(wx, wy) {
     });
   }
 
+  const CTR = CONFIG.DMG_METEOR_CENTER;
+  const EDG = CONFIG.DMG_METEOR_EDGE;
   for (const npc of state.npcs) {
     if (!isAlive(npc)) continue;
     const d = Math.hypot(npc.pos.wx - wx, npc.pos.wy - wy);
     if (d < CONFIG.METEOR_AOE) {
-      // mass kill — high intensity boosts critical odds visually
-      kill(npc, 1.4);
+      const t = d / CONFIG.METEOR_AOE;
+      const dmg = Math.max(EDG, CTR + (EDG - CTR) * t);
+      applyDamage(npc, dmg, 'meteor');
     }
   }
 
@@ -3706,6 +4179,8 @@ function loop(now) {
   updateShake(dt);
   updateRespawn(dt);
   updateNecroCasts(dt);
+  state.windmillAngle += dt * 1.4;
+  updateChimneySmoke(dt);
 
   state.npcs.sort((a, b) => (a.pos.wx + a.pos.wy) - (b.pos.wx + b.pos.wy));
 
