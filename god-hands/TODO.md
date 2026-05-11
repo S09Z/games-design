@@ -23,8 +23,14 @@ Living document for cross-session / cross-machine continuity. Update after each 
 | Phase 5.4a — Texture first pass (4 tree variants, X-braces, chimney) | ✅ Done | PR #4 |
 | Phase 5.4b — Low-poly polygon trees + 4 building types (cottage/tavern/windmill/farm) | ✅ Done | PR #6 |
 | Phase 5.1 — HP + attack damage system | ✅ Done | feature/phase-5-1 |
+| Phase 5.3 — Spell L2 long-press | ✅ Done | feature/phase-5-3 |
+| Phase 5.2 — Zombie grab-and-bite | 🔲 Planned | unblocked by 5.1 |
+| Phase 6.1 — Performance | 🔲 Planned | particle pool, dirty canvas, NPC throttle |
+| Phase 6.2 — Quality of Life | 🔲 Planned | combo, slow-mo, respawn wave, spell wheel |
+| Phase 6.3 — Game Design / Feel | 🔲 Planned | chaos mode, chromatic aberration |
+| Phase 7 — Achievements + Easter eggs | 🔲 Planned | moved from 5.5 |
 
-**Next up:** Phase 5.2 (Zombie grab-and-bite). 5.1 unblocks bite-as-DPS.
+**Next up:** Phase 5.2 (Zombie grab-and-bite), then Phase 6 experiments.
 
 Current code: ~3820 lines in `god-hands/game.js`, target 60fps, Canvas 2D + Web Audio synth, no external assets.
 
@@ -224,7 +230,83 @@ Visual feedback during hold: a ring around the cursor fills clockwise; flashes w
 
 ---
 
-### 5.5 Achievements + easter eggs
+---
+
+## Phase 6 — Experimental features
+
+### 6.1 Performance
+
+**Goal**: maintain 60fps when NPC count is high (50+) and many spells are active simultaneously.
+
+#### 6.1.1 Particle cap + FIFO trim
+- Add `CONFIG.MAX_PARTICLES = 400`.
+- Each frame after push: `if (state.particles.length > MAX_PARTICLES) state.particles.splice(0, state.particles.length - MAX_PARTICLES)`.
+- Same pattern for decals (`MAX_DECALS = 200`, already capped but switch to FIFO not random eviction).
+
+#### 6.1.2 Offscreen background blit
+- Render ground tiles + path + static world decorations to an offscreen `OffscreenCanvas` on first frame (and on resize).
+- Each frame: `ctx.drawImage(bgCanvas, 0, 0)` then draw dynamic layer on top.
+- Cuts per-frame `fillRect` calls for all static tiles.
+
+#### 6.1.3 NPC update throttle for off-screen NPCs
+- In `updateNPC`: if NPC world position is outside viewport + 2-tile margin, run update every 3rd frame only.
+- Keep a counter on each NPC: `npc._skipFrame = ((npc._skipFrame||0) + 1) % 3`.
+- Never throttle NPCs in AIRBORNE, ON_FIRE, ZOMBIE, or BEING_BITTEN states.
+
+---
+
+### 6.2 Quality of Life
+
+#### 6.2.1 Combo counter
+- Track `state.combo { count, timer }`. Reset timer to 2.0s on each kill; reset count to 0 on timeout.
+- At count ≥ 3 display a pop-up label center-screen: `×3 COMBO!`, `×5 RAMPAGE!`, `×10 MASSACRE!` (custom thresholds).
+- Label fades out over 1 s. Font 28px bold, color scales with count (yellow → orange → red).
+
+#### 6.2.2 Slow-mo critical kill
+- When a crit kill fires, set `state.slowMo = 0.25` for 0.35 s then ease back to 1.0 over 0.15 s.
+- Multiply game `dt` by `state.slowMo` in the main loop.
+- Audio: pitch-shift music during slow-mo by setting `state.music.bgNode.playbackRate.value` to `state.slowMo` (already accessible).
+
+#### 6.2.3 Respawn wave (R key)
+- Press `R` → immediately spawn 5 NPCs from random buildings (reuse existing spawn logic).
+- Debounce: 3 s cooldown between presses.
+- HUD hint update: add "R — spawn wave".
+
+#### 6.2.4 Spell radial menu (right-click)
+- Right-click anywhere on canvas → open a 6-slot radial ring centered at cursor.
+- Each slice shows spell icon + key hint. Click slice selects spell.
+- Dismiss on right-click outside, Escape, or after selecting.
+- Visual: dark semi-transparent disk, slices separated by thin lines, active slice highlights on hover.
+
+**Open questions**:
+- Should radial menu replace or supplement keyboard shortcuts? → supplement (keep 1–6).
+- Right-click on NPC → context actions (kill, inspect)? → out of scope for this round.
+
+---
+
+### 6.3 Game Design / Feel
+
+#### 6.3.1 Chaos mode
+- Button in HUD (or key `C`) → spawns 10 zombies instantly at random positions near map center.
+- Zombies get ×1.5 speed for 10 s ("frenzy" tint: brighter green).
+- HUD flashes red border for 1 s on activation.
+- Useful for stress-relief burst play; no cooldown (intentionally spammable).
+
+#### 6.3.2 Chromatic aberration on impact
+- When `state.screenShake.mag > 5`, render the scene three times with tiny RGB channel offsets using `ctx.globalCompositeOperation`.
+- Simpler approach (no triple-draw): after drawing, draw a 2px red-shifted + 2px blue-shifted copy of just the top canvas strip using `ctx.drawImage(canvas, ±2, 0)` with `'screen'` blend and low alpha (~0.35).
+- Duration tied to shake lifetime; fades with shake.
+
+**Open questions**:
+- Triple-draw might drop below 60fps on weak hardware — benchmark first; fall back to the strip-copy approach if needed.
+
+---
+
+## Phase 7 — Achievements + Easter eggs
+
+*(Moved from Phase 5.5)*
+
+### 7.5 Achievements + easter eggs
 
 **Achievements** (persistent via `localStorage`):
 

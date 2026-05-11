@@ -150,7 +150,7 @@ html, body {
 }
 
 #info-toggle,
-#mute-toggle {
+#sound-toggle {
   position: fixed;
   top: 12px;
   width: 32px;
@@ -176,17 +176,61 @@ html, body {
   font-size: 18px;
 }
 
-#mute-toggle {
+#sound-toggle {
   right: 52px;
   font-size: 16px;
 }
 
-#mute-toggle.muted { opacity: 0.55; }
-
 #info-toggle:hover,
-#mute-toggle:hover {
+#sound-toggle:hover {
   background: rgba(255, 255, 255, 0.18);
   border-color: rgba(255, 255, 255, 0.45);
+}
+
+#sound-panel {
+  position: fixed;
+  top: 52px;
+  right: 12px;
+  width: 160px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.85);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #ddd;
+  z-index: 10;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+#sound-panel[hidden] { display: none; }
+
+.sound-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 2px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sound-row:hover { background: rgba(255, 255, 255, 0.08); }
+
+.sound-label { opacity: 0.85; }
+
+.sound-state {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(80, 200, 100, 0.25);
+  color: #7ef090;
+  letter-spacing: 0.5px;
+}
+
+.sound-row.muted .sound-state {
+  background: rgba(255, 255, 255, 0.06);
+  color: #666;
 }
 
 #info-panel {
@@ -308,4 +352,20 @@ html, body {
   font-size: 10px;
   opacity: 0.6;
   font-weight: bold;
+}
+
+.spell-cd {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.95), 0 1px 2px rgba(0, 0, 0, 0.9);
+  background: rgba(10, 6, 4, 0.62);
+  border-radius: 12px;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
 }
