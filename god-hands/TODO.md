@@ -22,8 +22,9 @@ Living document for cross-session / cross-machine continuity. Update after each 
 | Phase 4 Round F — Hamburger settings + appearance filters + minimap + map pan | ✅ Done | PR #4 |
 | Phase 5.4a — Texture first pass (4 tree variants, X-braces, chimney) | ✅ Done | PR #4 |
 | Phase 5.4b — Low-poly polygon trees + 4 building types (cottage/tavern/windmill/farm) | ✅ Done | PR #6 |
+| Phase 5.1 — HP + attack damage system | ✅ Done | feature/phase-5-1 |
 
-**Next up:** Phase 5.1 (HP + attack damage system). See design sketch below — 3 open questions to lock before coding.
+**Next up:** Phase 5.2 (Zombie grab-and-bite). 5.1 unblocks bite-as-DPS.
 
 Current code: ~3820 lines in `god-hands/game.js`, target 60fps, Canvas 2D + Web Audio synth, no external assets.
 
@@ -96,7 +97,23 @@ Current code: ~3820 lines in `god-hands/game.js`, target 60fps, Canvas 2D + Web 
 
 These items were scoped by the user for future sessions. Each section is intentionally a *design sketch*, not a spec — open questions noted so the next session can confirm before coding.
 
-### 5.1 HP + attack damage system (ระบบเลือดและพลังโจมตี)
+### 5.1 HP + attack damage system (ระบบเลือดและพลังโจมตี) — ✅ DONE
+
+**Shipped numbers** (CONFIG.*): `DMG_FIREBALL_DIRECT=100`, `DMG_FIREBALL_AOE_EDGE=35`, `DMG_LIGHTNING_BOLT=70`, `DMG_LIGHTNING_CHAIN_HOP=30`, `DMG_METEOR_CENTER=200`, `DMG_METEOR_EDGE=60`, `DMG_FIRE_TICK_PER_SEC=25`, `DMG_ZOMBIE_TOUCH=9999` (instant-kill kept for this round; 5.2 reworks), `DMG_FALL_PER_UNIT=10`, `CRIT_MULT=2.0`, `HP_BAR_DURATION=3.0`s.
+
+**HP scaling**: class base × race mod. warrior 150 / ranger 110 / priest 100 / wizard 70; dwarf ×1.15 / elf ×0.9 / human ×1.0.
+
+**Wizard fire-resist** moved from "slower ignite" (old: `FIRE_BURN_DURATION ×1.5`) to "half fire-tick damage" — handled inside `applyDamage()` when source === 'fire'.
+
+**HP bar**: only-when-damaged. 3s fade, 18×3 px above head, red/yellow/green by ratio. Drawn inside `drawNPC` after `ctx.restore()`, so building occlusion stacks correctly.
+
+**Critical** (20%) is now a ×2 damage multiplier; dismemberment particles fire only when the killing blow was a crit (threaded via `applyDamage` → `kill(npc, intensity, isCritical)`). Legacy direct `kill()` callers (warrior charge, void fall) still random-roll inside `explodeBody`.
+
+**Necromancer** restores `hp = maxHp` on revive so reanimated zombies aren't one-shot.
+
+---
+
+#### Original design sketch
 
 **Today**: NPCs are binary alive/dead. Every offensive contact instant-kills.
 

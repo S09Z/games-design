@@ -21,9 +21,10 @@ Cross-session facts about this project and the user's preferences. Read at the s
 - **`b.kind` mechanism** chosen over per-kind subclasses — building kind drives palette / wallH / roofPeak / decorations inside `drawBuilding()`.
 - **Defaults**: music auto-plays after first interaction (browser policy), sound toggle starts at 🔊. Mute icon offsets `right: 52px` so it sits just left of the info `i` button.
 - **NPC visual is layered, not bundled** — `computeNPCAppearance()` returns a model; part drawers (`drawNPCQuiver`, `drawNPCHairBack`, `drawNPCLowerBody`, `drawNPCTorso`, `drawNPCBeard`, etc.) consume it. Adding a costume piece means a new helper + a call site in the `drawNPC()` orchestrator, not editing one monolithic function.
-- **Critical-hit dismemberment** stays at 20 % (`CONFIG.CRITICAL_CHANCE`). Don't change without asking.
+- **Critical-hit dismemberment** stays at 20 % (`CONFIG.CRITICAL_CHANCE`). Since Phase 5.1 the 20 % roll is consumed inside `applyDamage()` and threaded into `kill(npc, intensity, isCritical)`; dismemberment fires only when the killing blow was a crit. Legacy direct `kill()` callers (warrior charge, void fall) still random-roll inside `explodeBody`.
 - **Spell 1 (Hand) is overloaded**: NPC-under-cursor → grab; empty ground → RTS pan. Don't break either path when extending.
-- **Achievements / level-2 spells / HP system** are scoped in TODO.md but **not yet implemented**. Refer to the Phase 5 design sketches before starting any of them.
+- **HP system (5.1) shipped** — every NPC has `hp` / `maxHp` (class base × race mod), all spells deal damage via `applyDamage(npc, amount, source)`. Wizard fire resist = ×0.5 fire-tick damage (was: slower ignite). Zombie touch is intentionally still instant-kill — 5.2 will replace with bite DPS.
+- **Achievements / level-2 spells** are scoped in TODO.md but **not yet implemented**.
 
 ## Worktree gotcha (do not forget)
 
@@ -47,7 +48,8 @@ Direct-open test path during development (no git needed):
 - PR #2 — Round B (house respawn, necromancer, zombie state).
 - PR #3 — Round B+ (necro AOE, occlusion, wander buffer) + Round C1 (NPC visual variety).
 - PR #4 — Round C2 (per-class behavior) + NPC visual rework (weapons / headgear / dress / ears / beard) + audio (tavern music + mute + vocal SFX) + UI (hamburger settings + appearance filters + minimap + map pan) + 5.4a (4 tree variants + X-braces + chimney).
-- **Open**: Phase 5.4b — low-poly polygon trees + 4 building kinds. Mega Prompt for the handoff lives at the bottom of `TODO.md`.
+- PR #6 — Phase 5.4b: low-poly polygon trees + 4 building kinds (cottage / tavern / windmill / farm dispatcher).
+- **Open**: Phase 5.1 — HP + attack damage system on `feature/phase-5-1`. Mega Prompt for the handoff lives at the bottom of `TODO.md`.
 
 ## Reference images received
 

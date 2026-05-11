@@ -66,7 +66,33 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ---
 
-## 5. Project-specific (Hand of God)
+## 5. Codebase Search (SocratiCode)
+
+This project is indexed with SocratiCode. Always use its MCP tools to explore the codebase before reading any files directly.
+
+### Workflow
+1. **Start with `codebase_search`** — hybrid semantic + keyword search in a single call.
+   - Broad queries for orientation: "how is authentication handled", "NPC state machine", "death animation".
+   - Precise queries for symbol lookup: exact function names, constants, type names.
+   - Prefer search results to infer which files to read — do not speculatively open files.
+2. **Follow the graph before following imports** — use `codebase_graph_query` to see what a file imports and what depends on it before reading its contents.
+3. **Read files only after narrowing via search** — once results point to 1–3 files, read only the relevant sections.
+4. **Check status if search returns nothing** — run `codebase_status` to confirm indexing is complete; re-index with `codebase_index` if needed.
+
+### Key tools
+| Goal | Tool |
+|------|------|
+| Find a function, constant, or pattern | `codebase_search` |
+| See what a file imports / what depends on it | `codebase_graph_query` |
+| Architecture overview | `codebase_graph_stats` |
+| Check index freshness | `codebase_status` |
+| Re-index after large changes | `codebase_index` or `codebase_update` |
+
+Project path for all calls: `/Users/ittichaib/Documents/GitHub/games-design/god-hands`
+
+---
+
+## 6. Project-specific (Hand of God)
 
 The rules above are universal. The ones below apply only to this codebase. Read them in addition to the universal rules, not instead of them.
 
