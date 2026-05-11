@@ -29,7 +29,7 @@ Cross-session facts about this project and the user's preferences. Read at the s
 ## Worktree gotcha (do not forget)
 
 The active worktree path is:
-`/Users/ittichaib/Documents/GitHub/games-design/god-hands/.claude/worktrees/ecstatic-lalande-812b44/god-hands/`
+`/Users/ittichaib/Documents/GitHub/games-design/god-hands/.claude/worktrees/cool-joliot-a6dc1b/god-hands/`
 
 The main checkout is:
 `/Users/ittichaib/Documents/GitHub/games-design/god-hands/` (top of repo).
@@ -40,7 +40,7 @@ These have **different layouts** (top-level files vs. nested `god-hands/` subdir
 3. Offer to commit / push uncommitted worktree changes for them.
 
 Direct-open test path during development (no git needed):
-`file:///Users/ittichaib/Documents/GitHub/games-design/god-hands/.claude/worktrees/ecstatic-lalande-812b44/god-hands/index.html`
+`file:///Users/ittichaib/Documents/GitHub/games-design/god-hands/.claude/worktrees/cool-joliot-a6dc1b/god-hands/index.html`
 
 ## Shipped phases (canonical reference: TODO.md)
 
@@ -49,7 +49,7 @@ Direct-open test path during development (no git needed):
 - PR #3 — Round B+ (necro AOE, occlusion, wander buffer) + Round C1 (NPC visual variety).
 - PR #4 — Round C2 (per-class behavior) + NPC visual rework (weapons / headgear / dress / ears / beard) + audio (tavern music + mute + vocal SFX) + UI (hamburger settings + appearance filters + minimap + map pan) + 5.4a (4 tree variants + X-braces + chimney).
 - PR #6 — Phase 5.4b: low-poly polygon trees + 4 building kinds (cottage / tavern / windmill / farm dispatcher).
-- **Open**: Phase 5.1 — HP + attack damage system on `feature/phase-5-1`. Mega Prompt for the handoff lives at the bottom of `TODO.md`.
+- **feature/phase-5-1 (open PR)** — Phase 5.1 (HP system) + Phase 5.4c (spinning windmill blades, chimney smoke, tavern mug/windows/chimney, cottage east windows). Mega Prompt for Phase 5.2 lives at the bottom of `TODO.md`.
 
 ## Reference images received
 

@@ -69,10 +69,15 @@ const CONFIG = {
   DMG_METEOR_CENTER:       200,
   DMG_METEOR_EDGE:         60,
   DMG_FIRE_TICK_PER_SEC:   25,
-  DMG_ZOMBIE_TOUCH:        9999,
+  DMG_ZOMBIE_TOUCH:        9999, // kept as tombstone; no longer used after 5.2
   DMG_FALL_PER_UNIT:       10,
   CRIT_MULT:               2.0,
   HP_BAR_DURATION:         3.0,
+  // Phase 5.2 — bite
+  BITE_DPS:                15,
+  BITE_ESCAPE_CHANCE:      0.05,
+  BITE_BLOOD_INTERVAL:     0.30,
+  BITE_SCREAM_COOLDOWN:    1.5,
 };
 
 const SPELL_COLORS = {
@@ -114,6 +119,7 @@ const state = {
   craterDecals: [],
   necroCasts: [],
   windmillAngle: 0,
+  npcIdCounter: 0,
   shake: { intensity: 0, timer: 0, duration: CONFIG.SHAKE_DECAY },
   targetCount: 15,
   totalDeaths: 0,
@@ -1321,6 +1327,7 @@ function makeNPC(wx, wy) {
   const baseSpeed = 1.1 + Math.random() * 0.6;
   const maxHp = computeMaxHp(npcClass, race);
   return {
+    id: ++state.npcIdCounter,
     pos: { wx, wy, wz: 0 },
     vel: { x: 0, y: 0, z: 0 },
     state: 'IDLE',
@@ -1343,6 +1350,11 @@ function makeNPC(wx, wy) {
     maxHp,
     hp: maxHp,
     hpFlashTimer: -1,
+    biteTargetId:  null,
+    biterId:       null,
+    biteBloodTimer: 0,
+    biteScreamTimer: 0,
+    biteShakeTimer: 0,
   };
 }
 
@@ -1392,7 +1404,7 @@ function respawnOne() {
 function updateRespawn(dt) {
   let alive = 0;
   for (const n of state.npcs) {
-    if (n.state !== 'DEAD' && n.state !== 'CORPSE' && n.state !== 'ZOMBIE') alive++;
+    if (n.state !== 'DEAD' && n.state !== 'CORPSE' && n.state !== 'ZOMBIE' && n.state !== 'ZOMBIE_BITING') alive++;
   }
   if (alive < state.targetCount) {
     state.respawnTimer += dt;
@@ -1437,11 +1449,27 @@ function findNearestState(npc, targetState, maxDist) {
 
 function handleSignatureBehavior(npc, dt) {
   if (npc.npcClass === 'warrior') {
-    const z = findNearestState(npc, 'ZOMBIE', 3.0);
+    // Target both free-roaming and currently-biting zombies (prioritise biters — victim needs saving)
+    let z = findNearestState(npc, 'ZOMBIE_BITING', 3.0) || findNearestState(npc, 'ZOMBIE', 3.0);
     if (z) {
       const dx = z.pos.wx - npc.pos.wx, dy = z.pos.wy - npc.pos.wy;
       const d = Math.hypot(dx, dy);
-      if (d < 0.35) { kill(z); return true; }
+      if (d < 0.35) {
+        // Release victim before killing zombie (kill() only sets DYING, BEING_BITTEN handler
+        // will catch it next frame, but explicit cleanup is cleaner)
+        if (z.biteTargetId != null) {
+          const victim = state.npcs.find(n => n.id === z.biteTargetId);
+          if (victim && victim.state === 'BEING_BITTEN') {
+            victim.state = 'STUNNED';
+            victim.stunTimer = 0.8;
+            victim.biterId = null;
+            victim.biteShakeTimer = 0;
+          }
+          z.biteTargetId = null;
+        }
+        kill(z);
+        return true;
+      }
       npc.pos.wx += (dx / d) * npc.speed * 1.4 * dt;
       npc.pos.wy += (dy / d) * npc.speed * 1.4 * dt;
       npc.walkPhase += dt * 12;
@@ -1572,7 +1600,8 @@ function updateNPC(npc, dt) {
     case 'STUNNED':
       npc.stunTimer -= dt;
       if (npc.stunTimer <= 0) {
-        npc.state = 'IDLE';
+        npc.state = npc.isZombieType ? 'ZOMBIE' : 'IDLE';
+        npc.biteTargetId = null;
         npc.timer = 0.5;
       }
       break;
@@ -1630,22 +1659,99 @@ function updateNPC(npc, dt) {
     case 'ZOMBIE': {
       let nearestAlive = null, nearestD = Infinity;
       for (const n of state.npcs) {
-        if (n === npc || n.state === 'ZOMBIE' || n.state === 'DEAD' ||
-            n.state === 'DYING' || n.state === 'CORPSE') continue;
+        if (n === npc || n.state === 'ZOMBIE' || n.state === 'ZOMBIE_BITING' ||
+            n.state === 'DEAD' || n.state === 'DYING' || n.state === 'CORPSE') continue;
+        if (n.state === 'BEING_BITTEN') continue; // already claimed
         const d = Math.hypot(n.pos.wx - npc.pos.wx, n.pos.wy - npc.pos.wy);
         if (d < nearestD) { nearestD = d; nearestAlive = n; }
       }
       if (nearestAlive) {
         const dx = nearestAlive.pos.wx - npc.pos.wx;
         const dy = nearestAlive.pos.wy - npc.pos.wy;
-        if (nearestD < 0.35) {
-          applyDamage(nearestAlive, CONFIG.DMG_ZOMBIE_TOUCH, 'zombie');
+        if (nearestD < 0.38) {
+          // Grab — transition both NPC and victim into bite states
+          npc.state = 'ZOMBIE_BITING';
+          npc.biteTargetId = nearestAlive.id;
+          npc.biteBloodTimer = 0;
+          npc.biteScreamTimer = 0;
+          nearestAlive.state = 'BEING_BITTEN';
+          nearestAlive.biterId = npc.id;
+          nearestAlive.biteShakeTimer = 0;
         } else {
           npc.pos.wx += (dx / nearestD) * npc.speed * dt;
           npc.pos.wy += (dy / nearestD) * npc.speed * dt;
           npc.walkPhase += dt * 4;
         }
       }
+      break;
+    }
+
+    case 'ZOMBIE_BITING': {
+      const victim = state.npcs.find(n => n.id === npc.biteTargetId);
+      // Victim gone / already dead — release and resume chase
+      if (!victim || victim.state !== 'BEING_BITTEN') {
+        npc.state = 'ZOMBIE';
+        npc.biteTargetId = null;
+        break;
+      }
+      // Stand zombie directly to screen-left of victim (offset -0.28 wx, +0.28 wy → pure left in iso)
+      npc.pos.wx = victim.pos.wx - 0.28;
+      npc.pos.wy = victim.pos.wy + 0.28;
+      npc.pos.wz = victim.pos.wz;
+      npc.biteShakeTimer += dt;  // drives zombie arm animation
+      // Bite DPS (no crit roll on tick — keep DPS predictable)
+      victim.hp -= CONFIG.BITE_DPS * dt;
+      victim.hpFlashTimer = CONFIG.HP_BAR_DURATION;
+      victim.biteShakeTimer += dt;
+      // Blood drops
+      npc.biteBloodTimer -= dt;
+      if (npc.biteBloodTimer <= 0) {
+        npc.biteBloodTimer = CONFIG.BITE_BLOOD_INTERVAL;
+        for (let bi = 0; bi < 4; bi++) {
+          state.particles.push({
+            kind: 'blood',
+            pos: { wx: victim.pos.wx, wy: victim.pos.wy, wz: 0.55 + Math.random() * 0.15 },
+            vel: { x: (Math.random() - 0.3) * 2.5, y: (Math.random() - 0.5) * 1.5, z: 0.5 + Math.random() * 0.8 },
+            lifetime: 0.55, timer: 0, size: 2 + Math.random() * 2.5, color: '#CC0000', landed: false,
+          });
+        }
+      }
+      // Scream
+      npc.biteScreamTimer -= dt;
+      if (npc.biteScreamTimer <= 0) {
+        npc.biteScreamTimer = CONFIG.BITE_SCREAM_COOLDOWN;
+        playBurnScream(victim);
+      }
+      // Victim escape roll
+      if (Math.random() < CONFIG.BITE_ESCAPE_CHANCE * dt) {
+        victim.state = 'STUNNED';
+        victim.stunTimer = 0.5;
+        victim.biterId = null;
+        victim.biteShakeTimer = 0;
+        npc.state = 'ZOMBIE';
+        npc.biteTargetId = null;
+        break;
+      }
+      // Victim died from bite
+      if (victim.hp <= 0) {
+        victim.hp = 0;
+        kill(victim, 1.0, false);
+        npc.state = 'ZOMBIE';
+        npc.biteTargetId = null;
+      }
+      break;
+    }
+
+    case 'BEING_BITTEN': {
+      const biter = state.npcs.find(n => n.id === npc.biterId);
+      // Biter dead/released — free the victim
+      if (!biter || biter.state !== 'ZOMBIE_BITING') {
+        npc.state = 'STUNNED';
+        npc.stunTimer = 0.8;
+        npc.biterId = null;
+        npc.biteShakeTimer = 0;
+      }
+      // No movement while bitten — just tick shake timer (done in ZOMBIE_BITING case)
       break;
     }
 
@@ -1675,7 +1781,7 @@ const BODY_ZOMBIE = '#5a6a4a';
 const FLASH_COLOR = '#FFFFFF';
 
 function computeNPCAppearance(npc) {
-  const isZombie = npc.state === 'ZOMBIE' || npc.isZombieType;
+  const isZombie = npc.state === 'ZOMBIE' || npc.state === 'ZOMBIE_BITING' || npc.isZombieType;
   const flash    = npc.flashTimer > 0;
   const now      = performance.now();
 
@@ -1694,8 +1800,9 @@ function computeNPCAppearance(npc) {
   const scaleX = r.x, scaleY = r.y;
 
   let shakeX = 0;
-  if      (npc.state === 'ON_FIRE') shakeX = Math.sin(now * 0.04) * 1.5;
-  else if (npc.state === 'DYING')   shakeX = (Math.random() - 0.5) * 3;
+  if      (npc.state === 'ON_FIRE')      shakeX = Math.sin(now * 0.04) * 1.5;
+  else if (npc.state === 'DYING')        shakeX = (Math.random() - 0.5) * 3;
+  else if (npc.state === 'BEING_BITTEN') shakeX = Math.sin(npc.biteShakeTimer * 30) * 2;
 
   const baseSkin  = (!isZombie && npc.age === 'elder') ? SKIN_ELDER : SKIN_BASE;
   const skinColor = flash ? FLASH_COLOR : (isZombie ? SKIN_ZOMBIE : baseSkin);
@@ -1704,14 +1811,23 @@ function computeNPCAppearance(npc) {
   const armColor  = flash ? FLASH_COLOR : (isZombie ? BODY_ZOMBIE : npc.color);
 
   let legSplit = 0;
-  if      (npc.state === 'WANDER') legSplit = Math.sin(npc.walkPhase) * 2;
-  else if (isZombie)               legSplit = Math.sin(npc.walkPhase) * 1.2;
+  if      (npc.state === 'WANDER')       legSplit = Math.sin(npc.walkPhase) * 2;
+  else if (npc.state === 'ZOMBIE_BITING') legSplit = 0.8; // slight stance, not walking
+  else if (isZombie)                     legSplit = Math.sin(npc.walkPhase) * 1.2;
 
   let armA = 0, armB = 0;
   if (npc.state === 'GRABBED' || npc.state === 'AIRBORNE' ||
       npc.state === 'ON_FIRE' || npc.state === 'DYING') {
     armA = Math.sin(now / 80) * 4;
     armB = -armA;
+  } else if (npc.state === 'ZOMBIE_BITING') {
+    // Left arm raised (zombie classic), right arm lunges forward in a rhythmic grab motion
+    armA = -7;
+    armB = -14 + Math.sin(npc.biteShakeTimer * 9) * 6;
+  } else if (npc.state === 'BEING_BITTEN') {
+    // One arm flung up in panic, other pushed down by the grab — both shake
+    armA = -11 + Math.sin(npc.biteShakeTimer * 9) * 2.5;
+    armB =   5 + Math.sin(npc.biteShakeTimer * 9 + 1.2) * 2;
   } else if (isZombie) {
     armA = -7; armB = -7;
   }
@@ -2071,10 +2187,8 @@ function drawNPCHeadgear(ctx, npc, m) {
       ctx.fillRect(-3.6, -14, 7.2, 0.8);
       // vertical gold orphrey down the front
       ctx.fillRect(-0.4, -20.5, 0.8, 6);
-      // cross symbol
-      ctx.fillStyle = M_GOLD_BRIGHT;
-      ctx.fillRect(-0.4, -19.6, 0.8, 3.6);
-      ctx.fillRect(-1.4, -18.4, 2.8, 0.8);
+      // Latin cross on mitre — outlined filled polygon
+      drawLatinCross(ctx, 0, -17.8, 1.3, '#2a0a00', M_GOLD_BRIGHT);
       // back lappet (streamer behind shoulder)
       ctx.fillStyle = M_PRIEST_HAT;
       ctx.fillRect( 2.0, -13.5, 0.8, 4);
@@ -2199,7 +2313,7 @@ function drawNPCWeaponRight(ctx, npc, m) {
 }
 
 // ---- Simplified body used only for zombies (no costume detail) ----
-function drawNPCZombieBody(ctx, m) {
+function drawNPCZombieBody(ctx, m, skipArms = false) {
   ctx.fillStyle = m.legColor;
   ctx.fillRect(-3 + m.legSplit, 0, 2, 8);
   ctx.fillRect( 1 - m.legSplit, 0, 2, 8);
@@ -2209,13 +2323,66 @@ function drawNPCZombieBody(ctx, m) {
   ctx.fillStyle = '#3a4a3a';
   ctx.fillRect(-3, -8, 2, 1);
   ctx.fillRect( 1, -5, 2, 1);
-  ctx.fillStyle = m.armColor;
-  ctx.fillRect(-6, -9 + m.armA, 2, 6);
-  ctx.fillRect( 4, -9 + m.armB, 2, 6);
+  if (!skipArms) {
+    ctx.fillStyle = m.armColor;
+    ctx.fillRect(-6, -9 + m.armA, 2, 6);
+    ctx.fillRect( 4, -9 + m.armB, 2, 6);
+  }
   ctx.fillStyle = m.skinColor;
   ctx.beginPath();
   ctx.arc(0, -13, 3.5, 0, Math.PI * 2);
   ctx.fill();
+}
+
+// Clawing/grabbing arms for ZOMBIE_BITING — both arms reach toward victim (screen-right).
+// Two arms alternate their extension like a clawing motion.
+function drawNPCZombieBiteArms(ctx, npc, m) {
+  const phase = npc.biteShakeTimer * 7;
+  ctx.lineCap = 'round';
+
+  for (let side = 0; side < 2; side++) {
+    // Arms alternate up/down: left up → right down → left down → right up
+    const p    = phase + (side === 0 ? 0 : Math.PI);
+    const lift = Math.sin(p) * 5;   // -5 (down) .. +5 (up)
+
+    // Shoulder
+    const shX = side === 0 ? -4 : 4;
+    const shY = -9;
+
+    // Elbow: extended toward victim (right), height follows lift partially
+    const eX = shX + 5;
+    const eY = shY + 2 + lift * 0.35;
+
+    // Hand: fully extended toward victim, up/down oscillation
+    const hX = eX + 5;
+    const hY = eY + lift * 0.65;
+
+    // Upper arm
+    ctx.strokeStyle = m.armColor;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(shX, shY); ctx.lineTo(eX, eY); ctx.stroke();
+
+    // Forearm
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(eX, eY); ctx.lineTo(hX, hY); ctx.stroke();
+
+    // 3 claw fingers fanned from hand tip
+    ctx.strokeStyle = m.skinColor;
+    ctx.lineWidth = 1.2;
+    const claws = [
+      { dy: -2.0, angle: -0.35 },
+      { dy:  0.0, angle:  0.10 },
+      { dy:  2.0, angle:  0.55 },
+    ];
+    for (const { dy, angle } of claws) {
+      ctx.beginPath();
+      ctx.moveTo(hX, hY + dy);
+      ctx.lineTo(hX + Math.cos(angle) * 3.5, hY + dy + Math.sin(angle) * 3.5);
+      ctx.stroke();
+    }
+  }
+
+  ctx.lineCap = 'butt';
 }
 
 function drawNPCCharring(ctx, npc) {
@@ -2257,11 +2424,14 @@ function drawNPC(npc) {
   }
 
   if (m.isZombie) {
-    drawNPCZombieBody(ctx, m);
+    const isBiting = npc.state === 'ZOMBIE_BITING';
+    drawNPCZombieBody(ctx, m, isBiting);       // skip default arm rects when biting
+    if (isBiting) drawNPCZombieBiteArms(ctx, npc, m);
     if (npc.state === 'ON_FIRE') drawNPCCharring(ctx, npc);
     drawNPCZombieEyes(ctx);
     ctx.restore();
     drawNPCHpBar(ctx, npc, screen, m);
+    if (isBiting) drawNPCBiteBadge(ctx, screen, m);
     return;
   }
 
@@ -2281,6 +2451,20 @@ function drawNPC(npc) {
 
   if (npc.state === 'ON_FIRE') drawNPCCharring(ctx, npc);
 
+  if (npc.state === 'BEING_BITTEN') {
+    // Blood wound on neck/shoulder — flickers with bite rhythm
+    const blink = Math.sin(npc.biteShakeTimer * 14) > -0.3;
+    if (blink) {
+      ctx.fillStyle = 'rgba(160, 0, 0, 0.90)';
+      ctx.beginPath(); ctx.arc( 4, -13.5, 2.8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc( 6,  -11,  1.8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc( 2.5, -11, 1.4, 0, Math.PI * 2); ctx.fill();
+      // small drip streak
+      ctx.fillStyle = 'rgba(120, 0, 0, 0.70)';
+      ctx.fillRect(4, -11, 1.5, 4);
+    }
+  }
+
   ctx.restore();
 
   drawNPCHpBar(ctx, npc, screen, m);
@@ -2290,7 +2474,7 @@ function drawNPC(npc) {
 // Drawn in screen space after the body's rotation/scale is restored, so the
 // bar stays axis-aligned. Caller (drawNPC) is invoked from the depth-sorted
 // pass — occluded NPCs never reach drawNPC, so their HP bar is occluded too.
-const HP_BAR_STATES = new Set(['IDLE', 'WANDER', 'STUNNED', 'ON_FIRE', 'ZOMBIE']);
+const HP_BAR_STATES = new Set(['IDLE', 'WANDER', 'STUNNED', 'ON_FIRE', 'ZOMBIE', 'ZOMBIE_BITING', 'BEING_BITTEN']);
 function drawNPCHpBar(ctx, npc, screen, m) {
   if (!HP_BAR_STATES.has(npc.state)) return;
   if (npc.hpFlashTimer <= 0) return;
@@ -2318,6 +2502,15 @@ function drawNPCHpBar(ctx, npc, screen, m) {
   ctx.fillStyle = fill;
   ctx.fillRect(x, y, Math.round(W * ratio), H);
   ctx.restore();
+}
+
+// Red bite-badge: small filled circle above zombie head when actively biting.
+function drawNPCBiteBadge(ctx, screen, m) {
+  const bx = screen.sx + 6;
+  const by = screen.sy - m.bob - 24;
+  ctx.fillStyle = '#cc1414';
+  ctx.beginPath(); ctx.arc(bx, by, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#2a0808'; ctx.lineWidth = 0.8; ctx.stroke();
 }
 
 // ---------- Hand ----------
@@ -2780,29 +2973,99 @@ function drawNecroTargets() {
   }
 }
 
+// Draw a filled Latin cross polygon centred at (cx, cy), scale in world-px.
+// The cross: vertical bar full height, crossbar at ~30% from top, proper aspect.
+function drawLatinCross(ctx, cx, cy, scale, borderColor, fillColor) {
+  const vH  = 4.0 * scale;   // half total height of vertical bar
+  const vW  = 0.55 * scale;  // half-width of vertical bar
+  const cbY = -1.2 * scale;  // crossbar centre y offset (upper third)
+  const cbHH = 0.48 * scale; // crossbar half-height
+  const cbW  = 1.6  * scale; // crossbar half-width
+  // 12-vertex Latin cross polygon
+  const pts = [
+    [-vW, -vH], [ vW, -vH],                         // top of vertical
+    [ vW, cbY - cbHH], [cbW, cbY - cbHH],            // upper-right corner
+    [cbW, cbY + cbHH], [ vW, cbY + cbHH],            // lower-right corner
+    [ vW,  vH], [-vW,  vH],                          // bottom of vertical
+    [-vW, cbY + cbHH], [-cbW, cbY + cbHH],           // lower-left corner
+    [-cbW, cbY - cbHH], [-vW, cbY - cbHH],           // upper-left corner
+  ];
+  ctx.beginPath();
+  ctx.moveTo(cx + pts[0][0], cy + pts[0][1]);
+  for (let i = 1; i < pts.length; i++)
+    ctx.lineTo(cx + pts[i][0], cy + pts[i][1]);
+  ctx.closePath();
+  ctx.fillStyle = borderColor;
+  ctx.fill();
+  // inset fill
+  ctx.beginPath();
+  const ins = 0.18 * scale;
+  const ipts = pts.map(([x, y]) => {
+    const nx = x === 0 ? 0 : x > 0 ? x - ins : x + ins;
+    const ny = y === 0 ? 0 : y > 0 ? y - ins : y + ins;
+    return [nx, ny];
+  });
+  ctx.moveTo(cx + ipts[0][0], cy + ipts[0][1]);
+  for (let i = 1; i < ipts.length; i++)
+    ctx.lineTo(cx + ipts[i][0], cy + ipts[i][1]);
+  ctx.closePath();
+  ctx.fillStyle = fillColor;
+  ctx.fill();
+}
+
 function drawNecroCasts() {
   const ctx = state.ctx;
   for (const c of state.necroCasts) {
-    const t = c.timer / c.lifetime;
-    const alpha = 1 - t;
-    const { sx, sy } = worldToScreen(c.wx, c.wy, 0);
-    const size = 22 + t * 10;
+    const t = c.timer / c.lifetime;              // 0 → 1
+
+    // Float upward and wobble side-to-side
+    const riseZ = t * 0.9;
+    const { sx: bsx, sy: bsy } = worldToScreen(c.wx, c.wy, riseZ);
+    const wobble = Math.sin(c.timer * 6) * 3;
+    const gx = bsx + wobble;
+    const gy = bsy;
+
+    // Pop in fast, hold, fade out in last 25%
+    const scl   = t < 0.12 ? t / 0.12 : 1;
+    const alpha = t < 0.12 ? t / 0.12 : t > 0.75 ? 1 - (t - 0.75) / 0.25 : 1;
+
+    // Ghost dimensions — 40% smaller than original cross (~size 13 vs 22)
+    const w = 6  * scl;   // body half-width
+    const h = 13 * scl;   // total height
+
     ctx.save();
-    ctx.globalAlpha = alpha * 0.7;
-    ctx.shadowColor = '#44ff66';
-    ctx.shadowBlur = 12;
-    ctx.strokeStyle = '#44ff66';
-    ctx.lineWidth = 2;
-    // vertical beam
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha)) * 0.88;
+    ctx.shadowColor = '#44ff88';
+    ctx.shadowBlur  = 10 * scl;
+
+    // Ghost body — head semicircle + straight sides + wavy tail
+    ctx.fillStyle = '#55ff99';
     ctx.beginPath();
-    ctx.moveTo(sx, sy - size);
-    ctx.lineTo(sx, sy + size * 0.5);
+    ctx.moveTo(gx - w, gy);
+    ctx.lineTo(gx - w, gy - h * 0.45);
+    ctx.arc(gx, gy - h * 0.45, w, Math.PI, 0);   // domed top
+    ctx.lineTo(gx + w, gy);
+    // 3 wavy bumps at the tail (going left)
+    ctx.quadraticCurveTo(gx + w * 0.70, gy + h * 0.30, gx + w * 0.35, gy);
+    ctx.quadraticCurveTo(gx,            gy + h * 0.30, gx - w * 0.35, gy);
+    ctx.quadraticCurveTo(gx - w * 0.70, gy + h * 0.30, gx - w, gy);
+    ctx.closePath();
+    ctx.fill();
+
+    // Dark outline
+    ctx.strokeStyle = '#00bb44';
+    ctx.lineWidth = 0.9;
     ctx.stroke();
-    // horizontal beam
-    ctx.beginPath();
-    ctx.moveTo(sx - size * 0.65, sy - size * 0.3);
-    ctx.lineTo(sx + size * 0.65, sy - size * 0.3);
-    ctx.stroke();
+
+    // Eyes — two hollow dark circles
+    const eyeR = w * 0.20;
+    ctx.fillStyle = 'rgba(0,20,0,0.75)';
+    ctx.beginPath(); ctx.arc(gx - w * 0.38, gy - h * 0.50, eyeR, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(gx + w * 0.38, gy - h * 0.50, eyeR, 0, Math.PI * 2); ctx.fill();
+
+    // Mouth — small open O
+    ctx.beginPath(); ctx.arc(gx, gy - h * 0.28, eyeR * 0.85, 0, Math.PI * 2); ctx.fill();
+
     ctx.restore();
   }
 }
@@ -2838,6 +3101,8 @@ function ignite(npc) {
 
 function applyDamage(npc, amount, source) {
   if (!npc || npc.state === 'DEAD' || npc.state === 'DYING' || npc.state === 'CORPSE') return;
+  // When a spell kills a BEING_BITTEN victim, release the biting zombie too.
+  const wasBeingBitten = npc.state === 'BEING_BITTEN';
   if (amount <= 0) return;
   let dmg = amount;
   // Wizard fire resist: halve fire-tick damage.
@@ -2851,6 +3116,16 @@ function applyDamage(npc, amount, source) {
   if (source !== 'fire') npc.flashTimer = CONFIG.DEATH_FLASH_DURATION;
   if (npc.hp <= 0) {
     npc.hp = 0;
+    // Release biting zombie before kill so it returns to chase rather than
+    // staying stuck in ZOMBIE_BITING with a dead target.
+    if (wasBeingBitten && npc.biterId != null) {
+      const biter = state.npcs.find(n => n.id === npc.biterId);
+      if (biter && biter.state === 'ZOMBIE_BITING') {
+        biter.state = 'ZOMBIE';
+        biter.biteTargetId = null;
+      }
+      npc.biterId = null;
+    }
     const intensity = isCritical ? 1.6 : 1.0;
     kill(npc, intensity, isCritical);
   }
@@ -4129,7 +4404,7 @@ function drawMinimap() {
   // NPCs
   for (const npc of state.npcs) {
     if (npc.state === 'DEAD') continue;
-    const isZombie = npc.state === 'ZOMBIE' || npc.isZombieType;
+    const isZombie = npc.state === 'ZOMBIE' || npc.state === 'ZOMBIE_BITING' || npc.isZombieType;
     let dotColor;
     if (isZombie)                       dotColor = '#88ff88';
     else if (npc.state === 'CORPSE')    dotColor = '#5a3a3a';
@@ -4188,7 +4463,7 @@ function loop(now) {
 
   let alive = 0, zombies = 0;
   for (const n of state.npcs) {
-    if (n.state === 'ZOMBIE') zombies++;
+    if (n.state === 'ZOMBIE' || n.state === 'ZOMBIE_BITING') zombies++;
     else if (n.state !== 'DEAD' && n.state !== 'CORPSE') alive++;
   }
   const hudText = zombies > 0
