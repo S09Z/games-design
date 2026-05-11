@@ -9,14 +9,42 @@
 <body>
   <canvas id="game"></canvas>
   <div id="hud">
-    <span id="hud-villagers">15 Alive · 0 Killed</span>
-    <div class="npc-count-row">
+    <div class="hud-row">
+      <span id="hud-villagers">15 Alive · 0 Killed</span>
+      <button id="settings-toggle" type="button" title="NPC settings" aria-label="NPC settings">☰</button>
+    </div>
+    <span class="hud-hint">Drag villagers · Drag ground (✋) to pan · 1–6 spells</span>
+  </div>
+  <div id="settings-panel" hidden>
+    <h3>NPCs</h3>
+    <div class="settings-row">
       <label for="npc-slider">Target:</label>
-      <input type="range" id="npc-slider" min="5" max="60" value="15" />
+      <input type="range" id="npc-slider" min="5" max="90" value="15" />
       <span id="npc-slider-label">15</span>
     </div>
-    <span class="hud-hint">Drag villagers · Press 1–6 to switch spells</span>
+    <h3>Appearance filter</h3>
+    <div class="filter-group" data-filter="classes">
+      <label><input type="checkbox" value="warrior" checked> Warrior</label>
+      <label><input type="checkbox" value="wizard" checked> Wizard</label>
+      <label><input type="checkbox" value="ranger" checked> Ranger</label>
+      <label><input type="checkbox" value="priest" checked> Priest</label>
+    </div>
+    <div class="filter-group" data-filter="races">
+      <label><input type="checkbox" value="human" checked> Human</label>
+      <label><input type="checkbox" value="elf" checked> Elf</label>
+      <label><input type="checkbox" value="dwarf" checked> Dwarf</label>
+    </div>
+    <div class="filter-group" data-filter="genders">
+      <label><input type="checkbox" value="male" checked> Male</label>
+      <label><input type="checkbox" value="female" checked> Female</label>
+    </div>
+    <div class="filter-group" data-filter="ages">
+      <label><input type="checkbox" value="middle_age" checked> Middle-age</label>
+      <label><input type="checkbox" value="elder" checked> Elder</label>
+    </div>
+    <p class="filter-tip">New spawns are picked from checked options only. Existing villagers keep their current look.</p>
   </div>
+  <div id="mute-toggle" title="Mute / unmute music">🔊</div>
   <div id="info-toggle" title="Controls">i</div>
   <div id="info-panel" hidden>
     <h3>Controls</h3>
