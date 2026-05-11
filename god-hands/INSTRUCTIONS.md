@@ -19,10 +19,11 @@ Or drag `god-hands/index.html` onto any browser. There is no build, no test runn
 |---|---|
 | `god-hands/index.html` | Markup — canvas, HUD, spellbar, settings panel, info panel. References `style.css` and `game.js` directly. |
 | `god-hands/style.css` | All UI styling (HUD, spellbar, panels, hamburger button, info button, mute button). |
-| `god-hands/game.js` | The entire game (≈ 3500 lines). Sectioned by `// ----------` comment headers. |
+| `god-hands/game.js` | The entire game (≈ 3820 lines). Sectioned by `// ----------` comment headers. |
 | `god-hands/CLAUDE.md` | Behavioral rules for AI assistants. |
-| `god-hands/TODO.md` | Living progress log, scope sketches for future phases, the Mega Prompt for cross-session handoff. |
-| `god-hands/design.md` | Original game-design doc (untouched by code work — read for intent). |
+| `god-hands/TODO.md` | Living progress log, status table per phase, scope sketches for future phases. |
+| `god-hands/design.md` | Original game-design doc, updated as state changes (state machine, spell list, phase status). |
+| `god-hands/MEMORY.md` | Cross-session facts: user preferences, sticky project decisions, shipped PRs. |
 
 ## game.js section map
 

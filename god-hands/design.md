@@ -70,13 +70,13 @@ requestAnimationFrame Loop (target 60fps)
 
 ## 3. World Design
 
-### 3.1 Map Layout (20×20 Tiles)
+### 3.1 Map Layout (30×30 Tiles, +5 pannable void each side — as of PR #4)
 ```
 ┌─────────────────────────┐
-│  🌲  🌲  🌲  🌲  🌲     │  ← Tree Border
-│  🌲  🏠  🏠  🌲  🏠    │
-│  🌲  🏠  ⛲  🏠  🌲    │  ⛲ = Fountain (Center)
-│  🌲  🏠  🏠  🌲  🏠    │  🏠 = Houses (Waypoints for NPC)
+│  🌲  🌲  🌲  🌲  🌲     │  ← Tree Border (outer 2.8 tile ring)
+│  🌲  🏠  🏘  🌲  🏚    │  🏠 cottage 🏘 tavern 🏚 farm 🌀 windmill
+│  🌲  🏠  ⛲  🏘  🌲    │  ⛲ = center cross path
+│  🌲  🌀  🏠  🌲  🏠    │  Buildings 2×2, 3-tile gap, 30% max coverage
 │  🌲  🌲  🌲  🌲  🌲     │
 └─────────────────────────┘
 ```
@@ -94,50 +94,31 @@ requestAnimationFrame Loop (target 60fps)
 
 ## 4. Entity System
 
-### 4.1 NPC (Villager) State Machine
+### 4.1 NPC State Machine (as implemented)
 ```
-         ┌──────────┐
-    ┌───▶│  WANDER  │◀───┐
-    │    └────┬─────┘    │
-    │ arrive  │          │ calm down
-    │         ▼          │
-    │    ┌──────────┐    │
-    │    │   IDLE   │    │
-    │    └────┬─────┘    │
-    │  start  │          │
-    │         ▼          │
-    │    ┌──────────┐    │
-    └────│   WALK   │    │
-         └────┬─────┘    │
-              │ spot danger
-              ▼
-         ┌──────────┐    │
-    ┌───▶│   FLEE   │────┘
-    │    └────┬─────┘
-    │         │ grabbed
-    │         ▼
-    │    ┌──────────┐
-    │    │  GRABBED │  ← หยุด AI, Physics เข้าควบคุม
-    │    └────┬─────┘
-    │         │ thrown / dropped
-    │         ▼
-    │    ┌──────────┐
-    │    │ AIRBORNE │  ← Projectile Physics
-    │    └────┬─────┘
-    │         │ land
-    │         ▼
-    │    ┌──────────┐
-    │    │ STUNNED  │ (2s) ── hit_wall → DEAD
-    └────┤          │
-         └────┬─────┘
-              │ recover
-              ▼
-         ┌──────────┐
-         │ ON_FIRE  │ → DEAD (3s)   ← โดน Fire Spell
-         │ FROZEN   │ → WANDER (5s) ← โดน Ice Spell (ถ้ามี)
-         │ ZAPPED   │ → DEAD (0.5s) ← โดน Lightning Spell
-         └──────────┘
+         IDLE ⇄ WANDER
+               │ grab
+               ▼
+            GRABBED ── drop ──▶ AIRBORNE
+                                │ land (|vel.z|>10 → DEAD)
+                                ▼
+                              STUNNED (2s) ─▶ WANDER
+
+         WANDER ── fire spell ──▶ ON_FIRE (3s) ──▶ DYING ──▶ CORPSE / DEAD
+         WANDER ── lightning ───▶ DYING
+
+         DYING ─▶ explodeBody()
+                    ├─ 20% critical → DEAD          (permanent)
+                    └─ 80% normal   → CORPSE (30s fade)
+                                       │ necromancer
+                                       ▼
+                                     ZOMBIE ── chases alive NPCs
+                                       │ killed
+                                       ▼
+                                     CORPSE (re-revivable)
 ```
+Implemented states (game.js): `IDLE`, `WANDER`, `GRABBED`, `AIRBORNE`, `STUNNED`,
+`ON_FIRE`, `DYING`, `CORPSE`, `ZOMBIE`, `DEAD`. FLEE / FROZEN / ZAPPED not built.
 
 ### 4.2 NPC Data Structure
 ```js
@@ -282,15 +263,17 @@ function updateAirborne(npc, dt) {
 
 ## 6. Spell System
 
-### 6.1 Spell List
-| ID         | Name       | Icon | Color          | AOE   | Effect                              |
-|------------|------------|------|----------------|-------|-------------------------------------|
-| FIREBALL   | Fireball   | 🔥   | #FF4500        | 80px  | Burning 3s → DEAD, ไฟลาม           |
-| LIGHTNING  | Lightning  | ⚡   | #FFD700        | Chain | DEAD ทันที, Chain ถึง 3 คน          |
-| WIND       | Wind Blast | 💨   | #87CEEB        | 120px | Knockback แรง, ไม่ตาย              |
-| METEOR     | Meteor     | ☄️   | #FF6347        | 150px | Crater + Mass Kill                  |
-| FREEZE     | Ice        | ❄️   | #00BFFF        | 60px  | Freeze 5s, ชนอะไรแตกทันที          |
-| DARKNESS   | Dark Void  | 🌑   | #2D0055        | 50px  | Teleport NPC ไปตำแหน่งสุ่ม         |
+### 6.1 Spell List (as implemented, key 1–6)
+| Slot | ID          | Icon | Color    | AOE      | Effect                                              |
+|------|-------------|------|----------|----------|-----------------------------------------------------|
+| 1    | HAND        | ✋   | #e8e8e8  | —        | Grab/throw villager; right-click-drag pans world    |
+| 2    | FIREBALL    | 🔥   | #FF4500  | 2.5 wu   | Direct hit → DYING; AOE → ON_FIRE (3s) → DYING      |
+| 3    | LIGHTNING   | ⚡   | #FFD700  | chain ×3 | DYING on hit; chain hops within 4 wu range          |
+| 4    | WIND        | 💨   | #87CEEB  | 4 wu     | Knockback; impact-damage comes from fall            |
+| 5    | METEOR      | ☄️   | #FF6347  | 3 wu     | Mass kill; crater decal; screen shake               |
+| 6    | NECROMANCER | 💀   | #8B3FBF  | 2.5 wu   | Reanimate every CORPSE in radius into ZOMBIE state  |
+
+Not built: FREEZE / DARKNESS (left out of scope).
 
 ### 6.2 Spell Projectile Data
 ```js
@@ -604,43 +587,53 @@ hand-of-god/
 
 ---
 
-## 12. Implementation Phases
+## 12. Implementation Phases (status as of PR #6)
 
-### Phase 1 — Foundation (Core Loop)
-- [ ] Canvas setup + Isometric tile rendering
-- [ ] NPC spawn + Wander AI
-- [ ] Hand cursor + Grab/Drop mechanic
-- [ ] Basic throw physics + ground collision
+### Phase 1 — Foundation (Core Loop) ✅ Done — PR #1
+- [x] Canvas setup + Isometric tile rendering
+- [x] NPC spawn + Wander AI
+- [x] Hand cursor + Grab/Drop mechanic
+- [x] Throw physics + ground collision
 
-### Phase 2 — Spells
-- [ ] SpellBar UI (HTML/CSS)
-- [ ] Fireball projectile + explosion
-- [ ] Lightning instant cast + chain
-- [ ] Wind knockback
+### Phase 2 — Spells ✅ Done — PR #1
+- [x] SpellBar UI (HTML/CSS)
+- [x] Fireball projectile + explosion + ON_FIRE state
+- [x] Lightning instant cast + chain
+- [x] Wind knockback
 
-### Phase 3 — Juice & Polish
-- [ ] Particle system (Blood, Fire, Spark)
-- [ ] Death animation + Giblets
-- [ ] Screen shake
-- [ ] Web Audio synth sounds
-- [ ] Blood decals on ground
+### Phase 3 — Juice & Polish ✅ Done — PR #1
+- [x] Particle system (Blood, Fire, Spark, Smoke, Ash, Dust, Giblets)
+- [x] Death animation + critical (20%) dismemberment
+- [x] Screen shake, hit flash, blood decals
+- [x] Web Audio synth sounds (full SFX + tavern music)
 
-### Phase 4 — World
-- [ ] House structures (Isometric 3D look)
-- [ ] Trees + Shadows
-- [ ] More NPC types (Elder, Child)
-- [ ] Meteor spell + Crater
+### Phase 4 — World ✅ Done — PR #1 → #4
+- [x] House structures + 4 kinds (cottage / tavern / windmill / farm)
+- [x] Tree variants — oak / pine / birch / dead, faceted low-poly
+- [x] NPC visual variety: race × class × gender × age (48 combos)
+- [x] Meteor spell + crater decal
+- [x] Necromancer spell + ZOMBIE state + corpse respawn
+- [x] Per-class behavior (warrior charge, priest heal, wizard fire-resist, ranger stride)
+- [x] Settings panel, mini-map, mute, RTS pan, larger 30×30 map
+
+### Phase 5 — Planned (see TODO.md for design sketches)
+- [ ] 5.1 HP + attack damage system *(recommended next)*
+- [ ] 5.2 Zombie grab-and-bite *(blocked by 5.1)*
+- [ ] 5.3 Spell level-2 via long-press hold
+- [x] 5.4 Texture rework (5.4a + 5.4b shipped — PR #4 + #6)
+- [ ] 5.5 Achievements + easter eggs
 
 ---
 
 ## 13. Open Design Questions
 
-1. **Villager Respawn?** — มี Spawn ใหม่ทุก 30s ไหม หรือ Session จบเมื่อตายหมด?
-2. **Scoring System?** — มี Score ไหม หรือ Pure Sandbox?
-3. **Day/Night Cycle?** — เปลี่ยน Lighting ตามเวลาจริงหรือ Timer?
-4. **NPC Relationships?** — ชาวบ้านวิ่งไปหา/ช่วยกันได้ไหม?
-5. **God Power Meter?** — Spell มี Cooldown หรือ Mana?
+1. ~~**Villager Respawn?**~~ — ✅ Settled: 1 NPC/sec from random building's south door (PR #2).
+2. **Scoring System?** — Still pure sandbox. Planned: Phase 5.5 persistent achievements (`localStorage`).
+3. **Day/Night Cycle?** — Not built. Referenced as "future 5.6" in TODO.md; not yet scoped.
+4. ~~**NPC Relationships?**~~ — Partially settled: per-class hooks (warrior vs zombie, priest extinguishes fire) shipped in Round C2.
+5. **God Power Meter?** — No cooldowns / mana yet. Phase 5.3 (spell L2 long-press) is the only proposed cost mechanic.
+6. **HP vs binary alive/dead?** — Still binary today. Phase 5.1 design sketch in TODO.md. **Recommended next.**
 
 ---
 
-*Document Owner: System Architect | Next Step: Phase 1 Implementation*
+*Document Owner: System Architect | Status: Phases 1–4 + 5.4 shipped (PR #1 → #6). Next: Phase 5.1 HP system.*
