@@ -73,6 +73,10 @@ const CONFIG = {
   DMG_FALL_PER_UNIT:       10,
   CRIT_MULT:               2.0,
   HP_BAR_DURATION:         3.0,
+
+  // Spell L2 long-press (Phase 5.3)
+  CAST_HOLD_THRESHOLD:     0.55,
+  L2_COOLDOWN:             8.0,
   // Phase 5.2 — bite
   BITE_DPS:                15,
   BITE_ESCAPE_CHANCE:      0.05,
@@ -118,6 +122,7 @@ const state = {
   bloodDecals: [],
   craterDecals: [],
   necroCasts: [],
+  poisonClouds: [],
   windmillAngle: 0,
   npcIdCounter: 0,
   shake: { intensity: 0, timer: 0, duration: CONFIG.SHAKE_DECAY },
@@ -133,8 +138,14 @@ const state = {
   },
   pan: { active: false, lastX: 0, lastY: 0 },
   filters: null, // populated in init() once CLASSES/RACES/etc are defined
-  music: { started: false, muted: false, gain: null, loopStart: 0, timer: null },
+  music: { started: false, muted: false, sfxMuted: false, npcMuted: false, gain: null, loopStart: 0, timer: null },
   lastTime: 0,
+  castHoldStart: 0,
+  castHoldSlot: null,
+  castHoldNpc: null,
+  castHoldWorld: null,
+  l2CooldownTimers: {},
+  tornadoActive: null,
 };
 
 function pickFiltered(allList, filterSet) {
@@ -1565,11 +1576,14 @@ function updateNPC(npc, dt) {
       if (npc.pos.wz <= 0) {
         npc.pos.wz = 0;
         const impactZ = Math.abs(npc.vel.z);
-        const intensity = Math.min(1, npc.maxFallSpeed / 8);
+        const horizontalSpeed = Math.hypot(npc.vel.x, npc.vel.y);
+        const intensity = Math.min(1, Math.max(npc.maxFallSpeed, horizontalSpeed) / 8);
 
+        // Combined impact score — vertical fall + horizontal kinetic from throws/knockback
         const peakFall = Math.max(impactZ, npc.maxFallSpeed);
-        if (peakFall > CONFIG.FALL_DEATH_THRESHOLD) {
-          const dmg = CONFIG.DMG_FALL_PER_UNIT * (peakFall - CONFIG.FALL_DEATH_THRESHOLD);
+        const impactScore = peakFall + horizontalSpeed * 0.8;
+        if (impactScore > CONFIG.FALL_DEATH_THRESHOLD) {
+          const dmg = CONFIG.DMG_FALL_PER_UNIT * (impactScore - CONFIG.FALL_DEATH_THRESHOLD);
           spawnDust(npc.pos, intensity);
           playThud(intensity);
           applyDamage(npc, dmg, 'fall');
@@ -2629,11 +2643,11 @@ function onMouseDown(e) {
     return;
   }
 
-  if (sel === 'FIREBALL')          castFireball(npcUnder, targetWorld);
-  else if (sel === 'LIGHTNING')    castLightning(npcUnder, targetWorld);
-  else if (sel === 'WIND')         castWind(targetWorld);
-  else if (sel === 'METEOR')       castMeteor(npcUnder, targetWorld);
-  else if (sel === 'NECROMANCER')  castNecromancer(targetWorld);
+  // Record hold start — cast happens on mouseup (L1 or L2 depending on hold duration)
+  state.castHoldStart = performance.now();
+  state.castHoldSlot = sel;
+  state.castHoldNpc = npcUnder;
+  state.castHoldWorld = targetWorld;
 }
 
 function onMouseMove(e) {
@@ -2655,6 +2669,38 @@ function onMouseUp() {
     state.pan.active = false;
     return;
   }
+
+  // Spell cast on release (all non-HAND spells go through here)
+  if (state.castHoldStart > 0) {
+    const held = (performance.now() - state.castHoldStart) / 1000;
+    const sel = state.castHoldSlot;
+    const npcUnder = state.castHoldNpc;
+    const targetWorld = state.castHoldWorld;
+    state.castHoldStart = 0;
+    state.castHoldSlot = null;
+    state.castHoldNpc = null;
+    state.castHoldWorld = null;
+
+    const cdTimer = state.l2CooldownTimers[sel] || 0;
+    const isL2 = held >= CONFIG.CAST_HOLD_THRESHOLD && cdTimer <= 0;
+
+    if (isL2) {
+      state.l2CooldownTimers[sel] = CONFIG.L2_COOLDOWN;
+      if (sel === 'FIREBALL')         castFireballThrown();
+      else if (sel === 'LIGHTNING')   castLightningStorm(npcUnder, targetWorld);
+      else if (sel === 'WIND')        castTornado(targetWorld);
+      else if (sel === 'METEOR')      castMeteorShower(targetWorld);
+      else if (sel === 'NECROMANCER') castPoisonBall();
+    } else {
+      if (sel === 'FIREBALL')         castFireball(npcUnder, targetWorld);
+      else if (sel === 'LIGHTNING')   castLightning(npcUnder, targetWorld);
+      else if (sel === 'WIND')        castWind(targetWorld);
+      else if (sel === 'METEOR')      castMeteor(npcUnder, targetWorld);
+      else if (sel === 'NECROMANCER') castNecromancer(targetWorld);
+    }
+    return;
+  }
+
   const npc = state.hand.holding;
   if (!npc) return;
 
@@ -2688,6 +2734,8 @@ function onMouseUp() {
 function onMouseLeave() {
   state.hand.visible = false;
   state.pan.active = false;
+  state.castHoldStart = 0;
+  state.castHoldSlot = null;
 }
 
 function updateHand(dt) {
@@ -2719,6 +2767,73 @@ function drawHand() {
 
   ctx.fillText(grabbing ? '✊' : '✋', x, y);
   ctx.restore();
+
+  // Charging ring + armed-state visual for L2 hold
+  if (state.castHoldStart > 0 && sel !== 'HAND') {
+    const elapsed = (performance.now() - state.castHoldStart) / 1000;
+    const frac = Math.min(1, elapsed / CONFIG.CAST_HOLD_THRESHOLD);
+    const armed = frac >= 1 && (state.l2CooldownTimers[sel] || 0) <= 0;
+    const color = SPELL_COLORS[sel];
+
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    if (armed) {
+      ctx.globalAlpha = 0.55 + 0.45 * Math.sin(performance.now() * 0.018);
+      ctx.beginPath(); ctx.arc(x, y, 30, 0, Math.PI * 2); ctx.stroke();
+    } else {
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      ctx.arc(x, y, 30, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    if (armed) {
+      const pulse = 1 + Math.sin(performance.now() * 0.012) * 0.1;
+      if (sel === 'FIREBALL') {
+        ctx.save();
+        ctx.shadowColor = '#FF6020';
+        ctx.shadowBlur = 22;
+        ctx.fillStyle = '#FFD060';
+        ctx.beginPath(); ctx.arc(x, y - 28, 12 * pulse, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#FF4500';
+        ctx.beginPath(); ctx.arc(x, y - 28, 6 * pulse, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      } else if (sel === 'NECROMANCER') {
+        ctx.save();
+        ctx.shadowColor = '#33ff66';
+        ctx.shadowBlur = 18;
+        ctx.fillStyle = '#a8ff80';
+        ctx.beginPath(); ctx.arc(x, y - 28, 11 * pulse, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#33aa44';
+        ctx.beginPath(); ctx.arc(x, y - 28, 5 * pulse, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      } else if (sel === 'LIGHTNING') {
+        // Yellow AOE ring at cursor world position
+        const cursor = screenToWorld(x, y);
+        const aoeR = L2_LIGHTNING_RAIN_RADIUS;
+        ctx.save();
+        ctx.strokeStyle = '#FFE066';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = '#FFD700';
+        ctx.shadowBlur = 14;
+        ctx.globalAlpha = 0.85;
+        ctx.setLineDash([8, 5]);
+        ctx.beginPath();
+        const STEPS = 64;
+        for (let i = 0; i <= STEPS; i++) {
+          const θ = (i / STEPS) * Math.PI * 2;
+          const sc = worldToScreen(cursor.wx + Math.cos(θ) * aoeR, cursor.wy + Math.sin(θ) * aoeR, 0);
+          if (i === 0) ctx.moveTo(sc.sx, sc.sy); else ctx.lineTo(sc.sx, sc.sy);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+    }
+  }
 }
 
 // ---------- Spell selection ----------
@@ -2730,6 +2845,8 @@ function selectSpell(name) {
     npc.maxFallSpeed = 0;
     state.hand.holding = null;
   }
+  state.castHoldStart = 0;
+  state.castHoldSlot = null;
   state.selectedSpell = name;
   document.querySelectorAll('.spell-slot').forEach(s => {
     s.classList.toggle('active', s.dataset.spell === name);
@@ -2875,6 +2992,388 @@ function castNecromancer(targetWorld) {
     state.necroCasts.push({ wx: t.pos.wx, wy: t.pos.wy, timer: 0, lifetime: 1.8 });
   }
   triggerScreenShake(2 + targets.length * 0.4, 0.25);
+}
+
+// ---------- L2 Spell variants (Phase 5.3) ----------
+const L2_LIGHTNING_RAIN_RADIUS = 4.0;
+
+function computeThrowVelocity() {
+  const hist = state.hand.history;
+  let vx = 0, vy = 0;
+  if (hist.length >= 2) {
+    const a = hist[0], b = hist[hist.length - 1];
+    const dts = (b.t - a.t) / 1000;
+    if (dts > 0.01) {
+      const sxPerS = (b.x - a.x) / dts;
+      const syPerS = (b.y - a.y) / dts;
+      vx = (sxPerS / (CONFIG.TILE_W / 2) + syPerS / (CONFIG.TILE_H / 2)) / 2;
+      vy = (syPerS / (CONFIG.TILE_H / 2) - sxPerS / (CONFIG.TILE_W / 2)) / 2;
+    }
+  }
+  const speed = Math.hypot(vx, vy);
+  // Fallback: no drag → toss toward where the cursor currently points.
+  if (speed < 1.0) {
+    const startW = handWorldOrigin();
+    const cursorW = screenToWorld(state.hand.pos.x, state.hand.pos.y);
+    const dx = cursorW.wx - startW.wx;
+    const dy = cursorW.wy - startW.wy;
+    const d = Math.hypot(dx, dy);
+    if (d > 0.001) { const v = 4; vx = (dx / d) * v; vy = (dy / d) * v; }
+  } else if (speed > CONFIG.MAX_THROW_SPEED) {
+    const f = CONFIG.MAX_THROW_SPEED / speed;
+    vx *= f; vy *= f;
+  }
+  return { vx, vy };
+}
+
+function castFireballThrown() {
+  const start = handWorldOrigin();
+  const { vx, vy } = computeThrowVelocity();
+  const speed = Math.hypot(vx, vy);
+  const vz = Math.max(3, speed * 0.45);
+  state.projectiles.push({
+    kind: 'fireball_thrown',
+    pos: { ...start },
+    vel: { x: vx, y: vy, z: vz },
+    trailTimer: 0,
+  });
+  playFireballSound();
+}
+
+function castPoisonBall() {
+  const start = handWorldOrigin();
+  const { vx, vy } = computeThrowVelocity();
+  const speed = Math.hypot(vx, vy);
+  const vz = Math.max(3, speed * 0.45);
+  state.projectiles.push({
+    kind: 'poison_ball',
+    pos: { ...start },
+    vel: { x: vx, y: vy, z: vz },
+    trailTimer: 0,
+  });
+  playNecromancerSound();
+}
+
+function castLightningStorm(npcTarget, targetWorld) {
+  const radius = L2_LIGHTNING_RAIN_RADIUS;
+  const strikes = 8;
+  playLightningSound();
+  for (let s = 0; s < strikes; s++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = Math.random() * radius;
+    const wx = targetWorld.wx + Math.cos(angle) * r;
+    const wy = targetWorld.wy + Math.sin(angle) * r;
+    const top = { wx, wy, wz: 5 + Math.random() };
+    const bottom = { wx, wy, wz: 0 };
+    state.lightningBolts.push({
+      segments: makeBoltSegments([top, bottom]),
+      timer: 0,
+      lifetime: CONFIG.LIGHTNING_BOLT_LIFETIME + Math.random() * 0.15,
+    });
+    let nearest = null, bestD = 1.5;
+    for (const n of state.npcs) {
+      if (!isAlive(n)) continue;
+      const d = Math.hypot(n.pos.wx - wx, n.pos.wy - wy);
+      if (d < bestD) { bestD = d; nearest = n; }
+    }
+    if (nearest) {
+      applyDamage(nearest, 50, 'lightning');
+      spawnSparks(nearest.pos);
+    }
+  }
+  triggerScreenShake(7, 0.45);
+}
+
+function spawnPoisonCloud(wx, wy) {
+  state.poisonClouds.push({
+    wx, wy,
+    radius: CONFIG.NECROMANCER_RADIUS,
+    timer: 0,
+    lifetime: 5.0,
+    dmgTimer: 0,
+    fogTimer: 0,
+  });
+  for (let i = 0; i < 16; i++) spawnPoisonFog(wx, wy, CONFIG.NECROMANCER_RADIUS);
+  triggerScreenShake(2.5, 0.25);
+}
+
+function updatePoisonClouds(dt) {
+  for (let i = state.poisonClouds.length - 1; i >= 0; i--) {
+    const c = state.poisonClouds[i];
+    c.timer += dt;
+    if (c.timer >= c.lifetime) { state.poisonClouds.splice(i, 1); continue; }
+    c.dmgTimer -= dt;
+    if (c.dmgTimer <= 0) {
+      c.dmgTimer = 0.4;
+      for (const npc of state.npcs) {
+        if (!isAlive(npc)) continue;
+        if (npc.isZombieType) continue;
+        const d = Math.hypot(npc.pos.wx - c.wx, npc.pos.wy - c.wy);
+        if (d < c.radius) applyDamage(npc, 14, 'poison');
+      }
+    }
+    c.fogTimer -= dt;
+    if (c.fogTimer <= 0) {
+      c.fogTimer = 0.1;
+      spawnPoisonFog(c.wx, c.wy, c.radius);
+    }
+  }
+}
+
+function spawnPoisonFog(wx, wy, radius) {
+  const angle = Math.random() * Math.PI * 2;
+  const r = Math.random() * radius;
+  state.particles.push({
+    kind: 'poison',
+    pos: { wx: wx + Math.cos(angle) * r, wy: wy + Math.sin(angle) * r, wz: 0.15 + Math.random() * 0.4 },
+    vel: { x: (Math.random() - 0.5) * 0.3, y: (Math.random() - 0.5) * 0.3, z: 0.2 + Math.random() * 0.3 },
+    timer: 0, lifetime: 1.2 + Math.random() * 0.8,
+    size: 5 + Math.random() * 4,
+  });
+}
+
+function spawnPoisonTrail(pos) {
+  state.particles.push({
+    kind: 'poison',
+    pos: { wx: pos.wx, wy: pos.wy, wz: pos.wz },
+    vel: { x: 0, y: 0, z: 0.4 },
+    timer: 0, lifetime: 0.5,
+    size: 4,
+  });
+}
+
+function drawPoisonClouds() {
+  const ctx = state.ctx;
+  for (const c of state.poisonClouds) {
+    const lifeFrac = c.timer / c.lifetime;
+    const fade = lifeFrac < 0.8 ? 1 : (1 - lifeFrac) / 0.2;
+    const pulse = 1 + Math.sin(c.timer * 4) * 0.04;
+    const r = c.radius * pulse;
+    ctx.save();
+    ctx.globalAlpha = fade * 0.22;
+    ctx.fillStyle = '#33ee66';
+    ctx.beginPath();
+    const STEPS = 36;
+    for (let i = 0; i <= STEPS; i++) {
+      const θ = (i / STEPS) * Math.PI * 2;
+      const sc = worldToScreen(c.wx + Math.cos(θ) * r, c.wy + Math.sin(θ) * r, 0);
+      if (i === 0) ctx.moveTo(sc.sx, sc.sy); else ctx.lineTo(sc.sx, sc.sy);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = fade * 0.55;
+    ctx.strokeStyle = '#88ff77';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function updateSpellSlotCooldownUI() {
+  const slots = document.querySelectorAll('.spell-slot');
+  for (const slot of slots) {
+    const spell = slot.dataset.spell;
+    const cd = state.l2CooldownTimers[spell] || 0;
+    let cdEl = slot.querySelector('.spell-cd');
+    if (cd > 0.05) {
+      if (!cdEl) {
+        cdEl = document.createElement('div');
+        cdEl.className = 'spell-cd';
+        slot.appendChild(cdEl);
+      }
+      cdEl.textContent = Math.ceil(cd);
+      cdEl.style.display = '';
+    } else if (cdEl) {
+      cdEl.style.display = 'none';
+    }
+  }
+}
+
+function raiseAsZombieDirect(npc) {
+  npc.state = 'ZOMBIE';
+  npc.isZombieType = true;
+  npc.pos.wz = 0;
+  npc.vel = { x: 0, y: 0, z: 0 };
+  npc.speed = 0.65 + Math.random() * 0.15;
+  npc.hp = npc.maxHp;
+  npc.hpFlashTimer = -1;
+  npc._wasCritical = null;
+  npc.fireTimer = 0;
+  npc.flashTimer = 0;
+  spawnSmokeBurst({ wx: npc.pos.wx, wy: npc.pos.wy, wz: 0.2 }, 1.2);
+  state.necroCasts.push({ wx: npc.pos.wx, wy: npc.pos.wy, timer: 0, lifetime: 1.0 });
+  state.totalDeaths++;
+}
+
+function castTornado(targetWorld) {
+  let dvx = 0, dvy = 0;
+  const hist = state.hand.history;
+  if (hist.length >= 2) {
+    const a = hist[0], b = hist[hist.length - 1];
+    const dts = (b.t - a.t) / 1000;
+    if (dts > 0.01) {
+      const w1 = screenToWorld(a.x, a.y);
+      const w2 = screenToWorld(b.x, b.y);
+      const len = Math.hypot(w2.wx - w1.wx, w2.wy - w1.wy);
+      if (len > 0.001) { dvx = (w2.wx - w1.wx) / len; dvy = (w2.wy - w1.wy) / len; }
+    }
+  }
+  if (dvx === 0 && dvy === 0) { dvx = 1; dvy = 0; }
+  state.tornadoActive = {
+    wx: targetWorld.wx, wy: targetWorld.wy,
+    vx: dvx, vy: dvy,
+    timer: 5.0, lifetime: 5.0, radius: 2.5,
+    dmgTimer: 0, particleTimer: 0, dustTimer: 0,
+  };
+  playWindSound();
+}
+
+function castMeteorShower(targetWorld) {
+  for (let i = 0; i < 5; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = Math.random() * 5;
+    const target = { wx: targetWorld.wx + Math.cos(angle) * r, wy: targetWorld.wy + Math.sin(angle) * r, wz: 0 };
+    const start = { wx: target.wx, wy: target.wy, wz: CONFIG.METEOR_HEIGHT };
+    state.projectiles.push({ kind: 'meteor', start, target, pos: { ...start }, timer: 0, duration: CONFIG.METEOR_FALL_DURATION, trailTimer: 0 });
+  }
+  playMeteorWhoosh();
+}
+
+function updateTornado(dt) {
+  const t = state.tornadoActive;
+  if (!t) return;
+  t.timer -= dt;
+  if (t.timer <= 0) { state.tornadoActive = null; return; }
+
+  // Drift along the original drag direction
+  t.wx += t.vx * dt * 1.4;
+  t.wy += t.vy * dt * 1.4;
+
+  const radius = t.radius;
+
+  // DOT tick — every 0.35 s; 8 dmg < poison's 14 dmg/0.4s
+  t.dmgTimer -= dt;
+  const doDamage = t.dmgTimer <= 0;
+  if (doDamage) t.dmgTimer = 0.35;
+
+  // Suck NPCs in kinematically — spiral inward + lift
+  for (const npc of state.npcs) {
+    if (!isAlive(npc) || npc.state === 'GRABBED') continue;
+    const dx = npc.pos.wx - t.wx;
+    const dy = npc.pos.wy - t.wy;
+    const d = Math.hypot(dx, dy);
+    if (d < radius) {
+      const angle = Math.atan2(dy, dx);
+      // Pull inward; floor at 0.4 wu to avoid singularity
+      const newD = Math.max(0.4, d - dt * 1.6);
+      // Spin faster the closer you are to the center
+      const angularSpeed = 4 + (1 - d / radius) * 5;
+      const newA = angle + dt * angularSpeed;
+      npc.pos.wx = t.wx + Math.cos(newA) * newD;
+      npc.pos.wy = t.wy + Math.sin(newA) * newD;
+      // Lift — inner NPCs rise higher
+      const targetZ = 0.4 + (1 - newD / radius) * 1.8;
+      npc.pos.wz = Math.min(targetZ, npc.pos.wz + dt * 4);
+      npc.vel.x = 0; npc.vel.y = 0; npc.vel.z = 0;
+      if (npc.state !== 'AIRBORNE') { npc.state = 'AIRBORNE'; npc.maxFallSpeed = 0; }
+      if (doDamage) applyDamage(npc, 8, 'wind');
+    }
+  }
+
+  // Swirling debris in the funnel column
+  t.particleTimer -= dt;
+  if (t.particleTimer <= 0) {
+    t.particleTimer = 0.025;
+    for (let i = 0; i < 3; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const heightFrac = Math.random();
+      const r = radius * (0.25 + heightFrac * 0.85);
+      const wz = heightFrac * 2.24;
+      state.particles.push({
+        kind: 'wind',
+        pos: { wx: t.wx + Math.cos(angle) * r, wy: t.wy + Math.sin(angle) * r, wz },
+        vel: { x: -Math.sin(angle) * 3.5, y: Math.cos(angle) * 3.5, z: 0.3 + Math.random() * 0.4 },
+        timer: 0, lifetime: 0.35 + Math.random() * 0.25,
+        size: 2 + Math.random() * 3,
+      });
+    }
+  }
+
+  // Dust kicked up at the base
+  t.dustTimer -= dt;
+  if (t.dustTimer <= 0) {
+    t.dustTimer = 0.05;
+    const angle = Math.random() * Math.PI * 2;
+    const r = radius * (0.6 + Math.random() * 0.4);
+    state.particles.push({
+      kind: 'dust',
+      pos: { wx: t.wx + Math.cos(angle) * r, wy: t.wy + Math.sin(angle) * r, wz: 0.05 },
+      vel: { x: -Math.sin(angle) * 2.2, y: Math.cos(angle) * 2.2, z: 0.6 + Math.random() * 0.5 },
+      lifetime: 0.5 + Math.random() * 0.3,
+      timer: 0,
+      size: 2 + Math.random() * 2,
+    });
+  }
+}
+
+function drawTornado() {
+  const t = state.tornadoActive;
+  if (!t) return;
+  const ctx = state.ctx;
+  const radius = t.radius;
+  const elapsed = t.lifetime - t.timer;
+  const fadeIn = Math.min(1, elapsed / 0.4);
+  const fadeOut = Math.min(1, t.timer / 0.6);
+  const alpha = fadeIn * fadeOut;
+  const now = performance.now() * 0.001;
+
+  ctx.save();
+  ctx.shadowColor = '#aaddff';
+  ctx.shadowBlur = 8;
+
+  // Stack of swirl bands — funnel shape (narrow at base, wider going up)
+  const BANDS = 16;
+  const TOP_WZ = 2.45;
+  for (let b = 0; b < BANDS; b++) {
+    const heightFrac = b / (BANDS - 1);
+    const wz = heightFrac * TOP_WZ;
+    // Funnel: base ~0.25*radius, top ~1.15*radius
+    const r = radius * (0.25 + heightFrac * 0.9);
+    const twistSpeed = 5.5 + heightFrac * 2.5;
+    const twist = now * twistSpeed + b * 0.35;
+    const bandAlpha = alpha * (0.7 - heightFrac * 0.35);
+    // Color shifts from gray-blue at base to lighter blue-white at top
+    const cb = Math.floor(200 + heightFrac * 50);
+    ctx.strokeStyle = `rgba(190, 220, ${cb}, ${bandAlpha})`;
+    ctx.lineWidth = 1.8;
+
+    // Front-facing 3/4 arc to imply 3D rotation (rear hidden)
+    ctx.beginPath();
+    const STEPS = 26;
+    const arcStart = twist;
+    const arcLen = Math.PI * 1.65;
+    for (let i = 0; i <= STEPS; i++) {
+      const θ = arcStart + (i / STEPS) * arcLen;
+      const sc = worldToScreen(t.wx + Math.cos(θ) * r, t.wy + Math.sin(θ) * r, wz);
+      if (i === 0) ctx.moveTo(sc.sx, sc.sy); else ctx.lineTo(sc.sx, sc.sy);
+    }
+    ctx.stroke();
+  }
+
+  // Ground dust disk at the base
+  ctx.globalAlpha = alpha * 0.35;
+  ctx.fillStyle = '#7d6a4a';
+  ctx.beginPath();
+  const STEPS = 28;
+  const dustR = radius * 0.95;
+  for (let i = 0; i <= STEPS; i++) {
+    const θ = (i / STEPS) * Math.PI * 2;
+    const sc = worldToScreen(t.wx + Math.cos(θ) * dustR, t.wy + Math.sin(θ) * dustR, 0);
+    if (i === 0) ctx.moveTo(sc.sx, sc.sy); else ctx.lineTo(sc.sx, sc.sy);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }
 
 function spawnSoulParticles(worldPos) {
@@ -3116,19 +3615,26 @@ function applyDamage(npc, amount, source) {
   if (source !== 'fire') npc.flashTimer = CONFIG.DEATH_FLASH_DURATION;
   if (npc.hp <= 0) {
     npc.hp = 0;
-    // Release biting zombie before kill so it returns to chase rather than
-    // staying stuck in ZOMBIE_BITING with a dead target.
-    if (wasBeingBitten && npc.biterId != null) {
-      const biter = state.npcs.find(n => n.id === npc.biterId);
-      if (biter && biter.state === 'ZOMBIE_BITING') {
-        biter.state = 'ZOMBIE';
-        biter.biteTargetId = null;
-      }
-      npc.biterId = null;
+    // Any death inside an active poison cloud raises as a zombie — covers
+    // edge cases like burn-tick or lightning killing an NPC while it stands
+    // in the fog, not just direct poison-tick deaths.
+    const shouldZombify = !npc.isZombieType &&
+      (source === 'poison' || isInsidePoisonCloud(npc));
+    if (shouldZombify) {
+      raiseAsZombieDirect(npc);
+    } else {
+      const intensity = isCritical ? 1.6 : 1.0;
+      kill(npc, intensity, isCritical);
     }
-    const intensity = isCritical ? 1.6 : 1.0;
-    kill(npc, intensity, isCritical);
   }
+}
+
+function isInsidePoisonCloud(npc) {
+  for (const c of state.poisonClouds) {
+    const d = Math.hypot(npc.pos.wx - c.wx, npc.pos.wy - c.wy);
+    if (d < c.radius) return true;
+  }
+  return false;
 }
 
 function kill(npc, intensity = 1.0, wasCritical = null) {
@@ -3176,6 +3682,36 @@ function explodeBody(npc) {
 function updateProjectiles(dt) {
   for (let i = state.projectiles.length - 1; i >= 0; i--) {
     const p = state.projectiles[i];
+
+    // Physics-based throwables (Phase 5.3 L2): gravity arc, ground impact.
+    if (p.kind === 'fireball_thrown' || p.kind === 'poison_ball') {
+      p.pos.wx += p.vel.x * dt;
+      p.pos.wy += p.vel.y * dt;
+      p.pos.wz += p.vel.z * dt;
+      p.vel.z -= CONFIG.GRAVITY * dt;
+
+      // Bounce off map edges (grass area only)
+      const N = CONFIG.MAP_SIZE;
+      if (p.pos.wx < 0) { p.pos.wx = 0; p.vel.x = Math.abs(p.vel.x) * 0.7; }
+      if (p.pos.wx > N) { p.pos.wx = N; p.vel.x = -Math.abs(p.vel.x) * 0.7; }
+      if (p.pos.wy < 0) { p.pos.wy = 0; p.vel.y = Math.abs(p.vel.y) * 0.7; }
+      if (p.pos.wy > N) { p.pos.wy = N; p.vel.y = -Math.abs(p.vel.y) * 0.7; }
+
+      p.trailTimer = (p.trailTimer || 0) + dt;
+      if (p.trailTimer >= 0.03) {
+        p.trailTimer = 0;
+        if (p.kind === 'fireball_thrown') spawnFireTrail(p.pos);
+        else spawnPoisonTrail(p.pos);
+      }
+      if (p.pos.wz <= 0) {
+        p.pos.wz = 0;
+        if (p.kind === 'fireball_thrown') explodeFireball(p.pos.wx, p.pos.wy, null, true);
+        else spawnPoisonCloud(p.pos.wx, p.pos.wy);
+        state.projectiles.splice(i, 1);
+      }
+      continue;
+    }
+
     p.timer += dt;
     p.trailTimer += dt;
 
@@ -3218,25 +3754,26 @@ function updateProjectiles(dt) {
   }
 }
 
-function explodeFireball(wx, wy, directTarget) {
-  spawnFireBurst({ wx, wy, wz: 0.1 }, 30);
-  spawnSmokeBurst({ wx, wy, wz: 0.3 }, 1.2);
+function explodeFireball(wx, wy, directTarget, bigAoe = false) {
+  const radius = bigAoe ? CONFIG.FIREBALL_AOE * 2 : CONFIG.FIREBALL_AOE;
+  spawnFireBurst({ wx, wy, wz: 0.1 }, bigAoe ? 70 : 30);
+  spawnSmokeBurst({ wx, wy, wz: 0.3 }, bigAoe ? 2.0 : 1.2);
   const DIRECT = CONFIG.DMG_FIREBALL_DIRECT;
   const EDGE   = CONFIG.DMG_FIREBALL_AOE_EDGE;
   for (const npc of state.npcs) {
     if (!isAlive(npc)) continue;
     const d = Math.hypot(npc.pos.wx - wx, npc.pos.wy - wy);
-    if (npc === directTarget) {
+    if (!bigAoe && npc === directTarget) {
       applyDamage(npc, DIRECT, 'fireball');
       ignite(npc);
-    } else if (d < CONFIG.FIREBALL_AOE) {
-      const t = d / CONFIG.FIREBALL_AOE;
+    } else if (d < radius) {
+      const t = d / radius;
       const dmg = Math.max(EDGE, DIRECT + (EDGE - DIRECT) * t);
       applyDamage(npc, dmg, 'fireball');
       ignite(npc);
     }
   }
-  triggerScreenShake(6, 0.35);
+  triggerScreenShake(bigAoe ? 9 : 6, bigAoe ? 0.5 : 0.35);
   playExplosionSound();
 }
 
@@ -3288,6 +3825,20 @@ function drawProjectile(p) {
     ctx.beginPath(); ctx.arc(sx, sy, 7, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#FF4500';
     ctx.beginPath(); ctx.arc(sx, sy, 4, 0, Math.PI * 2); ctx.fill();
+  } else if (p.kind === 'fireball_thrown') {
+    ctx.shadowColor = '#FF6020';
+    ctx.shadowBlur = 24;
+    ctx.fillStyle = '#FFD060';
+    ctx.beginPath(); ctx.arc(sx, sy, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FF4500';
+    ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI * 2); ctx.fill();
+  } else if (p.kind === 'poison_ball') {
+    ctx.shadowColor = '#33ff66';
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = '#a8ff80';
+    ctx.beginPath(); ctx.arc(sx, sy, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#33aa44';
+    ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.fill();
   } else if (p.kind === 'meteor') {
     ctx.shadowColor = '#FF6347';
     ctx.shadowBlur = 30;
@@ -3569,6 +4120,9 @@ function updateParticles(dt) {
     } else if (p.kind === 'smoke') {
       p.vel.x *= (1 - dt * 0.6);
       p.vel.y *= (1 - dt * 0.6);
+    } else if (p.kind === 'poison') {
+      p.vel.x *= (1 - dt * 0.8);
+      p.vel.y *= (1 - dt * 0.8);
     }
 
     if (p.kind === 'blood' && p.pos.wz <= 0 && !p.landed) {
@@ -3631,6 +4185,14 @@ function drawParticle(p) {
     case 'smoke': {
       const gray = Math.floor(80 - 30 * t);
       ctx.fillStyle = `rgba(${gray}, ${gray}, ${gray}, ${alpha * 0.55})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, p.size * (1 + t * 0.7), 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+    case 'poison': {
+      const g = Math.floor(190 + 30 * (1 - t));
+      ctx.fillStyle = `rgba(110, ${g}, 120, ${alpha * 0.5})`;
       ctx.beginPath();
       ctx.arc(sx, sy, p.size * (1 + t * 0.7), 0, Math.PI * 2);
       ctx.fill();
@@ -3973,6 +4535,9 @@ function setMusicMuted(muted) {
   }
 }
 
+function setSfxMuted(muted)  { state.music.sfxMuted = muted; }
+function setNpcMuted(muted)  { state.music.npcMuted = muted; }
+
 // ---------- Vocal SFX (burn scream / death grunt) ----------
 // Voice is built from a sawtooth glottal source fed through two bandpass
 // filters tuned to vowel formants ("ah" for the burn scream, "oh"-ish for
@@ -3986,6 +4551,7 @@ function voicePitch(npc, base) {
 }
 
 function playBurnScream(npc) {
+  if (state.music.npcMuted) return;
   const ctx = ensureAudio(); if (!ctx) return;
   const now = ctx.currentTime;
   const dur = 0.85 + Math.random() * 0.2;
@@ -4030,6 +4596,7 @@ function playBurnScream(npc) {
 }
 
 function playDeathGrunt(npc) {
+  if (state.music.npcMuted) return;
   const ctx = ensureAudio(); if (!ctx) return;
   const now = ctx.currentTime;
   const dur = 0.38 + Math.random() * 0.08;
@@ -4063,6 +4630,7 @@ function playDeathGrunt(npc) {
 }
 
 function playThud(intensity = 0.5) {
+  if (state.music.sfxMuted) return;
   const ctx = ensureAudio(); if (!ctx) return;
   const now = ctx.currentTime;
   const vol = 0.15 + 0.35 * intensity;
@@ -4092,6 +4660,7 @@ function playThud(intensity = 0.5) {
 }
 
 function playFireballSound() {
+  if (state.music.sfxMuted) return;
   const ctx = ensureAudio(); if (!ctx) return;
   const now = ctx.currentTime;
   const osc = ctx.createOscillator();
@@ -4106,6 +4675,7 @@ function playFireballSound() {
 }
 
 function playExplosionSound() {
+  if (state.music.sfxMuted) return;
   const ctx = ensureAudio(); if (!ctx) return;
   const now = ctx.currentTime;
 
@@ -4136,6 +4706,7 @@ function playExplosionSound() {
 }
 
 function playLightningSound() {
+  if (state.music.sfxMuted) return;
   const ctx = ensureAudio(); if (!ctx) return;
   const now = ctx.currentTime;
   const buf = ctx.createBuffer(1, ctx.sampleRate * 0.25, ctx.sampleRate);
@@ -4155,6 +4726,7 @@ function playLightningSound() {
 }
 
 function playWindSound() {
+  if (state.music.sfxMuted) return;
   const ctx = ensureAudio(); if (!ctx) return;
   const now = ctx.currentTime;
   const dur = 0.55;
@@ -4177,6 +4749,7 @@ function playWindSound() {
 }
 
 function playSplatSound(intensity = 1) {
+  if (state.music.sfxMuted) return;
   const ctx = ensureAudio(); if (!ctx) return;
   const now = ctx.currentTime;
   const vol = 0.25 + 0.25 * intensity;
@@ -4208,6 +4781,7 @@ function playSplatSound(intensity = 1) {
 }
 
 function playMeteorWhoosh() {
+  if (state.music.sfxMuted) return;
   const ctx = ensureAudio(); if (!ctx) return;
   const now = ctx.currentTime;
   const osc = ctx.createOscillator();
@@ -4222,6 +4796,7 @@ function playMeteorWhoosh() {
 }
 
 function playMeteorImpact() {
+  if (state.music.sfxMuted) return;
   const ctx = ensureAudio(); if (!ctx) return;
   const now = ctx.currentTime;
 
@@ -4254,6 +4829,7 @@ function playMeteorImpact() {
 }
 
 function playNecromancerSound() {
+  if (state.music.sfxMuted) return;
   const ctx = ensureAudio(); if (!ctx) return;
   const now = ctx.currentTime;
 
@@ -4312,6 +4888,7 @@ function render() {
   renderTiles();
   renderBloodDecals();
   renderCraterDecals();
+  drawPoisonClouds();
   drawHoverRing();
 
   const drawables = [];
@@ -4352,6 +4929,7 @@ function render() {
   // white silhouettes for NPCs occluded by buildings — drawn on top of everything
   for (const npc of occludedNPCs) drawNPCOccludedSilhouette(npc);
 
+  drawTornado();
   drawLightningBolts();
   drawNecroCasts();
   ctx.restore();
@@ -4454,8 +5032,16 @@ function loop(now) {
   updateShake(dt);
   updateRespawn(dt);
   updateNecroCasts(dt);
+  updateTornado(dt);
+  updatePoisonClouds(dt);
   state.windmillAngle += dt * 1.4;
   updateChimneySmoke(dt);
+
+  for (const key of Object.keys(state.l2CooldownTimers)) {
+    if (state.l2CooldownTimers[key] > 0)
+      state.l2CooldownTimers[key] = Math.max(0, state.l2CooldownTimers[key] - dt);
+  }
+  updateSpellSlotCooldownUI();
 
   state.npcs.sort((a, b) => (a.pos.wx + a.pos.wy) - (b.pos.wx + b.pos.wy));
 
@@ -4548,13 +5134,39 @@ function init() {
     infoPanel.hidden = !infoPanel.hidden;
   });
 
-  // Mute toggle
-  const muteToggle = document.getElementById('mute-toggle');
-  muteToggle.addEventListener('click', () => {
+  // Sound control panel
+  const soundToggle = document.getElementById('sound-toggle');
+  const soundPanel  = document.getElementById('sound-panel');
+  soundToggle.addEventListener('click', () => {
     ensureAudio();
-    setMusicMuted(!state.music.muted);
-    muteToggle.textContent = state.music.muted ? '🔇' : '🔊';
-    muteToggle.classList.toggle('muted', state.music.muted);
+    soundPanel.hidden = !soundPanel.hidden;
+  });
+
+  function updateSoundToggleIcon() {
+    const allMuted = state.music.muted && state.music.sfxMuted && state.music.npcMuted;
+    const someMuted = state.music.muted || state.music.sfxMuted || state.music.npcMuted;
+    soundToggle.textContent = allMuted ? '🔇' : someMuted ? '🔉' : '🔊';
+  }
+
+  soundPanel.querySelectorAll('.sound-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const key = row.dataset.sound;
+      const stateEl = row.querySelector('.sound-state');
+      if (key === 'music') {
+        setMusicMuted(!state.music.muted);
+        row.classList.toggle('muted', state.music.muted);
+        stateEl.textContent = state.music.muted ? 'OFF' : 'ON';
+      } else if (key === 'sfx') {
+        setSfxMuted(!state.music.sfxMuted);
+        row.classList.toggle('muted', state.music.sfxMuted);
+        stateEl.textContent = state.music.sfxMuted ? 'OFF' : 'ON';
+      } else if (key === 'npc') {
+        setNpcMuted(!state.music.npcMuted);
+        row.classList.toggle('muted', state.music.npcMuted);
+        stateEl.textContent = state.music.npcMuted ? 'OFF' : 'ON';
+      }
+      updateSoundToggleIcon();
+    });
   });
 
   initTiles();
