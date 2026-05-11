@@ -14,7 +14,8 @@ const CONFIG = {
   TILE_W: 64,
   TILE_H: 32,
   ELEV_H: 48,
-  MAP_SIZE: 20,
+  MAP_SIZE: 30,
+  WORLD_PAN_EXTRA: 5,  // pannable void around the grass (each side); total world = MAP_SIZE + 2*EXTRA
   NPC_COUNT: 15,
   GRAVITY: 18,
   BOUNCE_FACTOR: 0.35,
@@ -106,8 +107,33 @@ const state = {
     holding: null,
     history: [],
   },
+  pan: { active: false, lastX: 0, lastY: 0 },
+  filters: null, // populated in init() once CLASSES/RACES/etc are defined
+  music: { started: false, muted: false, gain: null, loopStart: 0, timer: null },
   lastTime: 0,
 };
+
+function pickFiltered(allList, filterSet) {
+  if (!filterSet || filterSet.size === 0) return allList[Math.floor(Math.random() * allList.length)];
+  const allowed = allList.filter(x => filterSet.has(x));
+  const pool = allowed.length > 0 ? allowed : allList;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function clampOrigin() {
+  // pannable world extends EXTRA tiles into the void on every side of the
+  // grass, so the camera center can roam world coords [-E, N+E] in both axes.
+  const N = CONFIG.MAP_SIZE;
+  const E = CONFIG.WORLD_PAN_EXTRA;
+  const halfW = state.width / 2;
+  const halfH = state.height / 2;
+  const minX = halfW - (N + 2 * E) * CONFIG.TILE_W / 2;
+  const maxX = halfW + (N + 2 * E) * CONFIG.TILE_W / 2;
+  const minY = halfH - (N + E) * CONFIG.TILE_H;
+  const maxY = halfH + E * CONFIG.TILE_H;
+  state.originX = Math.max(minX, Math.min(maxX, state.originX));
+  state.originY = Math.max(minY, Math.min(maxY, state.originY));
+}
 
 // ---------- Isometric projection ----------
 function worldToScreen(wx, wy, wz = 0) {
@@ -477,19 +503,24 @@ const CLASS_COLORS = {
   ranger:  '#2D6B2D',
   priest:  '#C0A860',
 };
+const CLASS_SPEED = { warrior: 1.10, wizard: 0.85, ranger: 1.25, priest: 1.00 };
+const AGE_SPEED   = { middle_age: 1.00, elder: 0.75 };
 
 function makeNPC(wx, wy) {
+  const f = state.filters || {};
+  const npcClass = pickFiltered(CLASSES, f.classes);
+  const race     = pickFiltered(RACES,   f.races);
+  const gender   = pickFiltered(GENDERS, f.genders);
+  const age      = pickFiltered(AGES,    f.ages);
+  const baseSpeed = 1.1 + Math.random() * 0.6;
   return {
     pos: { wx, wy, wz: 0 },
     vel: { x: 0, y: 0, z: 0 },
     state: 'IDLE',
     target: { wx, wy },
     timer: Math.random() * 2,
-    speed: 1.1 + Math.random() * 0.6,
-    npcClass: CLASSES[Math.floor(Math.random() * CLASSES.length)],
-    race:     RACES  [Math.floor(Math.random() * RACES.length)],
-    gender:   GENDERS[Math.floor(Math.random() * GENDERS.length)],
-    age:      AGES   [Math.floor(Math.random() * AGES.length)],
+    speed: baseSpeed * CLASS_SPEED[npcClass] * AGE_SPEED[age],
+    npcClass, race, gender, age,
     get color() { return CLASS_COLORS[this.npcClass]; },
     walkPhase: Math.random() * Math.PI * 2,
     stunTimer: 0,
@@ -501,6 +532,7 @@ function makeNPC(wx, wy) {
     maxFallSpeed: 0,
     isZombieType: false,
     justRespawned: false,
+    healUsed: false,
   };
 }
 
@@ -565,9 +597,11 @@ function updateRespawn(dt) {
 
 function pickWanderTarget(npc) {
   const N = CONFIG.MAP_SIZE;
+  const minD = npc.npcClass === 'ranger' ? 5.0 : 1.5;
+  const maxD = npc.npcClass === 'ranger' ? 9.0 : 5.5;
   for (let i = 0; i < 16; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const dist = 1.5 + Math.random() * 4;
+    const dist = minD + Math.random() * (maxD - minD);
     const nx = npc.pos.wx + Math.cos(angle) * dist;
     const ny = npc.pos.wy + Math.sin(angle) * dist;
     if (nx >= 1 && nx <= N - 1 && ny >= 1 && ny <= N - 1 &&
@@ -581,9 +615,58 @@ function pickWanderTarget(npc) {
   npc.target.wy = N / 2;
 }
 
+function findNearestState(npc, targetState, maxDist) {
+  let best = null, bestD = maxDist;
+  for (const o of state.npcs) {
+    if (o === npc || o.state !== targetState) continue;
+    const d = Math.hypot(o.pos.wx - npc.pos.wx, o.pos.wy - npc.pos.wy);
+    if (d < bestD) { bestD = d; best = o; }
+  }
+  return best;
+}
+
+function handleSignatureBehavior(npc, dt) {
+  if (npc.npcClass === 'warrior') {
+    const z = findNearestState(npc, 'ZOMBIE', 3.0);
+    if (z) {
+      const dx = z.pos.wx - npc.pos.wx, dy = z.pos.wy - npc.pos.wy;
+      const d = Math.hypot(dx, dy);
+      if (d < 0.35) { kill(z); return true; }
+      npc.pos.wx += (dx / d) * npc.speed * 1.4 * dt;
+      npc.pos.wy += (dy / d) * npc.speed * 1.4 * dt;
+      npc.walkPhase += dt * 12;
+      npc.state = 'WANDER';
+      return true;
+    }
+  }
+  if (npc.npcClass === 'priest' && !npc.healUsed) {
+    const f = findNearestState(npc, 'ON_FIRE', 4.0);
+    if (f) {
+      const dx = f.pos.wx - npc.pos.wx, dy = f.pos.wy - npc.pos.wy;
+      const d = Math.hypot(dx, dy);
+      if (d < 0.4) {
+        f.state = 'WANDER';
+        f.fireTimer = 0;
+        f.justRespawned = true;
+        pickWanderTarget(f);
+        npc.healUsed = true;
+        spawnSoulParticles(f.pos);
+        return true;
+      }
+      npc.pos.wx += (dx / d) * npc.speed * dt;
+      npc.pos.wy += (dy / d) * npc.speed * dt;
+      npc.walkPhase += dt * 8;
+      npc.state = 'WANDER';
+      return true;
+    }
+  }
+  return false;
+}
+
 function updateNPC(npc, dt) {
   switch (npc.state) {
     case 'IDLE':
+      if (handleSignatureBehavior(npc, dt)) break;
       npc.timer -= dt;
       if (npc.timer <= 0) {
         pickWanderTarget(npc);
@@ -592,6 +675,7 @@ function updateNPC(npc, dt) {
       break;
 
     case 'WANDER': {
+      if (handleSignatureBehavior(npc, dt)) break;
       const dx = npc.target.wx - npc.pos.wx;
       const dy = npc.target.wy - npc.pos.wy;
       const dist = Math.hypot(dx, dy);
@@ -749,135 +833,631 @@ function updateNPC(npc, dt) {
   }
 }
 
-function drawNPC(npc) {
-  if (npc.state === 'DEAD') return;
+// ---------- NPC appearance model & part drawers ----------
+// computeNPCAppearance() returns a snapshot describing how an NPC should look
+// THIS frame: derived flags (isZombie, flash), transform (bob/rot/scale/shakeX),
+// palette (skin/body/leg/arm), and animation values (legSplit, armA/B). The
+// part drawers below consume that model so drawNPC stays a thin orchestrator.
+const RACE_SCALE = {
+  human: { x: 1.00, y: 1.00 },
+  elf:   { x: 0.82, y: 1.18 },
+  dwarf: { x: 1.30, y: 0.78 },
+};
+const SKIN_BASE  = '#e9c39a';
+const SKIN_ELDER = '#d4a878';
+const SKIN_ZOMBIE = '#7a8a6a';
+const HAIR_YOUNG = '#2e1a08';
+const HAIR_ELDER = '#a8a8a8';
+const LEG_BASE   = '#3a2e1f';
+const LEG_ZOMBIE = '#2e3a2e';
+const BODY_ZOMBIE = '#5a6a4a';
+const FLASH_COLOR = '#FFFFFF';
 
-  const ctx = state.ctx;
-  const screen = worldToScreen(npc.pos.wx, npc.pos.wy, npc.pos.wz);
-  const ground = worldToScreen(npc.pos.wx, npc.pos.wy, 0);
+function computeNPCAppearance(npc) {
+  const isZombie = npc.state === 'ZOMBIE' || npc.isZombieType;
+  const flash    = npc.flashTimer > 0;
+  const now      = performance.now();
 
-  // shadow on ground — shrinks with elevation
-  const shrink = 1 / (1 + npc.pos.wz * 0.4);
+  let bob = 0;
+  if (npc.state === 'WANDER') bob = Math.abs(Math.sin(npc.walkPhase)) * 1.5;
+  else if (isZombie)          bob = Math.abs(Math.sin(npc.walkPhase)) * 1.0;
+
+  let rot = 0;
+  if      (npc.state === 'GRABBED')                                  rot = Math.sin(now / 100) * 0.18;
+  else if (npc.state === 'AIRBORNE')                                 rot = (npc.vel.x + npc.vel.y) * 0.12;
+  else if (npc.state === 'STUNNED' || npc.state === 'CORPSE')        rot = Math.PI / 2;
+  else if (isZombie)                                                 rot = Math.sin(now / 600) * 0.12;
+  else if (npc.age === 'elder')                                      rot = 0.07;
+
+  const r = isZombie ? { x: 1, y: 1 } : (RACE_SCALE[npc.race] || RACE_SCALE.human);
+  const scaleX = r.x, scaleY = r.y;
+
+  let shakeX = 0;
+  if      (npc.state === 'ON_FIRE') shakeX = Math.sin(now * 0.04) * 1.5;
+  else if (npc.state === 'DYING')   shakeX = (Math.random() - 0.5) * 3;
+
+  const baseSkin  = (!isZombie && npc.age === 'elder') ? SKIN_ELDER : SKIN_BASE;
+  const skinColor = flash ? FLASH_COLOR : (isZombie ? SKIN_ZOMBIE : baseSkin);
+  const bodyColor = flash ? FLASH_COLOR : (isZombie ? BODY_ZOMBIE : npc.color);
+  const legColor  = flash ? FLASH_COLOR : (isZombie ? LEG_ZOMBIE  : LEG_BASE);
+  const armColor  = flash ? FLASH_COLOR : (isZombie ? BODY_ZOMBIE : npc.color);
+
+  let legSplit = 0;
+  if      (npc.state === 'WANDER') legSplit = Math.sin(npc.walkPhase) * 2;
+  else if (isZombie)               legSplit = Math.sin(npc.walkPhase) * 1.2;
+
+  let armA = 0, armB = 0;
+  if (npc.state === 'GRABBED' || npc.state === 'AIRBORNE' ||
+      npc.state === 'ON_FIRE' || npc.state === 'DYING') {
+    armA = Math.sin(now / 80) * 4;
+    armB = -armA;
+  } else if (isZombie) {
+    armA = -7; armB = -7;
+  }
+
+  return {
+    isZombie, flash,
+    bob, rot, scaleX, scaleY, shakeX,
+    skinColor, bodyColor, legColor, armColor,
+    legSplit, armA, armB,
+  };
+}
+
+function drawNPCShadow(ctx, ground, shrink) {
   ctx.globalAlpha = 0.35 * shrink;
   ctx.fillStyle = '#000';
   ctx.beginPath();
   ctx.ellipse(ground.sx, ground.sy + 4, 8 * shrink, 4 * shrink, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.globalAlpha = 1;
+}
 
-  const isZombie = npc.state === 'ZOMBIE' || npc.isZombieType;
+// Material / texture palette — shared by costume and weapon helpers
+const M_METAL_LIGHT  = '#c8c8d2';
+const M_METAL_DARK   = '#5a5a64';
+const M_GOLD         = '#d4a017';
+const M_GOLD_BRIGHT  = '#FFD700';
+const M_LEATHER      = '#5a3a1c';
+const M_LEATHER_DARK = '#3a2008';
+const M_WOOD         = '#5a3008';
+const M_STRING       = '#aaa';
+const M_BLOOD        = '#a01818';
+const M_PRIEST_HAT   = '#f4f0d8';
+const M_WIZARD_HAT   = '#1f1234';
+const M_RANGER_HOOD  = '#1d4a1d';
+const M_BEARD        = '#5a3818';
+const CLASS_COLOR_DARK = {
+  warrior: '#5a1414',
+  wizard:  '#301455',
+  ranger:  '#1d4a1d',
+  priest:  '#80714a',
+};
+const classTrim = (npc) => CLASS_COLOR_DARK[npc.npcClass] || '#3a3a3a';
 
-  let bob = 0;
-  if (npc.state === 'WANDER') bob = Math.abs(Math.sin(npc.walkPhase)) * 1.5;
-  else if (isZombie) bob = Math.abs(Math.sin(npc.walkPhase)) * 1.0;
+// ---- Back layer (drawn before body) ----
+function drawNPCQuiver(ctx, npc, m) {
+  if (m.isZombie || m.flash || npc.npcClass !== 'ranger') return;
+  // Leather quiver tucked behind the torso, with three arrow shafts poking up
+  ctx.fillStyle = M_LEATHER;
+  ctx.fillRect(-1.7, -10.5, 3.4, 8);
+  ctx.fillStyle = M_LEATHER_DARK;
+  ctx.fillRect(-1.7, -10.5, 3.4, 0.6);   // top rim
+  ctx.fillRect(-1.7, -2.9, 3.4, 0.6);    // bottom rim
+  // arrows: shaft, feather
+  ctx.fillStyle = '#a87838';
+  ctx.fillRect(-1.2, -12.6, 0.55, 2.6);
+  ctx.fillRect( 0,    -13.1, 0.55, 3.1);
+  ctx.fillRect( 1.2,  -12.6, 0.55, 2.6);
+  ctx.fillStyle = M_BLOOD;
+  ctx.fillRect(-1.2, -12.6, 0.55, 0.9);
+  ctx.fillRect( 0,    -13.1, 0.55, 0.9);
+  ctx.fillRect( 1.2,  -12.6, 0.55, 0.9);
+}
 
-  let rot = 0;
-  if (npc.state === 'GRABBED') rot = Math.sin(performance.now() / 100) * 0.18;
-  else if (npc.state === 'AIRBORNE') rot = (npc.vel.x + npc.vel.y) * 0.12;
-  else if (npc.state === 'STUNNED' || npc.state === 'CORPSE') rot = Math.PI / 2;
-  else if (isZombie) rot = Math.sin(performance.now() / 600) * 0.12;
-  else if (!isZombie && npc.age === 'elder' && rot === 0) rot = 0.07; // elder forward hunch
+function drawNPCHairBack(ctx, npc, m) {
+  if (m.isZombie || m.flash || npc.gender !== 'female') return;
+  // Long hair flowing down behind the dress — trapezoid from head to shoulders
+  ctx.fillStyle = npc.age === 'elder' ? HAIR_ELDER : HAIR_YOUNG;
+  ctx.beginPath();
+  ctx.moveTo(-3.5, -16);
+  ctx.lineTo( 3.5, -16);
+  ctx.lineTo( 4.6,  -4);
+  ctx.lineTo(-4.6,  -4);
+  ctx.closePath();
+  ctx.fill();
+  // subtle inner shade for texture
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.fillRect(-1, -14, 2, 10);
+}
 
-  // race proportions
-  let scaleX = 1.0, scaleY = 1.0;
-  if (!isZombie) {
-    if (npc.race === 'elf')   { scaleX = 0.82; scaleY = 1.18; }
-    if (npc.race === 'dwarf') { scaleX = 1.30; scaleY = 0.78; }
+// ---- Lower body: pants (male/zombie) or skirt (female) ----
+function drawNPCLowerBody(ctx, npc, m) {
+  if (npc.gender === 'female' && !m.isZombie) {
+    // Long dress skirt — flared trapezoid
+    ctx.fillStyle = m.bodyColor;
+    ctx.beginPath();
+    ctx.moveTo(-3, -1);
+    ctx.lineTo( 3, -1);
+    ctx.lineTo( 5.2, 8);
+    ctx.lineTo(-5.2, 8);
+    ctx.closePath();
+    ctx.fill();
+    if (!m.flash) {
+      // hem trim
+      ctx.fillStyle = classTrim(npc);
+      ctx.fillRect(-5.2, 7, 10.4, 1.4);
+      // vertical pleat hints
+      ctx.fillRect(-2.6, 0.4, 0.4, 7.2);
+      ctx.fillRect( 2.2, 0.4, 0.4, 7.2);
+    }
+    // feet peeking out at the hem
+    ctx.fillStyle = m.legColor;
+    ctx.fillRect(-2.6, 7.7, 1.8, 1);
+    ctx.fillRect( 0.8, 7.7, 1.8, 1);
+  } else {
+    // Pants — two legs with walk animation
+    ctx.fillStyle = m.legColor;
+    ctx.fillRect(-3 + m.legSplit, 0, 2, 8);
+    ctx.fillRect( 1 - m.legSplit, 0, 2, 8);
+    if (!m.flash && !m.isZombie) {
+      // belt + buckle
+      ctx.fillStyle = M_LEATHER_DARK;
+      ctx.fillRect(-4, -1, 8, 1.1);
+      ctx.fillStyle = M_GOLD;
+      ctx.fillRect(-0.7, -0.9, 1.4, 0.9);
+      // boot tops (darker band at ankle)
+      ctx.fillStyle = M_LEATHER_DARK;
+      ctx.fillRect(-3 + m.legSplit, 6.5, 2, 1.5);
+      ctx.fillRect( 1 - m.legSplit, 6.5, 2, 1.5);
+    }
+  }
+}
+
+// ---- Torso (shirt or dress top) ----
+function drawNPCTorso(ctx, npc, m) {
+  ctx.fillStyle = m.bodyColor;
+  ctx.fillRect(-4, -10, 8, 10);
+  if (m.flash || m.isZombie) return;
+
+  const trim = classTrim(npc);
+  if (npc.gender === 'female') {
+    // V-neck
+    ctx.fillStyle = m.skinColor;
+    ctx.beginPath();
+    ctx.moveTo(-1.6, -10);
+    ctx.lineTo( 1.6, -10);
+    ctx.lineTo( 0,   -6.8);
+    ctx.closePath();
+    ctx.fill();
+    // bodice waist trim
+    ctx.fillStyle = trim;
+    ctx.fillRect(-4, -2, 8, 0.9);
+    // shoulder line
+    ctx.fillStyle = trim;
+    ctx.fillRect(-4, -10, 8, 0.5);
+  } else {
+    // Shirt: collar, center seam, shoulder line
+    ctx.fillStyle = trim;
+    ctx.fillRect(-0.35, -9.5, 0.7, 8.5);   // seam
+    ctx.fillRect(-4, -10, 8, 0.5);          // shoulder line
+    // collar notch
+    ctx.fillStyle = m.skinColor;
+    ctx.fillRect(-1, -10, 2, 1);
   }
 
-  let shakeX = 0;
-  if (npc.state === 'ON_FIRE') {
-    shakeX = Math.sin(performance.now() * 0.04) * 1.5;
-  } else if (npc.state === 'DYING') {
-    shakeX = (Math.random() - 0.5) * 3;
+  // Ranger strap across chest
+  if (npc.npcClass === 'ranger') {
+    ctx.save();
+    ctx.fillStyle = M_LEATHER;
+    ctx.translate(0, -5.5);
+    ctx.rotate(-0.55);
+    ctx.fillRect(-5.2, -0.55, 10.4, 1.1);
+    ctx.restore();
   }
+}
 
-  const flash = npc.flashTimer > 0;
-  const baseSkin = (!isZombie && npc.age === 'elder') ? '#d4a878' : '#e9c39a';
-  const skinColor = flash ? '#FFFFFF' : (isZombie ? '#7a8a6a' : baseSkin);
-  const bodyColor = flash ? '#FFFFFF' : (isZombie ? '#5a6a4a' : npc.color);
-  const legColor  = flash ? '#FFFFFF' : (isZombie ? '#2e3a2e' : '#3a2e1f');
-  const armColor  = flash ? '#FFFFFF' : (isZombie ? '#5a6a4a' : npc.color);
+// ---- Dwarf beard (over front of torso) ----
+function drawNPCBeard(ctx, npc, m) {
+  if (m.isZombie || m.flash || npc.race !== 'dwarf') return;
+  ctx.fillStyle = npc.age === 'elder' ? HAIR_ELDER : M_BEARD;
+  // mustache strip
+  ctx.fillRect(-2.8, -12, 5.6, 1.1);
+  // long beard triangle
+  ctx.beginPath();
+  ctx.moveTo(-3.2, -11);
+  ctx.lineTo( 3.2, -11);
+  ctx.lineTo( 0,    -3);
+  ctx.closePath();
+  ctx.fill();
+  // braid texture lines
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(-1.2, -10, 0.5, 6);
+  ctx.fillRect( 0.7, -10, 0.5, 6);
+}
+
+// ---- Arms ----
+function drawNPCArms(ctx, m) {
+  ctx.fillStyle = m.armColor;
+  ctx.fillRect(-6, -9 + m.armA, 2, 6);
+  ctx.fillRect( 4, -9 + m.armB, 2, 6);
+}
+
+// ---- Off-hand item (shield for warrior, book for wizard) ----
+function drawNPCOffHand(ctx, npc, m) {
+  if (m.isZombie || m.flash) return;
+  if (npc.npcClass === 'warrior') {
+    // Shield — wooden oval with metal rim and central boss
+    const x = -7.2, y = -6 + m.armA * 0.4;
+    ctx.fillStyle = '#7a4818';
+    ctx.beginPath();
+    ctx.ellipse(x, y, 2.4, 3.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = M_METAL_DARK;
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.ellipse(x, y, 2.4, 3.4, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // wood grain
+    ctx.fillStyle = '#5a3018';
+    ctx.fillRect(x - 0.2, y - 2.6, 0.4, 5.2);
+    // metal boss in center
+    ctx.fillStyle = M_METAL_LIGHT;
+    ctx.beginPath(); ctx.arc(x, y, 0.85, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ececf2';
+    ctx.beginPath(); ctx.arc(x - 0.25, y - 0.25, 0.4, 0, Math.PI * 2); ctx.fill();
+  } else if (npc.npcClass === 'wizard') {
+    // Spell book under the left arm
+    const x = -7, y = -4 + m.armA * 0.4;
+    ctx.fillStyle = M_LEATHER;
+    ctx.fillRect(x - 1.7, y - 1.7, 3.4, 3.4);
+    ctx.fillStyle = M_LEATHER_DARK;
+    ctx.fillRect(x - 1.7, y - 1.7, 0.55, 3.4);   // spine
+    ctx.fillStyle = '#e8d8a0';
+    ctx.fillRect(x + 1, y - 1.3, 0.4, 2.6);       // page edges
+    ctx.fillStyle = M_GOLD;
+    ctx.fillRect(x - 0.4, y - 0.4, 0.8, 0.8);     // clasp
+  }
+}
+
+// ---- Head (skin sphere) ----
+function drawNPCHead(ctx, m) {
+  ctx.fillStyle = m.skinColor;
+  ctx.beginPath();
+  ctx.arc(0, -13, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// ---- Elf ears (pointed, sticking out beside the head) ----
+function drawNPCElfEars(ctx, npc, m) {
+  if (m.isZombie || m.flash || npc.race !== 'elf') return;
+  ctx.fillStyle = m.skinColor;
+  ctx.beginPath();
+  ctx.moveTo(-3.0, -13);
+  ctx.lineTo(-5.4, -16.2);
+  ctx.lineTo(-3.0, -11.6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo( 3.0, -13);
+  ctx.lineTo( 5.4, -16.2);
+  ctx.lineTo( 3.0, -11.6);
+  ctx.closePath();
+  ctx.fill();
+  // tiny inner-ear shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.20)';
+  ctx.fillRect(-4.0, -14.2, 1.3, 0.5);
+  ctx.fillRect( 2.7, -14.2, 1.3, 0.5);
+}
+
+// ---- Hair (front / top, gender + age) ----
+function drawNPCHairFront(ctx, npc, m) {
+  if (m.isZombie || m.flash) return;
+  ctx.fillStyle = npc.age === 'elder' ? HAIR_ELDER : HAIR_YOUNG;
+  if (npc.gender === 'female') {
+    // Top crown + front side strands framing the face
+    ctx.beginPath();
+    ctx.arc(0, -15.2, 3.4, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(-4.4, -14.8, 1.3, 3.6);
+    ctx.fillRect( 3.1, -14.8, 1.3, 3.6);
+  } else if (npc.age === 'elder') {
+    // Receding gray hair — temples + thin wisp
+    ctx.fillRect(-4.0, -15.4, 1.2, 3);
+    ctx.fillRect( 2.8, -15.4, 1.2, 3);
+    ctx.fillRect(-2.2, -16.1, 4.4, 0.8);
+  } else {
+    // Young male short fringe cap
+    ctx.beginPath();
+    ctx.arc(0, -14, 3.6, Math.PI, 0);
+    ctx.fill();
+  }
+}
+
+// ---- Headgear by class (drawn over hair) ----
+function drawNPCHeadgear(ctx, npc, m) {
+  if (m.isZombie || m.flash) return;
+  switch (npc.npcClass) {
+    case 'warrior': {
+      // Steel helmet — dome, brow band, side bolts, red plume crest
+      ctx.fillStyle = M_METAL_LIGHT;
+      ctx.beginPath();
+      ctx.arc(0, -14.2, 4.1, Math.PI, 0);
+      ctx.fill();
+      // top highlight
+      ctx.fillStyle = '#e8e8f0';
+      ctx.beginPath();
+      ctx.arc(-0.8, -16, 1.6, Math.PI, Math.PI * 1.6);
+      ctx.fill();
+      // brow band
+      ctx.fillStyle = M_METAL_DARK;
+      ctx.fillRect(-4.1, -14.3, 8.2, 0.8);
+      // side bolts
+      ctx.fillRect(-3.7, -15.1, 0.6, 0.6);
+      ctx.fillRect( 3.1, -15.1, 0.6, 0.6);
+      // red plume crest
+      ctx.fillStyle = M_BLOOD;
+      ctx.fillRect(-0.9, -19.5, 1.8, 5);
+      ctx.fillStyle = '#7a1010';
+      ctx.fillRect(-0.4, -19.0, 0.8, 4.5);
+      break;
+    }
+    case 'wizard': {
+      // Tall pointed hat with brim and gold band + star
+      ctx.fillStyle = M_WIZARD_HAT;
+      ctx.beginPath();
+      ctx.moveTo(-3.6, -15.2);
+      ctx.lineTo( 3.6, -15.2);
+      ctx.lineTo( 0.4, -22);
+      ctx.lineTo(-0.4, -22);
+      ctx.closePath();
+      ctx.fill();
+      // floppy fold
+      ctx.beginPath();
+      ctx.moveTo( 1.0, -19);
+      ctx.lineTo( 2.8, -18);
+      ctx.lineTo( 1.5, -17.4);
+      ctx.closePath();
+      ctx.fill();
+      // brim ellipse
+      ctx.beginPath();
+      ctx.ellipse(0, -14.7, 5.4, 1.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // gold band
+      ctx.fillStyle = M_GOLD;
+      ctx.fillRect(-3.4, -16, 6.8, 0.8);
+      // star on the front
+      ctx.fillStyle = M_GOLD_BRIGHT;
+      ctx.beginPath();
+      ctx.arc(0, -18.4, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(-0.2, -19.1, 0.4, 1.4);
+      ctx.fillRect(-0.9, -18.4, 1.8, 0.4);
+      break;
+    }
+    case 'priest': {
+      // Bishop's mitre — tall, two-peaked, cross on the front
+      ctx.fillStyle = M_PRIEST_HAT;
+      ctx.beginPath();
+      ctx.moveTo(-3.6, -14);
+      ctx.lineTo( 3.6, -14);
+      ctx.lineTo( 3.6, -17.5);
+      ctx.lineTo( 0,   -22);
+      ctx.lineTo(-3.6, -17.5);
+      ctx.closePath();
+      ctx.fill();
+      // gold trim at base
+      ctx.fillStyle = M_GOLD;
+      ctx.fillRect(-3.6, -14, 7.2, 0.8);
+      // vertical gold orphrey down the front
+      ctx.fillRect(-0.4, -20.5, 0.8, 6);
+      // cross symbol
+      ctx.fillStyle = M_GOLD_BRIGHT;
+      ctx.fillRect(-0.4, -19.6, 0.8, 3.6);
+      ctx.fillRect(-1.4, -18.4, 2.8, 0.8);
+      // back lappet (streamer behind shoulder)
+      ctx.fillStyle = M_PRIEST_HAT;
+      ctx.fillRect( 2.0, -13.5, 0.8, 4);
+      ctx.fillStyle = M_GOLD;
+      ctx.fillRect( 2.0, -10, 0.8, 0.4);
+      break;
+    }
+    case 'ranger': {
+      // Forest hood — peaked top, side covers, shoulder cape
+      ctx.fillStyle = M_RANGER_HOOD;
+      // peaked top
+      ctx.beginPath();
+      ctx.moveTo(-3.4, -15);
+      ctx.lineTo( 3.4, -15);
+      ctx.lineTo( 1.2, -19.2);
+      ctx.lineTo(-1.2, -19.2);
+      ctx.closePath();
+      ctx.fill();
+      // side covers framing the face
+      ctx.fillRect(-4.5, -14.6, 1.5, 4);
+      ctx.fillRect( 3.0, -14.6, 1.5, 4);
+      // shoulder cape
+      ctx.fillRect(-5, -10.6, 10, 1.4);
+      // inner shadow trim
+      ctx.fillStyle = '#0a2a0a';
+      ctx.fillRect(-3.4, -15.4, 6.8, 0.5);
+      // tiny green feather on the side
+      ctx.fillStyle = '#3a8a3a';
+      ctx.fillRect(2.8, -17.6, 0.9, 2.6);
+      break;
+    }
+  }
+}
+
+// ---- Weapon in the right hand ----
+function drawNPCWeaponRight(ctx, npc, m) {
+  if (m.isZombie || m.flash) return;
+  // follow the right arm vertical offset so the weapon doesn't float when arms flail
+  ctx.save();
+  ctx.translate(0, m.armB);
+  switch (npc.npcClass) {
+    case 'warrior': {
+      // Long sword — held tip up, gold guard + pommel
+      const x = 6.8;
+      ctx.fillStyle = M_METAL_LIGHT;
+      ctx.fillRect(x - 0.5, -16, 1.0, 10);
+      ctx.fillStyle = '#f4f4fa';
+      ctx.fillRect(x - 0.15, -15.8, 0.3, 9);
+      ctx.fillStyle = M_GOLD;
+      ctx.fillRect(x - 1.7, -6.4, 3.4, 0.9);   // crossguard
+      ctx.fillStyle = M_LEATHER_DARK;
+      ctx.fillRect(x - 0.4, -5.5, 0.8, 2.6);   // leather grip
+      ctx.fillStyle = '#3a2008';                // grip wrap stripes
+      ctx.fillRect(x - 0.4, -4.6, 0.8, 0.3);
+      ctx.fillRect(x - 0.4, -3.7, 0.8, 0.3);
+      ctx.fillStyle = M_GOLD;
+      ctx.beginPath(); ctx.arc(x, -2.5, 0.75, 0, Math.PI * 2); ctx.fill();   // pommel
+      break;
+    }
+    case 'ranger': {
+      // Longbow — arc on the right with vertical string
+      const cx = 7.4, cy = -7;
+      ctx.strokeStyle = M_WOOD;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 5.4, Math.PI * 0.42, -Math.PI * 0.42, true);
+      ctx.stroke();
+      // string
+      ctx.strokeStyle = M_STRING;
+      ctx.lineWidth = 0.45;
+      ctx.beginPath();
+      ctx.moveTo(cx - 0.6, cy - 4.9);
+      ctx.lineTo(cx - 0.6, cy + 4.9);
+      ctx.stroke();
+      // leather grip wrap at hand
+      ctx.fillStyle = M_LEATHER_DARK;
+      ctx.fillRect(cx + 1.4, cy - 1.1, 1.3, 2.2);
+      break;
+    }
+    case 'wizard': {
+      // Tall wooden staff topped with a glowing orb
+      const x = 6.6;
+      ctx.fillStyle = M_WOOD;
+      ctx.fillRect(x - 0.5, -15, 1, 18);
+      // wood grain stripes
+      ctx.fillStyle = M_LEATHER_DARK;
+      ctx.fillRect(x - 0.5, -10, 1, 0.4);
+      ctx.fillRect(x - 0.5,  -4, 1, 0.4);
+      // hand grip wrap
+      ctx.fillStyle = M_LEATHER_DARK;
+      ctx.fillRect(x - 0.5, -7, 1, 2.2);
+      // orb glow halo
+      ctx.fillStyle = 'rgba(255, 224, 102, 0.32)';
+      ctx.beginPath(); ctx.arc(x, -16.4, 2.6, 0, Math.PI * 2); ctx.fill();
+      // orb
+      ctx.fillStyle = M_GOLD_BRIGHT;
+      ctx.beginPath(); ctx.arc(x, -16.4, 1.5, 0, Math.PI * 2); ctx.fill();
+      // orb highlight
+      ctx.fillStyle = '#fff7c0';
+      ctx.beginPath(); ctx.arc(x - 0.45, -16.85, 0.55, 0, Math.PI * 2); ctx.fill();
+      break;
+    }
+    case 'priest': {
+      // Gold scepter topped with a small jeweled cross
+      const x = 6.5;
+      ctx.fillStyle = M_GOLD;
+      ctx.fillRect(x - 0.45, -13, 0.9, 11);
+      // cross
+      ctx.fillRect(x - 0.5, -16.8, 1, 3.8);
+      ctx.fillRect(x - 1.5, -15.5, 3, 0.9);
+      // jewel
+      ctx.fillStyle = M_BLOOD;
+      ctx.fillRect(x - 0.4, -15.4, 0.8, 0.7);
+      // grip bands
+      ctx.fillStyle = M_LEATHER_DARK;
+      ctx.fillRect(x - 0.5, -7,  1, 0.4);
+      ctx.fillRect(x - 0.5, -10, 1, 0.4);
+      break;
+    }
+  }
+  ctx.restore();
+}
+
+// ---- Simplified body used only for zombies (no costume detail) ----
+function drawNPCZombieBody(ctx, m) {
+  ctx.fillStyle = m.legColor;
+  ctx.fillRect(-3 + m.legSplit, 0, 2, 8);
+  ctx.fillRect( 1 - m.legSplit, 0, 2, 8);
+  ctx.fillStyle = m.bodyColor;
+  ctx.fillRect(-4, -10, 8, 10);
+  // torn shirt rips for atmosphere
+  ctx.fillStyle = '#3a4a3a';
+  ctx.fillRect(-3, -8, 2, 1);
+  ctx.fillRect( 1, -5, 2, 1);
+  ctx.fillStyle = m.armColor;
+  ctx.fillRect(-6, -9 + m.armA, 2, 6);
+  ctx.fillRect( 4, -9 + m.armB, 2, 6);
+  ctx.fillStyle = m.skinColor;
+  ctx.beginPath();
+  ctx.arc(0, -13, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawNPCCharring(ctx, npc) {
+  const char = Math.max(0, 1 - npc.fireTimer / CONFIG.FIRE_BURN_DURATION);
+  ctx.fillStyle = `rgba(10, 5, 0, ${char * 0.78})`;
+  ctx.fillRect(-5, -17, 10, 26);
+}
+
+function drawNPCZombieEyes(ctx) {
+  ctx.save();
+  ctx.shadowColor = '#44ff44';
+  ctx.shadowBlur = 6;
+  ctx.fillStyle = '#88ff88';
+  ctx.beginPath(); ctx.arc(-1.2, -13.5, 1.1, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc( 1.2, -13.5, 1.1, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawNPC(npc) {
+  if (npc.state === 'DEAD') return;
+
+  const ctx = state.ctx;
+  const screen = worldToScreen(npc.pos.wx, npc.pos.wy, npc.pos.wz);
+  const ground = worldToScreen(npc.pos.wx, npc.pos.wy, 0);
+  const shrink = 1 / (1 + npc.pos.wz * 0.4);
+
+  drawNPCShadow(ctx, ground, shrink);
+
+  const m = computeNPCAppearance(npc);
 
   ctx.save();
-  ctx.translate(screen.sx + shakeX, screen.sy - bob);
-  ctx.rotate(rot);
-  ctx.scale(scaleX, scaleY);
+  ctx.translate(screen.sx + m.shakeX, screen.sy - m.bob);
+  ctx.rotate(m.rot);
+  ctx.scale(m.scaleX, m.scaleY);
 
   if (npc.state === 'CORPSE') {
     const fade = npc.corpseTimer < 5 ? Math.max(0, npc.corpseTimer / 5) : 1;
     ctx.globalAlpha = 0.85 * fade;
   }
 
-  // legs
-  let legSplit = 0;
-  if (npc.state === 'WANDER') legSplit = Math.sin(npc.walkPhase) * 2;
-  else if (isZombie) legSplit = Math.sin(npc.walkPhase) * 1.2;
-  ctx.fillStyle = legColor;
-  ctx.fillRect(-3 + legSplit, 0, 2, 8);
-  ctx.fillRect( 1 - legSplit, 0, 2, 8);
-
-  // body
-  ctx.fillStyle = bodyColor;
-  ctx.fillRect(-4, -10, 8, 10);
-
-  // arms
-  let armA = 0, armB = 0;
-  if (npc.state === 'GRABBED' || npc.state === 'AIRBORNE' ||
-      npc.state === 'ON_FIRE' || npc.state === 'DYING') {
-    armA = Math.sin(performance.now() / 80) * 4;
-    armB = -armA;
-  } else if (isZombie) {
-    // arms outstretched forward
-    armA = -7;
-    armB = -7;
-  }
-  ctx.fillStyle = armColor;
-  ctx.fillRect(-6, -9 + armA, 2, 6);
-  ctx.fillRect( 4, -9 + armB, 2, 6);
-
-  // head
-  ctx.fillStyle = skinColor;
-  ctx.beginPath();
-  ctx.arc(0, -13, 3.5, 0, Math.PI * 2);
-  ctx.fill();
-
-  // hair (gender + age) — skip for zombies and flash
-  if (!isZombie && !flash) {
-    const hairColor = npc.age === 'elder' ? '#a8a8a8' : '#2e1a08';
-    ctx.fillStyle = hairColor;
-    if (npc.gender === 'female') {
-      // bun on top
-      ctx.beginPath();
-      ctx.arc(0, -16.5, 2.4, Math.PI, 0);
-      ctx.fill();
-      // side strands
-      ctx.fillRect(-5.5, -15.5, 1.4, 5);
-      ctx.fillRect( 4.1, -15.5, 1.4, 5);
-    } else if (npc.age === 'elder') {
-      // gray temple lines for male elder
-      ctx.fillRect(-4.8, -15.5, 1.2, 3.5);
-      ctx.fillRect( 3.6, -15.5, 1.2, 3.5);
-    }
-  }
-
-  // charring effect: gradually darken body as fire burns
-  if (npc.state === 'ON_FIRE') {
-    const char = Math.max(0, 1 - npc.fireTimer / CONFIG.FIRE_BURN_DURATION);
-    ctx.fillStyle = `rgba(10, 5, 0, ${char * 0.78})`;
-    ctx.fillRect(-5, -17, 10, 26);
-  }
-
-  // zombie glowing eyes
-  if (isZombie) {
-    ctx.save();
-    ctx.shadowColor = '#44ff44';
-    ctx.shadowBlur = 6;
-    ctx.fillStyle = '#88ff88';
-    ctx.beginPath(); ctx.arc(-1.2, -13.5, 1.1, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc( 1.2, -13.5, 1.1, 0, Math.PI * 2); ctx.fill();
+  if (m.isZombie) {
+    drawNPCZombieBody(ctx, m);
+    if (npc.state === 'ON_FIRE') drawNPCCharring(ctx, npc);
+    drawNPCZombieEyes(ctx);
     ctx.restore();
+    return;
   }
+
+  // Living NPC — full costume stack, drawn back-to-front.
+  drawNPCQuiver(ctx, npc, m);       // behind torso
+  drawNPCHairBack(ctx, npc, m);     // long hair behind body (female)
+  drawNPCLowerBody(ctx, npc, m);    // pants or dress skirt
+  drawNPCTorso(ctx, npc, m);        // shirt or bodice + class trim
+  drawNPCBeard(ctx, npc, m);        // dwarf only — over upper torso
+  drawNPCArms(ctx, m);
+  drawNPCOffHand(ctx, npc, m);      // shield (warrior) / book (wizard)
+  drawNPCHead(ctx, m);
+  drawNPCElfEars(ctx, npc, m);      // elf only
+  drawNPCHairFront(ctx, npc, m);    // crown / fringe / temples
+  drawNPCHeadgear(ctx, npc, m);     // helmet / wizard hat / mitre / hood
+  drawNPCWeaponRight(ctx, npc, m);  // sword / bow / staff / scepter
+
+  if (npc.state === 'ON_FIRE') drawNPCCharring(ctx, npc);
 
   ctx.restore();
 }
@@ -901,9 +1481,13 @@ function buildingOccluding(npc) {
         npc.pos.wy >= b.wy && npc.pos.wy <= b.wy + b.h) return b;
 
     // case B: NPC behind the building in iso depth, with screen-X overlap
+    // and within the roof's vertical reach (~3 wu of depth above back corner).
+    // Beyond that the NPC's screen position is above the roof peak — the
+    // building can't actually cover them, so no silhouette needed.
     const npcDepth = npc.pos.wx + npc.pos.wy;
     const buildingBackDepth = b.wx + b.wy;
-    if (npcDepth >= buildingBackDepth) continue;
+    const depthBehind = buildingBackDepth - npcDepth;
+    if (depthBehind <= 0 || depthBehind > 3) continue;
 
     const dxNpc = npc.pos.wx - npc.pos.wy;
     const dxMin = b.wx - (b.wy + b.h);
@@ -975,6 +1559,10 @@ function onMouseDown(e) {
       npcUnder.state = 'GRABBED';
       npcUnder.vel = { x: 0, y: 0, z: 0 };
       state.hand.holding = npcUnder;
+    } else {
+      state.pan.active = true;
+      state.pan.lastX = x;
+      state.pan.lastY = y;
     }
     return;
   }
@@ -988,12 +1576,23 @@ function onMouseDown(e) {
 
 function onMouseMove(e) {
   const { x, y } = getMousePos(e);
+  if (state.pan.active) {
+    state.originX += x - state.pan.lastX;
+    state.originY += y - state.pan.lastY;
+    state.pan.lastX = x;
+    state.pan.lastY = y;
+    clampOrigin();
+  }
   state.hand.pos = { x, y };
   state.hand.visible = true;
   pushHistory(x, y);
 }
 
 function onMouseUp() {
+  if (state.pan.active) {
+    state.pan.active = false;
+    return;
+  }
   const npc = state.hand.holding;
   if (!npc) return;
 
@@ -1026,6 +1625,7 @@ function onMouseUp() {
 
 function onMouseLeave() {
   state.hand.visible = false;
+  state.pan.active = false;
 }
 
 function updateHand(dt) {
@@ -1333,14 +1933,18 @@ function makeBoltSegments(points) {
 function ignite(npc) {
   if (!isAlive(npc) || npc.state === 'ON_FIRE') return;
   npc.state = 'ON_FIRE';
-  npc.fireTimer = CONFIG.FIRE_BURN_DURATION;
+  const resist = npc.npcClass === 'wizard' ? 1.5 : 1.0;
+  npc.fireTimer = CONFIG.FIRE_BURN_DURATION * resist;
   npc.firePartTimer = 0;
   npc.fleeTimer = 0;
   npc.vel = { x: 0, y: 0, z: 0 };
+  playBurnScream(npc);
 }
 
 function kill(npc, intensity = 1.0) {
   if (npc.state === 'DEAD' || npc.state === 'DYING' || npc.state === 'CORPSE') return;
+  // play "oaff" only when dying from non-fire causes (fire victims already screamed at ignite)
+  if (npc.state !== 'ON_FIRE') playDeathGrunt(npc);
   npc.state = 'DYING';
   npc.flashTimer = CONFIG.DEATH_FLASH_DURATION;
   npc.deathIntensity = intensity;
@@ -2055,7 +2659,198 @@ function ensureAudio() {
     if (Ctor) audioCtx = new Ctor();
   }
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if (audioCtx && !state.music.started) startTavernMusic();
   return audioCtx;
+}
+
+// ---------- Tavern theme music ----------
+const NOTE_FREQ = {
+  D2:  73.42, F2:  87.31, G2:  98.00,
+  D3: 146.83, F3: 174.61, G3: 196.00,
+  D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00,
+  C5: 523.25, D5: 587.33,
+};
+
+// 16-beat loop in D minor — ascending lute motif, falling response, cadence.
+// Format: [beatPos, noteName, durationBeats]
+const TAVERN_MELODY = [
+  [ 0.0, 'D4', 0.75], [ 0.75,'A4', 0.25], [ 1.0, 'F4', 0.5],  [ 1.5, 'A4', 0.5],
+  [ 2.0, 'D5', 1.0],  [ 3.0, 'A4', 1.0],
+  [ 4.0, 'C5', 0.5],  [ 4.5, 'A4', 0.5],  [ 5.0, 'G4', 1.0],
+  [ 6.0, 'F4', 0.5],  [ 6.5, 'A4', 0.5],  [ 7.0, 'G4', 1.0],
+  [ 8.0, 'F4', 0.5],  [ 8.5, 'G4', 0.5],  [ 9.0, 'A4', 1.0],
+  [10.0, 'C5', 1.0],  [11.0, 'A4', 1.0],
+  [12.0, 'G4', 0.5],  [12.5,'F4', 0.5],   [13.0, 'E4', 0.5],  [13.5,'D4', 0.5],
+  [14.0, 'D4', 2.0],
+];
+const TAVERN_BASS = [
+  [ 0.0, 'D3', 4.0],
+  [ 4.0, 'F3', 4.0],
+  [ 8.0, 'G3', 4.0],
+  [12.0, 'D3', 4.0],
+];
+const TAVERN_BPM = 105;
+const TAVERN_LOOP_BEATS = 16;
+const TAVERN_VOLUME = 0.16;
+
+function playLuteNote(freq, when, duration) {
+  const ctx = audioCtx;
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  const lp = ctx.createBiquadFilter();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(freq, when);
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(2400, when);
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(0.55, when + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.001, when + Math.max(0.05, duration * 0.95));
+  osc.connect(lp).connect(g).connect(state.music.gain);
+  osc.start(when);
+  osc.stop(when + duration + 0.05);
+}
+
+function playBassNote(freq, when, duration) {
+  const ctx = audioCtx;
+  const osc = ctx.createOscillator();
+  const sub = ctx.createOscillator();
+  const g = ctx.createGain();
+  const lp = ctx.createBiquadFilter();
+  osc.type = 'sine';        osc.frequency.setValueAtTime(freq, when);
+  sub.type = 'triangle';    sub.frequency.setValueAtTime(freq * 0.5, when);
+  lp.type = 'lowpass';      lp.frequency.setValueAtTime(800, when);
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(0.22, when + 0.4);
+  g.gain.linearRampToValueAtTime(0.22, when + Math.max(0.5, duration - 0.4));
+  g.gain.linearRampToValueAtTime(0, when + duration);
+  osc.connect(lp);
+  sub.connect(lp);
+  lp.connect(g).connect(state.music.gain);
+  osc.start(when); osc.stop(when + duration + 0.05);
+  sub.start(when); sub.stop(when + duration + 0.05);
+}
+
+function startTavernMusic() {
+  if (!audioCtx || state.music.started) return;
+  state.music.started = true;
+  state.music.gain = audioCtx.createGain();
+  state.music.gain.gain.value = state.music.muted ? 0 : TAVERN_VOLUME;
+  state.music.gain.connect(audioCtx.destination);
+  state.music.loopStart = audioCtx.currentTime + 0.2;
+  scheduleTavernLoop();
+}
+
+function scheduleTavernLoop() {
+  if (!state.music.started) return;
+  const beatSec = 60 / TAVERN_BPM;
+  const loopT = state.music.loopStart;
+  for (const [pos, note, dur] of TAVERN_MELODY) {
+    playLuteNote(NOTE_FREQ[note], loopT + pos * beatSec, dur * beatSec);
+  }
+  for (const [pos, note, dur] of TAVERN_BASS) {
+    playBassNote(NOTE_FREQ[note], loopT + pos * beatSec, dur * beatSec);
+  }
+  const loopDur = TAVERN_LOOP_BEATS * beatSec;
+  state.music.loopStart += loopDur;
+  // re-schedule slightly before the loop ends
+  state.music.timer = setTimeout(scheduleTavernLoop, Math.max(100, (loopDur - 0.3) * 1000));
+}
+
+function setMusicMuted(muted) {
+  state.music.muted = muted;
+  if (state.music.gain) {
+    state.music.gain.gain.cancelScheduledValues(audioCtx.currentTime);
+    state.music.gain.gain.linearRampToValueAtTime(muted ? 0 : TAVERN_VOLUME, audioCtx.currentTime + 0.08);
+  }
+}
+
+// ---------- Vocal SFX (burn scream / death grunt) ----------
+// Voice is built from a sawtooth glottal source fed through two bandpass
+// filters tuned to vowel formants ("ah" for the burn scream, "oh"-ish for
+// the death grunt). Pitch and roughness vary by gender + age.
+function voicePitch(npc, base) {
+  // gender already encoded in base; elder drops a touch and adds randomness
+  let f = base;
+  if (npc.age === 'elder') f *= 0.92;
+  // small per-shout variation so screams don't repeat verbatim
+  return f * (0.95 + Math.random() * 0.1);
+}
+
+function playBurnScream(npc) {
+  const ctx = ensureAudio(); if (!ctx) return;
+  const now = ctx.currentTime;
+  const dur = 0.85 + Math.random() * 0.2;
+
+  const baseFemale = 340, baseMale = 200;
+  const base = npc.gender === 'female' ? baseFemale : baseMale;
+  const freq = voicePitch(npc, base);
+
+  // glottal source
+  const src = ctx.createOscillator();
+  src.type = 'sawtooth';
+  src.frequency.setValueAtTime(freq, now);
+  // slight upward slide as panic rises
+  src.frequency.linearRampToValueAtTime(freq * 1.10, now + dur * 0.7);
+
+  // vibrato (panic wobble)
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.type = 'sine';
+  lfo.frequency.value = 6 + Math.random() * 2.5;
+  lfoGain.gain.value = freq * (npc.age === 'elder' ? 0.06 : 0.04);
+  lfo.connect(lfoGain).connect(src.frequency);
+
+  // "ah" vowel formants
+  const f1 = ctx.createBiquadFilter();
+  f1.type = 'bandpass'; f1.frequency.value = 700; f1.Q.value = 5;
+  const f2 = ctx.createBiquadFilter();
+  f2.type = 'bandpass'; f2.frequency.value = 1100; f2.Q.value = 5;
+
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, now);
+  g.gain.linearRampToValueAtTime(0.32, now + 0.05);
+  g.gain.linearRampToValueAtTime(0.28, now + dur * 0.65);
+  g.gain.linearRampToValueAtTime(0, now + dur);
+
+  src.connect(f1); src.connect(f2);
+  f1.connect(g); f2.connect(g);
+  g.connect(ctx.destination);
+
+  src.start(now); src.stop(now + dur + 0.05);
+  lfo.start(now); lfo.stop(now + dur + 0.05);
+}
+
+function playDeathGrunt(npc) {
+  const ctx = ensureAudio(); if (!ctx) return;
+  const now = ctx.currentTime;
+  const dur = 0.38 + Math.random() * 0.08;
+
+  const baseFemale = 260, baseMale = 150;
+  const base = npc.gender === 'female' ? baseFemale : baseMale;
+  const startF = base * (0.95 + Math.random() * 0.1);
+  const endF   = startF * 0.55;
+
+  const src = ctx.createOscillator();
+  src.type = 'square';
+  src.frequency.setValueAtTime(startF, now);
+  src.frequency.exponentialRampToValueAtTime(Math.max(40, endF), now + dur);
+
+  // "oh"-ish vowel formants (lower than scream)
+  const f1 = ctx.createBiquadFilter();
+  f1.type = 'bandpass'; f1.frequency.value = 400; f1.Q.value = 4;
+  const f2 = ctx.createBiquadFilter();
+  f2.type = 'bandpass'; f2.frequency.value = 800; f2.Q.value = 4;
+
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, now);
+  g.gain.linearRampToValueAtTime(0.38, now + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+  src.connect(f1); src.connect(f2);
+  f1.connect(g); f2.connect(g);
+  g.connect(ctx.destination);
+
+  src.start(now); src.stop(now + dur + 0.05);
 }
 
 function playThud(intensity = 0.5) {
@@ -2353,7 +3148,88 @@ function render() {
   ctx.restore();
 
   drawNecroTargets();
+  drawMinimap();
   drawHand();
+}
+
+// ---------- Minimap ----------
+const MINIMAP = { size: 160, pad: 12 };
+
+function drawMinimap() {
+  const ctx = state.ctx;
+  const N = CONFIG.MAP_SIZE;
+  const SIZE = MINIMAP.size;
+  const cell = SIZE / N;
+  const x0 = MINIMAP.pad;
+  const y0 = state.height - SIZE - MINIMAP.pad;
+
+  ctx.save();
+
+  // panel
+  ctx.fillStyle = 'rgba(20, 14, 6, 0.85)';
+  ctx.fillRect(x0 - 4, y0 - 4, SIZE + 8, SIZE + 8);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x0 - 4, y0 - 4, SIZE + 8, SIZE + 8);
+
+  // ground + center cross path
+  ctx.fillStyle = '#3a6b2a';
+  ctx.fillRect(x0, y0, SIZE, SIZE);
+  const mid = Math.floor(N / 2);
+  ctx.fillStyle = '#8a7a5c';
+  ctx.fillRect(x0 + mid * cell, y0, cell, SIZE);
+  ctx.fillRect(x0, y0 + mid * cell, SIZE, cell);
+
+  // buildings
+  ctx.fillStyle = '#a07e35';
+  for (const b of state.buildings) {
+    ctx.fillRect(x0 + b.wx * cell, y0 + b.wy * cell, b.w * cell, b.h * cell);
+  }
+
+  // trees
+  ctx.fillStyle = '#1e4a1e';
+  for (const t of state.trees) {
+    ctx.fillRect(x0 + t.wx * cell - 1, y0 + t.wy * cell - 1, 2, 2);
+  }
+
+  // NPCs
+  for (const npc of state.npcs) {
+    if (npc.state === 'DEAD') continue;
+    const isZombie = npc.state === 'ZOMBIE' || npc.isZombieType;
+    let dotColor;
+    if (isZombie)                       dotColor = '#88ff88';
+    else if (npc.state === 'CORPSE')    dotColor = '#5a3a3a';
+    else if (npc.state === 'ON_FIRE')   dotColor = '#ff8830';
+    else                                dotColor = npc.color || '#ddd';
+    ctx.fillStyle = dotColor;
+    ctx.fillRect(x0 + npc.pos.wx * cell - 1, y0 + npc.pos.wy * cell - 1, 2, 2);
+  }
+
+  // viewport polygon — canvas corners projected back to world, clipped to panel
+  const corners = [
+    screenToWorld(0, 0),
+    screenToWorld(state.width, 0),
+    screenToWorld(state.width, state.height),
+    screenToWorld(0, state.height),
+  ];
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x0, y0, SIZE, SIZE);
+  ctx.clip();
+  ctx.strokeStyle = '#FFD700';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let i = 0; i < 4; i++) {
+    const c = corners[i];
+    const px = x0 + c.wx * cell;
+    const py = y0 + c.wy * cell;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.restore();
 }
 
 // ---------- Loop ----------
@@ -2420,7 +3296,14 @@ function init() {
     if (KEY_MAP[e.key]) { ensureAudio(); selectSpell(KEY_MAP[e.key]); }
   });
 
-  // NPC count slider
+  // NPC settings panel (hamburger button on HUD opens/closes it)
+  state.filters = {
+    classes: new Set(CLASSES),
+    races:   new Set(RACES),
+    genders: new Set(GENDERS),
+    ages:    new Set(AGES),
+  };
+
   const slider = document.getElementById('npc-slider');
   const sliderLabel = document.getElementById('npc-slider-label');
   state.targetCount = CONFIG.NPC_COUNT;
@@ -2431,11 +3314,36 @@ function init() {
     sliderLabel.textContent = slider.value;
   });
 
+  const settingsToggle = document.getElementById('settings-toggle');
+  const settingsPanel  = document.getElementById('settings-panel');
+  settingsToggle.addEventListener('click', () => {
+    settingsPanel.hidden = !settingsPanel.hidden;
+  });
+
+  document.querySelectorAll('#settings-panel .filter-group').forEach(group => {
+    const key = group.dataset.filter;
+    group.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        if (cb.checked) state.filters[key].add(cb.value);
+        else            state.filters[key].delete(cb.value);
+      });
+    });
+  });
+
   // Info panel toggle
   const infoToggle = document.getElementById('info-toggle');
   const infoPanel = document.getElementById('info-panel');
   infoToggle.addEventListener('click', () => {
     infoPanel.hidden = !infoPanel.hidden;
+  });
+
+  // Mute toggle
+  const muteToggle = document.getElementById('mute-toggle');
+  muteToggle.addEventListener('click', () => {
+    ensureAudio();
+    setMusicMuted(!state.music.muted);
+    muteToggle.textContent = state.music.muted ? '🔇' : '🔊';
+    muteToggle.classList.toggle('muted', state.music.muted);
   });
 
   initTiles();
