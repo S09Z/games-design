@@ -82,6 +82,12 @@ const CONFIG = {
   BITE_ESCAPE_CHANCE:      0.05,
   BITE_BLOOD_INTERVAL:     0.30,
   BITE_SCREAM_COOLDOWN:    1.5,
+  // Phase 5.5b — civilian behavior
+  PEASANT_FEAR_RADIUS:     4.0,
+  PEASANT_FLEE_EXIT:       6.0,
+  HEAL_RADIUS:             4.0,
+  HEAL_AMOUNT:             10,
+  HEAL_INTERVAL:           2.0,
 };
 
 const SPELL_COLORS = {
@@ -1375,7 +1381,7 @@ function makeNPC(wx, wy) {
     maxFallSpeed: 0,
     isZombieType: false,
     justRespawned: false,
-    healUsed: false,
+    healCooldown: 0,
     maxHp,
     hp: maxHp,
     hpFlashTimer: -1,
@@ -1526,23 +1532,43 @@ function handleSignatureBehavior(npc, dt) {
       return true;
     }
   }
-  if (npc.npcClass === 'priest' && !npc.healUsed) {
-    const f = findNearestState(npc, 'ON_FIRE', 4.0);
-    if (f) {
-      const dx = f.pos.wx - npc.pos.wx, dy = f.pos.wy - npc.pos.wy;
-      const d = Math.hypot(dx, dy);
-      if (d < 0.4) {
-        f.state = 'WANDER';
-        f.fireTimer = 0;
-        f.justRespawned = true;
-        pickWanderTarget(f);
-        npc.healUsed = true;
-        spawnSoulParticles(f.pos);
-        return true;
+  if (npc.npcClass === 'priest') {
+    npc.healCooldown -= dt;
+    if (npc.healCooldown <= 0) {
+      let healTarget = null, bestD = CONFIG.HEAL_RADIUS;
+      for (const o of state.npcs) {
+        if (o === npc || o.isZombieType) continue;
+        if (o.state === 'ZOMBIE' || o.state === 'ZOMBIE_BITING') continue;
+        if (o.state === 'DYING' || o.state === 'CORPSE' || o.state === 'DEAD') continue;
+        if (o.hp >= o.maxHp) continue;
+        const d = Math.hypot(o.pos.wx - npc.pos.wx, o.pos.wy - npc.pos.wy);
+        if (d < bestD) { bestD = d; healTarget = o; }
       }
-      stepWithBuildingAvoidance(npc, (dx / d) * npc.speed * dt, (dy / d) * npc.speed * dt);
-      npc.walkPhase += dt * 8;
-      npc.state = 'WANDER';
+      if (healTarget) {
+        healTarget.hp = Math.min(healTarget.maxHp, healTarget.hp + CONFIG.HEAL_AMOUNT);
+        spawnHealParticles(npc.pos, healTarget.pos);
+        npc.healCooldown = CONFIG.HEAL_INTERVAL;
+      }
+    }
+    return false; // priest still wanders normally
+  }
+  if (npc.npcClass === 'peasant') {
+    let nearest = null, nearestD = CONFIG.PEASANT_FEAR_RADIUS;
+    for (const o of state.npcs) {
+      if (o === npc) continue;
+      if (o.state !== 'ZOMBIE' && o.state !== 'ZOMBIE_BITING' && o.state !== 'ON_FIRE') continue;
+      const d = Math.hypot(o.pos.wx - npc.pos.wx, o.pos.wy - npc.pos.wy);
+      if (d < nearestD) { nearestD = d; nearest = o; }
+    }
+    if (nearest) {
+      const dx = npc.pos.wx - nearest.pos.wx;
+      const dy = npc.pos.wy - nearest.pos.wy;
+      const d = Math.hypot(dx, dy) || 1;
+      const N = CONFIG.MAP_SIZE;
+      npc.target.wx = Math.max(1, Math.min(N - 1, npc.pos.wx + (dx / d) * 5));
+      npc.target.wy = Math.max(1, Math.min(N - 1, npc.pos.wy + (dy / d) * 5));
+      npc.fleeTimer = 0.2;
+      npc.state = 'PEASANT_FLEE';
       return true;
     }
   }
@@ -1806,6 +1832,39 @@ function updateNPC(npc, dt) {
       break;
     }
 
+    case 'PEASANT_FLEE': {
+      npc.fleeTimer = (npc.fleeTimer || 0) - dt;
+      if (npc.fleeTimer <= 0) {
+        npc.fleeTimer = 0.2;
+        let nearest = null, nearestD = Infinity;
+        for (const o of state.npcs) {
+          if (o === npc) continue;
+          if (o.state !== 'ZOMBIE' && o.state !== 'ZOMBIE_BITING' && o.state !== 'ON_FIRE') continue;
+          const d = Math.hypot(o.pos.wx - npc.pos.wx, o.pos.wy - npc.pos.wy);
+          if (d < nearestD) { nearestD = d; nearest = o; }
+        }
+        if (!nearest || nearestD > CONFIG.PEASANT_FLEE_EXIT) {
+          npc.state = 'WANDER';
+          pickWanderTarget(npc);
+          break;
+        }
+        const dx = npc.pos.wx - nearest.pos.wx;
+        const dy = npc.pos.wy - nearest.pos.wy;
+        const d = Math.hypot(dx, dy) || 1;
+        const N = CONFIG.MAP_SIZE;
+        npc.target.wx = Math.max(1, Math.min(N - 1, npc.pos.wx + (dx / d) * 5));
+        npc.target.wy = Math.max(1, Math.min(N - 1, npc.pos.wy + (dy / d) * 5));
+      }
+      const fdx = npc.target.wx - npc.pos.wx;
+      const fdy = npc.target.wy - npc.pos.wy;
+      const fd = Math.hypot(fdx, fdy);
+      if (fd > 0.1) {
+        stepWithBuildingAvoidance(npc, (fdx / fd) * npc.speed * 1.4 * dt, (fdy / fd) * npc.speed * 1.4 * dt);
+        npc.walkPhase += dt * 14;
+      }
+      break;
+    }
+
     case 'DEAD':
       break;
   }
@@ -1844,7 +1903,7 @@ function computeNPCAppearance(npc) {
   const now      = performance.now();
 
   let bob = 0;
-  if (npc.state === 'WANDER') bob = Math.abs(Math.sin(npc.walkPhase)) * 1.5;
+  if (npc.state === 'WANDER' || npc.state === 'PEASANT_FLEE') bob = Math.abs(Math.sin(npc.walkPhase)) * 1.5;
   else if (isZombie)          bob = Math.abs(Math.sin(npc.walkPhase)) * 1.0;
 
   let rot = 0;
@@ -1870,7 +1929,7 @@ function computeNPCAppearance(npc) {
   const armColor  = flash ? FLASH_COLOR : (isZombie ? BODY_ZOMBIE : npc.color);
 
   let legSplit = 0;
-  if      (npc.state === 'WANDER')       legSplit = Math.sin(npc.walkPhase) * 2;
+  if      (npc.state === 'WANDER' || npc.state === 'PEASANT_FLEE') legSplit = Math.sin(npc.walkPhase) * 2;
   else if (npc.state === 'ZOMBIE_BITING') legSplit = 0.8; // slight stance, not walking
   else if (isZombie)                     legSplit = Math.sin(npc.walkPhase) * 1.2;
 
@@ -2569,13 +2628,28 @@ function drawNPC(npc) {
   ctx.restore();
 
   drawNPCHpBar(ctx, npc, screen, m);
+  if (npc.state === 'PEASANT_FLEE') drawPeasantFleeGlyph(ctx, npc, screen, m);
+}
+
+function drawPeasantFleeGlyph(ctx, npc, screen, m) {
+  const bx = screen.sx;
+  const by = screen.sy - m.bob - 34;
+  ctx.save();
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd700';
+  ctx.strokeStyle = '#3a2000';
+  ctx.lineWidth = 2;
+  ctx.strokeText('!', bx, by);
+  ctx.fillText('!', bx, by);
+  ctx.restore();
 }
 
 // HP bar above the NPC's head — only-when-damaged, 3 s fade.
 // Drawn in screen space after the body's rotation/scale is restored, so the
 // bar stays axis-aligned. Caller (drawNPC) is invoked from the depth-sorted
 // pass — occluded NPCs never reach drawNPC, so their HP bar is occluded too.
-const HP_BAR_STATES = new Set(['IDLE', 'WANDER', 'STUNNED', 'ON_FIRE', 'ZOMBIE', 'ZOMBIE_BITING', 'BEING_BITTEN']);
+const HP_BAR_STATES = new Set(['IDLE', 'WANDER', 'STUNNED', 'ON_FIRE', 'ZOMBIE', 'ZOMBIE_BITING', 'BEING_BITTEN', 'PEASANT_FLEE']);
 function drawNPCHpBar(ctx, npc, screen, m) {
   if (!HP_BAR_STATES.has(npc.state)) return;
   if (npc.hpFlashTimer <= 0) return;
@@ -3481,6 +3555,25 @@ function spawnSoulParticles(worldPos) {
   }
 }
 
+function spawnHealParticles(fromPos, toPos) {
+  const count = 7;
+  for (let i = 0; i < count; i++) {
+    const t = i / (count - 1);
+    state.particles.push({
+      kind: 'heal',
+      pos: {
+        wx: fromPos.wx + (toPos.wx - fromPos.wx) * t + (Math.random() - 0.5) * 0.15,
+        wy: fromPos.wy + (toPos.wy - fromPos.wy) * t + (Math.random() - 0.5) * 0.15,
+        wz: 0.4 + Math.random() * 0.3,
+      },
+      vel: { x: 0, y: 0, z: 0.3 + Math.random() * 0.2 },
+      lifetime: 0.5,
+      timer: 0,
+      size: 2 + Math.random() * 2,
+    });
+  }
+}
+
 function updateChimneySmoke(dt) {
   for (const b of state.buildings) {
     if (b.chimneyTimer === undefined) continue;
@@ -4206,6 +4299,7 @@ function updateParticles(dt) {
       case 'gib':      gz = -14; break;
       case 'bodypart': gz = -14; break;
       case 'soul':     gz =  0;  break;
+      case 'heal':     gz =  0;  break;
     }
     p.vel.z += gz * dt;
 
@@ -4376,6 +4470,18 @@ function drawParticle(p) {
       ctx.fillStyle = `rgba(100, 255, 140, ${a})`;
       ctx.beginPath();
       ctx.arc(sx, sy, p.size * pulse, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+    case 'heal': {
+      const a = (1 - t) * 0.9;
+      ctx.save();
+      ctx.shadowColor = '#00ff88';
+      ctx.shadowBlur = 6;
+      ctx.fillStyle = `rgba(60, 220, 100, ${a})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, p.size * (1 - t * 0.3), 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
       return;
