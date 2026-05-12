@@ -47,7 +47,7 @@ const CONFIG = {
   FALL_DEATH_THRESHOLD: 10,
   SHAKE_DECAY: 0.3,
   DECAL_MAX: 200,
-  CRITICAL_CHANCE: 0.20,
+  CRITICAL_CHANCE: 0.15,
   RESPAWN_INTERVAL: 1.0,
   CORPSE_DURATION: 30.0,
 
@@ -242,6 +242,14 @@ function tileInsideBuilding(wx, wy, margin = 0) {
         wy >= b.wy - margin && wy < b.wy + b.h + margin) return true;
   }
   return false;
+}
+
+// Building avoidance for *walking* NPCs — 2x2 footprint + 0.5 each side = 3x3
+// no-walk zone. Used by WANDER / ZOMBIE chase / ON_FIRE flee / signature
+// behaviours. Respawn-exit path bypasses this until NPC clears the zone.
+const BUILDING_WALK_BUFFER = 0.5;
+function buildingBlocksWalk(wx, wy) {
+  return tileInsideBuilding(wx, wy, BUILDING_WALK_BUFFER);
 }
 
 function initBuildings() {
@@ -1311,19 +1319,23 @@ function drawTree(t) {
 }
 
 // ---------- NPC ----------
-const CLASSES  = ['warrior', 'wizard', 'ranger', 'priest'];
+const CLASSES  = ['warrior', 'wizard', 'ranger', 'priest', 'peasant'];
 const RACES    = ['human', 'elf', 'dwarf'];
 const GENDERS  = ['male', 'female'];
-const AGES     = ['middle_age', 'elder'];
+// 5.5a constraints — class fixes gender; dwarf is M-only so peasant/priest cannot be dwarf.
+const CLASS_GENDER = {
+  warrior: 'male', wizard: 'male', ranger: 'male',
+  priest:  'female', peasant: 'female',
+};
 const CLASS_COLORS = {
   warrior: '#8B2020',
   wizard:  '#4B2080',
   ranger:  '#2D6B2D',
-  priest:  '#C0A860',
+  priest:  '#2a2a3a',  // nun habit — dark
+  peasant: '#a07840',  // earthy brown villager dress
 };
-const CLASS_SPEED = { warrior: 1.10, wizard: 0.85, ranger: 1.25, priest: 1.00 };
-const AGE_SPEED   = { middle_age: 1.00, elder: 0.75 };
-const CLASS_HP    = { warrior: 150, ranger: 110, priest: 100, wizard: 70 };
+const CLASS_SPEED = { warrior: 1.10, wizard: 0.85, ranger: 1.25, priest: 1.00, peasant: 0.95 };
+const CLASS_HP    = { warrior: 150, ranger: 110, priest: 100, wizard: 70, peasant: 60 };
 const RACE_HP_MOD = { dwarf: 1.15, elf: 0.9, human: 1.0 };
 function computeMaxHp(npcClass, race) {
   return Math.round((CLASS_HP[npcClass] || 100) * (RACE_HP_MOD[race] || 1.0));
@@ -1331,10 +1343,16 @@ function computeMaxHp(npcClass, race) {
 
 function makeNPC(wx, wy) {
   const f = state.filters || {};
-  const npcClass = pickFiltered(CLASSES, f.classes);
-  const race     = pickFiltered(RACES,   f.races);
-  const gender   = pickFiltered(GENDERS, f.genders);
-  const age      = pickFiltered(AGES,    f.ages);
+  // 5.5a: gender is fixed by class. Filter classes by gender filter so the
+  // gender checkbox still does something (uncheck female → no peasant/priest).
+  const allowedClasses = (f.genders && f.genders.size > 0)
+    ? CLASSES.filter(c => f.genders.has(CLASS_GENDER[c]))
+    : CLASSES;
+  const npcClass = pickFiltered(allowedClasses.length ? allowedClasses : CLASSES, f.classes);
+  const gender   = CLASS_GENDER[npcClass];
+  // Race respects user filter, but dwarf is M-only — female NPCs cannot be dwarf.
+  const allowedRaces = (gender === 'female') ? RACES.filter(r => r !== 'dwarf') : RACES;
+  const race     = pickFiltered(allowedRaces, f.races);
   const baseSpeed = 1.1 + Math.random() * 0.6;
   const maxHp = computeMaxHp(npcClass, race);
   return {
@@ -1344,8 +1362,8 @@ function makeNPC(wx, wy) {
     state: 'IDLE',
     target: { wx, wy },
     timer: Math.random() * 2,
-    speed: baseSpeed * CLASS_SPEED[npcClass] * AGE_SPEED[age],
-    npcClass, race, gender, age,
+    speed: baseSpeed * CLASS_SPEED[npcClass],
+    npcClass, race, gender,
     get color() { return CLASS_COLORS[this.npcClass]; },
     walkPhase: Math.random() * Math.PI * 2,
     stunTimer: 0,
@@ -1428,6 +1446,27 @@ function updateRespawn(dt) {
   }
 }
 
+// Try to step toward (dx, dy) while avoiding building 3x3 zones.
+// Returns true if any movement happened. Slides along wall if diagonal blocked.
+function stepWithBuildingAvoidance(npc, dxStep, dyStep) {
+  const nx = npc.pos.wx + dxStep;
+  const ny = npc.pos.wy + dyStep;
+  if (!buildingBlocksWalk(nx, ny)) {
+    npc.pos.wx = nx; npc.pos.wy = ny;
+    return true;
+  }
+  // Slide along axis-aligned wall: try X-only, then Y-only.
+  if (!buildingBlocksWalk(nx, npc.pos.wy)) {
+    npc.pos.wx = nx;
+    return true;
+  }
+  if (!buildingBlocksWalk(npc.pos.wx, ny)) {
+    npc.pos.wy = ny;
+    return true;
+  }
+  return false;
+}
+
 function pickWanderTarget(npc) {
   const N = CONFIG.MAP_SIZE;
   const minD = npc.npcClass === 'ranger' ? 5.0 : 1.5;
@@ -1438,7 +1477,7 @@ function pickWanderTarget(npc) {
     const nx = npc.pos.wx + Math.cos(angle) * dist;
     const ny = npc.pos.wy + Math.sin(angle) * dist;
     if (nx >= 1 && nx <= N - 1 && ny >= 1 && ny <= N - 1 &&
-        !tileInsideBuilding(nx, ny, 1.0)) {
+        !buildingBlocksWalk(nx, ny)) {
       npc.target.wx = nx;
       npc.target.wy = ny;
       return;
@@ -1481,8 +1520,7 @@ function handleSignatureBehavior(npc, dt) {
         kill(z);
         return true;
       }
-      npc.pos.wx += (dx / d) * npc.speed * 1.4 * dt;
-      npc.pos.wy += (dy / d) * npc.speed * 1.4 * dt;
+      stepWithBuildingAvoidance(npc, (dx / d) * npc.speed * 1.4 * dt, (dy / d) * npc.speed * 1.4 * dt);
       npc.walkPhase += dt * 12;
       npc.state = 'WANDER';
       return true;
@@ -1502,8 +1540,7 @@ function handleSignatureBehavior(npc, dt) {
         spawnSoulParticles(f.pos);
         return true;
       }
-      npc.pos.wx += (dx / d) * npc.speed * dt;
-      npc.pos.wy += (dy / d) * npc.speed * dt;
+      stepWithBuildingAvoidance(npc, (dx / d) * npc.speed * dt, (dy / d) * npc.speed * dt);
       npc.walkPhase += dt * 8;
       npc.state = 'WANDER';
       return true;
@@ -1542,10 +1579,10 @@ function updateNPC(npc, dt) {
           npc.pos.wx = nextX;
           npc.pos.wy = nextY;
           npc.walkPhase += dt * 8;
-          if (!tileInsideBuilding(npc.pos.wx, npc.pos.wy, 1.0)) {
+          if (!buildingBlocksWalk(npc.pos.wx, npc.pos.wy)) {
             npc.justRespawned = false;
           }
-        } else if (tileInsideBuilding(nextX, nextY, 1.0)) {
+        } else if (buildingBlocksWalk(nextX, nextY)) {
           // would enter house buffer — pick a new target
           pickWanderTarget(npc);
         } else {
@@ -1645,9 +1682,10 @@ function updateNPC(npc, dt) {
       const fdy = npc.target.wy - npc.pos.wy;
       const fd = Math.hypot(fdx, fdy);
       if (fd > 0.01) {
-        npc.pos.wx += (fdx / fd) * npc.speed * 1.6 * dt;
-        npc.pos.wy += (fdy / fd) * npc.speed * 1.6 * dt;
+        const moved = stepWithBuildingAvoidance(npc, (fdx / fd) * npc.speed * 1.6 * dt, (fdy / fd) * npc.speed * 1.6 * dt);
         npc.walkPhase += dt * 10;
+        // Fully blocked? force a re-pick next frame so the flee target leaves the building.
+        if (!moved) npc.fleeTimer = 0;
       }
 
       // fire spread on contact
@@ -1692,8 +1730,7 @@ function updateNPC(npc, dt) {
           nearestAlive.biterId = npc.id;
           nearestAlive.biteShakeTimer = 0;
         } else {
-          npc.pos.wx += (dx / nearestD) * npc.speed * dt;
-          npc.pos.wy += (dy / nearestD) * npc.speed * dt;
+          stepWithBuildingAvoidance(npc, (dx / nearestD) * npc.speed * dt, (dy / nearestD) * npc.speed * dt);
           npc.walkPhase += dt * 4;
         }
       }
@@ -1779,16 +1816,23 @@ function updateNPC(npc, dt) {
 // THIS frame: derived flags (isZombie, flash), transform (bob/rot/scale/shakeX),
 // palette (skin/body/leg/arm), and animation values (legSplit, armA/B). The
 // part drawers below consume that model so drawNPC stays a thin orchestrator.
+// 5.5a race traits — height/width and pinned skin/hair palettes per race.
 const RACE_SCALE = {
-  human: { x: 1.00, y: 1.00 },
-  elf:   { x: 0.82, y: 1.18 },
-  dwarf: { x: 1.30, y: 0.78 },
+  human: { x: 1.00, y: 1.00 },  // medium
+  elf:   { x: 0.85, y: 1.12 },  // tall, slender
+  dwarf: { x: 1.30, y: 0.78 },  // short, wide
 };
-const SKIN_BASE  = '#e9c39a';
-const SKIN_ELDER = '#d4a878';
+const RACE_SKIN = {
+  human: '#e8c898',  // yellow-tan
+  elf:   '#f5d8b8',  // pale
+  dwarf: '#c89060',  // tan
+};
+const RACE_HAIR = {
+  human: '#202020',  // black
+  elf:   '#ffd700',  // golden
+  dwarf: '#8a3a20',  // brown-red (same as beard)
+};
 const SKIN_ZOMBIE = '#7a8a6a';
-const HAIR_YOUNG = '#2e1a08';
-const HAIR_ELDER = '#a8a8a8';
 const LEG_BASE   = '#3a2e1f';
 const LEG_ZOMBIE = '#2e3a2e';
 const BODY_ZOMBIE = '#5a6a4a';
@@ -1808,7 +1852,6 @@ function computeNPCAppearance(npc) {
   else if (npc.state === 'AIRBORNE')                                 rot = (npc.vel.x + npc.vel.y) * 0.12;
   else if (npc.state === 'STUNNED' || npc.state === 'CORPSE')        rot = Math.PI / 2;
   else if (isZombie)                                                 rot = Math.sin(now / 600) * 0.12;
-  else if (npc.age === 'elder')                                      rot = 0.07;
 
   const r = isZombie ? { x: 1, y: 1 } : (RACE_SCALE[npc.race] || RACE_SCALE.human);
   const scaleX = r.x, scaleY = r.y;
@@ -1818,8 +1861,10 @@ function computeNPCAppearance(npc) {
   else if (npc.state === 'DYING')        shakeX = (Math.random() - 0.5) * 3;
   else if (npc.state === 'BEING_BITTEN') shakeX = Math.sin(npc.biteShakeTimer * 30) * 2;
 
-  const baseSkin  = (!isZombie && npc.age === 'elder') ? SKIN_ELDER : SKIN_BASE;
+  const baseSkin  = RACE_SKIN[npc.race] || RACE_SKIN.human;
+  const baseHair  = RACE_HAIR[npc.race] || RACE_HAIR.human;
   const skinColor = flash ? FLASH_COLOR : (isZombie ? SKIN_ZOMBIE : baseSkin);
+  const hairColor = flash ? FLASH_COLOR : (isZombie ? '#3a4a3a' : baseHair);
   const bodyColor = flash ? FLASH_COLOR : (isZombie ? BODY_ZOMBIE : npc.color);
   const legColor  = flash ? FLASH_COLOR : (isZombie ? LEG_ZOMBIE  : LEG_BASE);
   const armColor  = flash ? FLASH_COLOR : (isZombie ? BODY_ZOMBIE : npc.color);
@@ -1849,7 +1894,7 @@ function computeNPCAppearance(npc) {
   return {
     isZombie, flash,
     bob, rot, scaleX, scaleY, shakeX,
-    skinColor, bodyColor, legColor, armColor,
+    skinColor, hairColor, bodyColor, legColor, armColor,
     legSplit, armA, armB,
   };
 }
@@ -1876,7 +1921,6 @@ const M_BLOOD        = '#a01818';
 const M_PRIEST_HAT   = '#f4f0d8';
 const M_WIZARD_HAT   = '#1f1234';
 const M_RANGER_HOOD  = '#1d4a1d';
-const M_BEARD        = '#5a3818';
 const CLASS_COLOR_DARK = {
   warrior: '#5a1414',
   wizard:  '#301455',
@@ -1907,8 +1951,10 @@ function drawNPCQuiver(ctx, npc, m) {
 
 function drawNPCHairBack(ctx, npc, m) {
   if (m.isZombie || m.flash || npc.gender !== 'female') return;
+  // Priest wears nun veil — hair is fully covered; skip back hair entirely.
+  if (npc.npcClass === 'priest') return;
   // Long hair flowing down behind the dress — trapezoid from head to shoulders
-  ctx.fillStyle = npc.age === 'elder' ? HAIR_ELDER : HAIR_YOUNG;
+  ctx.fillStyle = m.hairColor;
   ctx.beginPath();
   ctx.moveTo(-3.5, -16);
   ctx.lineTo( 3.5, -16);
@@ -2005,12 +2051,24 @@ function drawNPCTorso(ctx, npc, m) {
     ctx.fillRect(-5.2, -0.55, 10.4, 1.1);
     ctx.restore();
   }
+  // Peasant white apron — covers center of torso + top of skirt
+  if (npc.npcClass === 'peasant') {
+    ctx.fillStyle = '#f0e8d0';
+    ctx.fillRect(-2.4, -8.5, 4.8, 8);
+    // shoulder straps
+    ctx.fillRect(-2.4, -9.8, 0.9, 1.4);
+    ctx.fillRect( 1.5, -9.8, 0.9, 1.4);
+    // tie waist
+    ctx.fillStyle = '#b89058';
+    ctx.fillRect(-2.4, -2.4, 4.8, 0.7);
+  }
 }
 
 // ---- Dwarf beard (over front of torso) ----
 function drawNPCBeard(ctx, npc, m) {
   if (m.isZombie || m.flash || npc.race !== 'dwarf') return;
-  ctx.fillStyle = npc.age === 'elder' ? HAIR_ELDER : M_BEARD;
+  // brown-red dwarf beard — pinned by race
+  ctx.fillStyle = RACE_HAIR.dwarf;
   // mustache strip
   ctx.fillRect(-2.8, -12, 5.6, 1.1);
   // long beard triangle
@@ -2082,42 +2140,50 @@ function drawNPCHead(ctx, m) {
 function drawNPCElfEars(ctx, npc, m) {
   if (m.isZombie || m.flash || npc.race !== 'elf') return;
   ctx.fillStyle = m.skinColor;
+  // Longer, more pointed ears reaching well above the head
   ctx.beginPath();
-  ctx.moveTo(-3.0, -13);
-  ctx.lineTo(-5.4, -16.2);
-  ctx.lineTo(-3.0, -11.6);
+  ctx.moveTo(-3.0, -12.6);
+  ctx.lineTo(-6.4, -18.2);
+  ctx.lineTo(-3.0, -11.2);
   ctx.closePath();
   ctx.fill();
   ctx.beginPath();
-  ctx.moveTo( 3.0, -13);
-  ctx.lineTo( 5.4, -16.2);
-  ctx.lineTo( 3.0, -11.6);
+  ctx.moveTo( 3.0, -12.6);
+  ctx.lineTo( 6.4, -18.2);
+  ctx.lineTo( 3.0, -11.2);
   ctx.closePath();
   ctx.fill();
-  // tiny inner-ear shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.20)';
-  ctx.fillRect(-4.0, -14.2, 1.3, 0.5);
-  ctx.fillRect( 2.7, -14.2, 1.3, 0.5);
+  // inner-ear shadow line traces along the cartilage
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath();
+  ctx.moveTo(-3.4, -13.0);
+  ctx.lineTo(-5.6, -16.8);
+  ctx.lineTo(-3.4, -12.6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo( 3.4, -13.0);
+  ctx.lineTo( 5.6, -16.8);
+  ctx.lineTo( 3.4, -12.6);
+  ctx.closePath();
+  ctx.fill();
 }
 
 // ---- Hair (front / top, gender + age) ----
 function drawNPCHairFront(ctx, npc, m) {
   if (m.isZombie || m.flash) return;
-  ctx.fillStyle = npc.age === 'elder' ? HAIR_ELDER : HAIR_YOUNG;
+  // Priest nun veil covers hair completely.
+  if (npc.gender === 'female' && npc.npcClass === 'priest') return;
+  ctx.fillStyle = m.hairColor;
   if (npc.gender === 'female') {
-    // Top crown + front side strands framing the face
+    // Top crown + front side strands framing the face — long hair for any race
     ctx.beginPath();
     ctx.arc(0, -15.2, 3.4, Math.PI, 0);
     ctx.fill();
     ctx.fillRect(-4.4, -14.8, 1.3, 3.6);
     ctx.fillRect( 3.1, -14.8, 1.3, 3.6);
-  } else if (npc.age === 'elder') {
-    // Receding gray hair — temples + thin wisp
-    ctx.fillRect(-4.0, -15.4, 1.2, 3);
-    ctx.fillRect( 2.8, -15.4, 1.2, 3);
-    ctx.fillRect(-2.2, -16.1, 4.4, 0.8);
   } else {
-    // Young male short fringe cap
+    // Short male fringe cap
     ctx.beginPath();
     ctx.arc(0, -14, 3.6, Math.PI, 0);
     ctx.fill();
@@ -2186,28 +2252,49 @@ function drawNPCHeadgear(ctx, npc, m) {
       break;
     }
     case 'priest': {
-      // Bishop's mitre — tall, two-peaked, cross on the front
-      ctx.fillStyle = M_PRIEST_HAT;
+      // Nun's wimple + black veil — covers hair entirely, white face frame strip.
+      // Outer black veil drapes over head and onto shoulders.
+      ctx.fillStyle = '#1a1a22';
       ctx.beginPath();
-      ctx.moveTo(-3.6, -14);
-      ctx.lineTo( 3.6, -14);
-      ctx.lineTo( 3.6, -17.5);
-      ctx.lineTo( 0,   -22);
-      ctx.lineTo(-3.6, -17.5);
+      ctx.moveTo(-4.6, -10);
+      ctx.lineTo(-4.6, -14);
+      ctx.quadraticCurveTo(0, -19.2, 4.6, -14);
+      ctx.lineTo( 4.6, -10);
+      ctx.lineTo( 3.4,  -9);
+      ctx.lineTo(-3.4,  -9);
       ctx.closePath();
       ctx.fill();
-      // gold trim at base
-      ctx.fillStyle = M_GOLD;
-      ctx.fillRect(-3.6, -14, 7.2, 0.8);
-      // vertical gold orphrey down the front
-      ctx.fillRect(-0.4, -20.5, 0.8, 6);
-      // Latin cross on mitre — outlined filled polygon
-      drawLatinCross(ctx, 0, -17.8, 1.3, '#2a0a00', M_GOLD_BRIGHT);
-      // back lappet (streamer behind shoulder)
-      ctx.fillStyle = M_PRIEST_HAT;
-      ctx.fillRect( 2.0, -13.5, 0.8, 4);
-      ctx.fillStyle = M_GOLD;
-      ctx.fillRect( 2.0, -10, 0.8, 0.4);
+      // White wimple — inner face frame strip just inside the veil
+      ctx.fillStyle = '#f0ede2';
+      ctx.beginPath();
+      ctx.moveTo(-3.3, -10.2);
+      ctx.lineTo(-3.3, -13.4);
+      ctx.quadraticCurveTo(0, -16.6, 3.3, -13.4);
+      ctx.lineTo( 3.3, -10.2);
+      ctx.lineTo( 2.7,  -9.8);
+      ctx.lineTo(-2.7,  -9.8);
+      ctx.closePath();
+      ctx.fill();
+      // Small gold Latin cross on the chest (above bodice)
+      drawLatinCross(ctx, 0, -7.5, 0.7, '#3a2008', M_GOLD_BRIGHT);
+      break;
+    }
+    case 'peasant': {
+      // Simple cloth headscarf (kerchief) — covers crown, knotted at the back.
+      const scarfColor = '#c83a3a';  // red kerchief
+      ctx.fillStyle = scarfColor;
+      ctx.beginPath();
+      ctx.arc(0, -14.5, 3.8, Math.PI, 0);
+      ctx.fill();
+      // wrap band across forehead
+      ctx.fillRect(-3.8, -14.6, 7.6, 0.9);
+      // tiny knot bump on side
+      ctx.beginPath();
+      ctx.arc(3.6, -13.2, 0.9, 0, Math.PI * 2);
+      ctx.fill();
+      // subtle inner shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fillRect(-3.8, -14.8, 7.6, 0.4);
       break;
     }
     case 'ranger': {
@@ -3614,6 +3701,17 @@ function applyDamage(npc, amount, source) {
   // per-frame call leaves the NPC permanently white and looks frozen.
   if (source !== 'fire') npc.flashTimer = CONFIG.DEATH_FLASH_DURATION;
   if (npc.hp <= 0) {
+    // Fire-source "one-shot": route lethal direct/AOE fire damage through the
+    // ON_FIRE state so the player sees the burn animation instead of an instant
+    // pop. Without this, fireball on low-HP NPCs (wizard 70) skips ON_FIRE
+    // because ignite() is called after applyDamage and bails on !isAlive().
+    // Fire-tick deaths are excluded (state is already ON_FIRE by then).
+    if ((source === 'fireball' || source === 'fire') &&
+        npc.state !== 'ON_FIRE' && !npc.isZombieType) {
+      npc.hp = Math.max(20, Math.floor(npc.maxHp * 0.15));
+      ignite(npc);
+      return;
+    }
     npc.hp = 0;
     // Any death inside an active poison cloud raises as a zombie — covers
     // edge cases like burn-tick or lightning killing an NPC while it stands
@@ -4543,11 +4641,8 @@ function setNpcMuted(muted)  { state.music.npcMuted = muted; }
 // filters tuned to vowel formants ("ah" for the burn scream, "oh"-ish for
 // the death grunt). Pitch and roughness vary by gender + age.
 function voicePitch(npc, base) {
-  // gender already encoded in base; elder drops a touch and adds randomness
-  let f = base;
-  if (npc.age === 'elder') f *= 0.92;
-  // small per-shout variation so screams don't repeat verbatim
-  return f * (0.95 + Math.random() * 0.1);
+  // gender already encoded in base; small per-shout variation so screams don't repeat verbatim
+  return base * (0.95 + Math.random() * 0.1);
 }
 
 function playBurnScream(npc) {
@@ -4572,7 +4667,7 @@ function playBurnScream(npc) {
   const lfoGain = ctx.createGain();
   lfo.type = 'sine';
   lfo.frequency.value = 6 + Math.random() * 2.5;
-  lfoGain.gain.value = freq * (npc.age === 'elder' ? 0.06 : 0.04);
+  lfoGain.gain.value = freq * 0.04;
   lfo.connect(lfoGain).connect(src.frequency);
 
   // "ah" vowel formants
@@ -5098,7 +5193,6 @@ function init() {
     classes: new Set(CLASSES),
     races:   new Set(RACES),
     genders: new Set(GENDERS),
-    ages:    new Set(AGES),
   };
 
   const slider = document.getElementById('npc-slider');
