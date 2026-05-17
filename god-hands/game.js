@@ -99,16 +99,75 @@ const SPELL_COLORS = {
   NECROMANCER: '#8B3FBF',
 };
 
-// Medieval cottage palettes: plaster walls + dark timber beams + thatched roof
+// Shared colour constants — from assets/Windmill-standalone.html "classic" palette.
+// Windmill cap uses ROOF_DARK (purple-gray). Gabled buildings use terracotta tiles.
+const ROOF_DARK       = '#4a3d54';   // windmill pyramid cap — do NOT use on gabled roofs
+const ROOF_SHADOW     = '#3a2d44';
+const ROOF_OUTLINE    = '#2a1f34';
+const WALL_OUTLINE    = 'rgba(0,0,0,0.55)';
+const FINIAL_GOLD     = '#d6a13a';
+const FINIAL_DARK     = '#8a5d18';
+// Terracotta roof tiles — cottage / tavern / farm east slope + gable
+const TILE_A     = '#d8893c';  // lit slope (reference tileA)
+const TILE_B     = '#a86224';  // shadow gable (reference tileB)
+const TILE_EDGE  = '#5a2a10';  // seam/edge lines
+const TILE_HI    = '#e8a050';  // ridge highlight
+
+// Cottage palettes — ported from assets/model-standalone.html "classic" set.
+// Field names mirror the reference: woodA / woodB / woodLine for walls + beams,
+// tileA / tileB for roof slopes, door/window/trim for accents.
 const BUILDING_PALETTES = [
-  { wall: '#d4c08e', wallSide: '#b8a575', beam: '#3a2818', roof: '#a07e35', roofShadow: '#7a5e22' },
-  { wall: '#c8a070', wallSide: '#a8855a', beam: '#4a3020', roof: '#946d28', roofShadow: '#6a4a18' },
-  { wall: '#e0d0a0', wallSide: '#c4b58c', beam: '#2a1810', roof: '#b8923f', roofShadow: '#8b6c2c' },
+  {
+    wall: '#7a4f28', wallSide: '#5a371a', beam: '#2c1808',
+    woodA: '#7a4f28', woodB: '#5a371a', woodLine: '#2c1808', trim: '#d4a86a',
+    tileA: TILE_A, tileB: TILE_B,
+    door: '#5a3a1c', doorDk: '#2a1808', doorIron: '#1a1208',
+    window: '#1a120a', windowGlow: '#f0c45a',
+  },
+  {
+    wall: '#8a5a30', wallSide: '#6a3f1e', beam: '#2c1808',
+    woodA: '#8a5a30', woodB: '#6a3f1e', woodLine: '#2c1808', trim: '#d8b070',
+    tileA: TILE_A, tileB: TILE_B,
+    door: '#5e3a1a', doorDk: '#2c1808', doorIron: '#1a0e08',
+    window: '#1a120a', windowGlow: '#f0c45a',
+  },
+  {
+    wall: '#6e4520', wallSide: '#4f3014', beam: '#241408',
+    woodA: '#6e4520', woodB: '#4f3014', woodLine: '#241408', trim: '#c89858',
+    tileA: TILE_A, tileB: TILE_B,
+    door: '#5a3a1c', doorDk: '#2a1808', doorIron: '#1a1208',
+    window: '#1a120a', windowGlow: '#f0c45a',
+  },
 ];
 // Per-kind building palettes (tavern / windmill / farm)
-const TAVERN_PALETTE   = { wall: '#6e4524', wallSide: '#543518', beam: '#2a1808', roof: '#c87538', roofShadow: '#8a4818' };
-const WINDMILL_PALETTE = { wall: '#9a9a98', wallSide: '#7a7a78', beam: '#3a3a38', roof: '#5a5a58', roofShadow: '#4a4a48' };
-const FARM_PALETTE     = { wall: '#a04030', wallSide: '#883520', beam: '#4a1f15', roof: '#8a5028', roofShadow: '#6a3818' };
+const TAVERN_PALETTE   = {
+  wall: '#6e4524', wallSide: '#543518', beam: '#2a1808',
+  woodA: '#6e4524', woodB: '#543518', woodLine: '#2a1808', trim: '#c89858',
+  tileA: TILE_A, tileB: TILE_B,
+  door: '#5a3a1c', doorDk: '#1a0e08', doorIron: '#0e0804',
+  window: '#1a120a', windowGlow: '#f0c45a',
+  sign: '#3a2412', signTxt: '#e8c878',
+};
+// Windmill: full classic-stone palette ported from assets/model-standalone.html.
+const WINDMILL_PALETTE = {
+  // Stone tower
+  stoneS: '#b4afa8', stoneE: '#8e8a85', stoneN: '#d0ccc6', mortar: '#5c574f',
+  // Conical cap (3 facet colours + base rim)
+  capA: '#4a3d54', capB: '#39304a', capC: '#5d5070', capRim: '#241c2e',
+  // Door + window + hub
+  door: '#5a3a1c', doorDk: '#2a1808', doorIron: '#1a1208',
+  window: '#1a120a', windowGlow: '#f0c45a',
+  hub: FINIAL_GOLD, hubDk: FINIAL_DARK,
+  // Legacy aliases so any leftover .wall / .roof references don't crash
+  wall: '#b4afa8', wallSide: '#8e8a85', beam: '#5c574f',
+};
+const FARM_PALETTE     = {
+  wall: '#a04030', wallSide: '#883520', beam: '#4a1f15',
+  woodA: '#a04030', woodB: '#883520', woodLine: '#4a1f15', trim: '#e8c878',
+  tileA: '#c07030', tileB: '#8a4818',
+  door: '#5a3a1c', doorDk: '#2a1808', doorIron: '#1a1208',
+  window: '#1a120a', windowGlow: '#f0c45a',
+};
 
 const state = {
   canvas: null,
@@ -299,9 +358,11 @@ function initBuildings() {
     const kr = Math.random();
     const kind = kr < 0.55 ? 'cottage' : kr < 0.75 ? 'tavern' : kr < 0.85 ? 'windmill' : 'farm';
     const kindProps = {
+      // Models match assets/model-standalone.html, but heights are kept at the
+      // earlier compact scale so buildings sit closer to NPC scale.
       cottage:  { wallH: 0.80, roofPeak: 0.55, palette: BUILDING_PALETTES[Math.floor(Math.random() * BUILDING_PALETTES.length)] },
       tavern:   { wallH: 1.00, roofPeak: 0.55, palette: TAVERN_PALETTE   },
-      windmill: { wallH: 2.00, roofPeak: 0.50, palette: WINDMILL_PALETTE },
+      windmill: { wallH: 2.50, roofPeak: 1.30, palette: WINDMILL_PALETTE },
       farm:     { wallH: 0.70, roofPeak: 0.80, palette: FARM_PALETTE     },
     }[kind];
     const bEntry = { wx, wy, w, h, kind, ...kindProps };
@@ -348,740 +409,673 @@ function buildingCorners(b) {
   };
 }
 
-// Horizontal plank lines on a parallelogram face (south or east wall)
-function drawPlankLines(ctx, p1, p2, p3, p4, nLines, color) {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 0.8;
-  for (let i = 1; i < nLines; i++) {
-    const t = i / nLines;
-    ctx.beginPath();
-    ctx.moveTo(p1.sx + (p4.sx - p1.sx) * t, p1.sy + (p4.sy - p1.sy) * t);
-    ctx.lineTo(p2.sx + (p3.sx - p2.sx) * t, p2.sy + (p3.sy - p2.sy) * t);
+// Fill a polygon from screen-space points with a crisp outline stroke.
+function fillPoly(ctx, fill, pts, stroke, lineWidth = 1.4) {
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].sx, pts[0].sy);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].sx, pts[i].sy);
+  ctx.closePath();
+  ctx.fill();
+  if (stroke) {
+    ctx.strokeStyle = stroke; ctx.lineWidth = lineWidth;
     ctx.stroke();
   }
 }
 
-// Draw a small dark window quad + cross mullion on the east wall
-function drawEastWindow(ctx, b, palette) {
-  const { x1, y0, wallH } = b;
-  const winSize = 0.30, winZ0 = wallH * 0.42, winZ1 = winZ0 + winSize;
-  const wy0 = y0 + (b.h - winSize) / 2, wy1 = wy0 + winSize;
-  const wP1 = worldToScreen(x1, wy0, winZ0), wP2 = worldToScreen(x1, wy1, winZ0);
-  const wP3 = worldToScreen(x1, wy1, winZ1), wP4 = worldToScreen(x1, wy0, winZ1);
-  ctx.fillStyle = '#1a1a1a';
+// Gold finial — small orb with short dark spike, planted at a ridge-end screen point.
+function drawRoofFinial(ctx, screenP) {
+  // Spike
+  ctx.strokeStyle = FINIAL_DARK; ctx.lineWidth = 1.3;
   ctx.beginPath();
-  ctx.moveTo(wP1.sx, wP1.sy); ctx.lineTo(wP2.sx, wP2.sy);
-  ctx.lineTo(wP3.sx, wP3.sy); ctx.lineTo(wP4.sx, wP4.sy);
+  ctx.moveTo(screenP.sx, screenP.sy);
+  ctx.lineTo(screenP.sx, screenP.sy - 6);
+  ctx.stroke();
+  // Orb
+  ctx.fillStyle = FINIAL_GOLD;
+  ctx.beginPath(); ctx.arc(screenP.sx, screenP.sy - 7, 2.8, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = FINIAL_DARK; ctx.lineWidth = 0.9; ctx.stroke();
+}
+
+// Brick chimney rooted on east slope near the ridge. cxw/cyw is the chimney center
+// in world coords (aligns with the smoke-emit point baked at initBuildings).
+function drawChimney(ctx, b, cxw, cyw, color) {
+  const peakZ = b.wallH + b.roofPeak;
+  const w = 0.22, h = 0.36;
+  const bz = peakZ - 0.04, tz = peakZ + h;
+  const xA = cxw - w / 2, xB = cxw + w / 2;
+  const yA = cyw - w / 2, yB = cyw + w / 2;
+  // South face (y = yB)
+  fillPoly(ctx, color, [
+    worldToScreen(xA, yB, bz), worldToScreen(xB, yB, bz),
+    worldToScreen(xB, yB, tz), worldToScreen(xA, yB, tz),
+  ], WALL_OUTLINE, 1);
+  // East face (x = xB) — darker
+  fillPoly(ctx, shadeColor(color, -0.25), [
+    worldToScreen(xB, yA, bz), worldToScreen(xB, yB, bz),
+    worldToScreen(xB, yB, tz), worldToScreen(xB, yA, tz),
+  ], WALL_OUTLINE, 1);
+  // Dark opening at the top
+  fillPoly(ctx, '#1a0e08', [
+    worldToScreen(xA, yB, tz), worldToScreen(xB, yB, tz),
+    worldToScreen(xB, yA, tz), worldToScreen(xA, yA, tz),
+  ], null);
+}
+
+// Darken / lighten a #rrggbb color by amt in [-1, 1]. Used for chimney shaded sides.
+function shadeColor(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, Math.min(255, ((n >> 16) & 0xff) + Math.round(255 * amt)));
+  const g = Math.max(0, Math.min(255, ((n >>  8) & 0xff) + Math.round(255 * amt)));
+  const b = Math.max(0, Math.min(255,  (n        & 0xff) + Math.round(255 * amt)));
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
+// Multiplicative brightness — mult > 1 brightens, < 1 darkens. Ported from reference.
+function shade(hex, mult) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, Math.min(255, Math.round(((n >> 16) & 0xff) * mult)));
+  const g = Math.max(0, Math.min(255, Math.round(((n >>  8) & 0xff) * mult)));
+  const b = Math.max(0, Math.min(255, Math.round( (n        & 0xff) * mult)));
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
+// Linear interpolation
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+// Linear interpolation of two screen-space points {sx, sy}
+function lerpPt(a, b, t) {
+  return { sx: a.sx + (b.sx - a.sx) * t, sy: a.sy + (b.sy - a.sy) * t };
+}
+
+// ---- Shared gabled-building helpers (ported from model-standalone.html) ----
+
+// Build a local-coord helper for a building: c(lx, ly, z) projects an offset
+// (lx, ly) wu from the building's centre, at world height z, to screen.
+function buildingLocalC(b) {
+  const cx = b.wx + b.w / 2, cy = b.wy + b.h / 2;
+  return (lx, ly, z) => worldToScreen(cx + lx, cy + ly, z);
+}
+
+// Draw a gabled box (south wall + south gable + east wall + tiled roof with
+// overhang). Returns the local-coord helper `c` so callers can place doors,
+// windows, chimneys etc. in the same coordinate system.
+function drawGabledBox(b, p, opts = {}) {
+  const ctx = state.ctx;
+  const c = buildingLocalC(b);
+  const hx = b.w / 2, hy = b.h / 2;
+  const wallH = b.wallH, peakZ = wallH + b.roofPeak;
+  const { roofOverhang = 0.18, plankCount = 6 } = opts;
+
+  const SW = c(-hx, +hy, 0),       SE = c(+hx, +hy, 0);
+  const NE = c(+hx, -hy, 0);
+  const SWt = c(-hx, +hy, wallH),  SEt = c(+hx, +hy, wallH);
+  const NEt = c(+hx, -hy, wallH);
+  const peakS = c(0, +hy, peakZ);
+
+  // South wall + south gable triangle
+  fillPoly(ctx, p.woodA, [SW, SE, SEt, SWt], 'rgba(0,0,0,0.45)', 1);
+  fillPoly(ctx, p.woodB, [SWt, SEt, peakS], 'rgba(0,0,0,0.45)', 1);
+
+  // Vertical plank dividers on south wall
+  ctx.strokeStyle = p.woodLine; ctx.lineWidth = 0.7;
+  for (let i = 1; i < plankCount; i++) {
+    const t = i / plankCount;
+    const a = c(lerp(-hx, hx, t), hy, 0);
+    const bp = c(lerp(-hx, hx, t), hy, wallH);
+    ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(bp.sx, bp.sy); ctx.stroke();
+  }
+  // Top wall plate beam
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(SWt.sx, SWt.sy); ctx.lineTo(SEt.sx, SEt.sy); ctx.stroke();
+
+  // East wall + vertical plank dividers
+  fillPoly(ctx, p.woodB, [SE, NE, NEt, SEt], 'rgba(0,0,0,0.45)', 1);
+  ctx.strokeStyle = p.woodLine; ctx.lineWidth = 0.6;
+  for (let i = 1; i < 5; i++) {
+    const t = i / 5;
+    const a = c(hx, lerp(hy, -hy, t), 0);
+    const bp = c(hx, lerp(hy, -hy, t), wallH);
+    ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(bp.sx, bp.sy); ctx.stroke();
+  }
+
+  // East roof slope with overhang
+  const ox = hx + roofOverhang, oy = hy + roofOverhang * 0.5;
+  const eaveSE   = c( ox,  oy, wallH - 0.05);
+  const eaveNE   = c( ox, -oy, wallH - 0.05);
+  const ridgeS_o = c(0,  oy, peakZ);
+  const ridgeN_o = c(0, -oy, peakZ);
+  fillPoly(ctx, p.tileA, [eaveSE, eaveNE, ridgeN_o, ridgeS_o], TILE_EDGE, 1.4);
+
+  // Horizontal tile seam lines
+  ctx.strokeStyle = TILE_EDGE; ctx.lineWidth = 0.7;
+  for (let i = 1; i < 5; i++) {
+    const t = i / 5;
+    const a = lerpPt(eaveSE, ridgeS_o, t);
+    const bp = lerpPt(eaveNE, ridgeN_o, t);
+    ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(bp.sx, bp.sy); ctx.stroke();
+  }
+  // Staggered vertical seams (brick pattern)
+  for (let row = 0; row < 5; row++) {
+    const t0 = row / 5, t1 = (row + 1) / 5;
+    const a0 = lerpPt(eaveSE, ridgeS_o, t0), a1 = lerpPt(eaveSE, ridgeS_o, t1);
+    const b0 = lerpPt(eaveNE, ridgeN_o, t0), b1 = lerpPt(eaveNE, ridgeN_o, t1);
+    const seams = row % 2 === 0 ? [0.25, 0.75] : [0.5];
+    for (const s of seams) {
+      const pa = lerpPt(a0, b0, s), pb = lerpPt(a1, b1, s);
+      ctx.beginPath(); ctx.moveTo(pa.sx, pa.sy); ctx.lineTo(pb.sx, pb.sy); ctx.stroke();
+    }
+  }
+
+  // South gable roof triangle with overhang
+  const eaveSW_o = c(-ox, oy, wallH - 0.05);
+  const eaveSE_o = c( ox, oy, wallH - 0.05);
+  fillPoly(ctx, p.tileB, [eaveSW_o, eaveSE_o, ridgeS_o], TILE_EDGE, 1.4);
+  // Gable rafters
+  ctx.strokeStyle = p.trim; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(eaveSW_o.sx, eaveSW_o.sy); ctx.lineTo(ridgeS_o.sx, ridgeS_o.sy);
+  ctx.lineTo(eaveSE_o.sx, eaveSE_o.sy);
+  ctx.stroke();
+
+  // Ridge highlight
+  ctx.strokeStyle = TILE_HI; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(ridgeS_o.sx, ridgeS_o.sy); ctx.lineTo(ridgeN_o.sx, ridgeN_o.sy);
+  ctx.stroke();
+
+  return { c, ridgeS_o, ridgeN_o };
+}
+
+// Arched plank door on the south face, centred at xCenter (local-coord offset).
+function drawArchDoor(c, p, hy, dW, dH, xCenter = 0) {
+  const ctx = state.ctx;
+  const d1 = c(xCenter - dW, hy, 0);
+  const d2 = c(xCenter + dW, hy, 0);
+  const d3 = c(xCenter + dW, hy, dH);
+  const d4 = c(xCenter - dW, hy, dH);
+  // Dark frame
+  ctx.fillStyle = p.doorDk;
+  ctx.beginPath();
+  ctx.moveTo(d1.sx, d1.sy); ctx.lineTo(d2.sx, d2.sy); ctx.lineTo(d3.sx, d3.sy);
+  ctx.quadraticCurveTo((d3.sx + d4.sx) / 2, d3.sy - 12, d4.sx, d4.sy);
   ctx.closePath(); ctx.fill();
-  const wMidZ = winZ0 + winSize / 2, wyMid = y0 + b.h / 2;
-  ctx.strokeStyle = palette.beam; ctx.lineWidth = 1;
+  // Lighter plank inset
+  ctx.fillStyle = p.door;
   ctx.beginPath();
-  const wm1 = worldToScreen(x1, wy0, wMidZ), wm2 = worldToScreen(x1, wy1, wMidZ);
-  const wm3 = worldToScreen(x1, wyMid, winZ0), wm4 = worldToScreen(x1, wyMid, winZ1);
-  ctx.moveTo(wm1.sx, wm1.sy); ctx.lineTo(wm2.sx, wm2.sy);
-  ctx.moveTo(wm3.sx, wm3.sy); ctx.lineTo(wm4.sx, wm4.sy);
+  ctx.moveTo(d1.sx + 1.5, d1.sy - 0.5);
+  ctx.lineTo(d2.sx - 1.5, d2.sy - 0.5);
+  ctx.lineTo(d3.sx - 1.5, d3.sy + 1);
+  ctx.quadraticCurveTo((d3.sx + d4.sx) / 2, d3.sy - 8, d4.sx + 1.5, d4.sy + 1);
+  ctx.closePath(); ctx.fill();
+  // Plank seams
+  ctx.strokeStyle = p.doorDk; ctx.lineWidth = 1;
+  for (let k = 1; k < 3; k++) {
+    const px = lerp(d1.sx, d2.sx, k / 3);
+    ctx.beginPath();
+    ctx.moveTo(px, d1.sy - 1);
+    ctx.lineTo(px, lerp(d1.sy, d3.sy, 0.92));
+    ctx.stroke();
+  }
+  // Iron handle
+  ctx.fillStyle = p.doorIron;
+  ctx.beginPath();
+  ctx.arc(lerp(d1.sx, d2.sx, 0.62), lerp(d1.sy, d3.sy, 0.55), 2.2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Small glowing window on the south face, centred at (xCenter, zCenter).
+function drawGabledWindow(c, p, hy, xCenter, zCenter, ww, wh) {
+  const ctx = state.ctx;
+  const w1 = c(xCenter - ww, hy, zCenter - wh);
+  const w2 = c(xCenter + ww, hy, zCenter - wh);
+  const w3 = c(xCenter + ww, hy, zCenter + wh);
+  const w4 = c(xCenter - ww, hy, zCenter + wh);
+  // Frame (dark surround)
+  fillPoly(ctx, p.woodLine, [
+    c(xCenter - ww - 0.04, hy, zCenter - wh - 0.05),
+    c(xCenter + ww + 0.04, hy, zCenter - wh - 0.05),
+    c(xCenter + ww + 0.04, hy, zCenter + wh + 0.05),
+    c(xCenter - ww - 0.04, hy, zCenter + wh + 0.05),
+  ], null);
+  // Glass
+  fillPoly(ctx, p.window, [w1, w2, w3, w4], null);
+  // Warm glow
+  ctx.fillStyle = p.windowGlow;
+  ctx.globalAlpha = 0.55;
+  ctx.beginPath();
+  ctx.arc((w1.sx + w2.sx) / 2, (w1.sy + w3.sy) / 2,
+    Math.min(8, Math.abs(w2.sx - w1.sx) * 0.4), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  // Cross mullion
+  ctx.strokeStyle = p.woodLine; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(lerp(w1.sx, w2.sx, 0.5), w1.sy);
+  ctx.lineTo(lerp(w4.sx, w3.sx, 0.5), w4.sy);
+  ctx.moveTo(w1.sx, lerp(w1.sy, w4.sy, 0.5));
+  ctx.lineTo(w2.sx, lerp(w2.sy, w3.sy, 0.5));
   ctx.stroke();
 }
 
-// ---- COTTAGE (original house) ----------------------------------------
+// ---- COTTAGE — ported from assets/model-standalone.html drawCottage --
 function drawCottage(b) {
   const ctx = state.ctx;
-  const { x0, y0, x1, y1, cx, wallH, bNE, bSE, bSW, wNE, wSE, wSW, ridgeN, ridgeS } = buildingCorners(b);
-
-  ctx.lineWidth = 1;
-
-  // === South wall ===
-  ctx.fillStyle = b.palette.wall;
-  ctx.beginPath();
-  ctx.moveTo(bSW.sx, bSW.sy); ctx.lineTo(bSE.sx, bSE.sy);
-  ctx.lineTo(wSE.sx, wSE.sy); ctx.lineTo(wSW.sx, wSW.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.stroke();
-
-  // Corner timber posts
-  ctx.strokeStyle = b.palette.beam; ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.moveTo(bSW.sx, bSW.sy); ctx.lineTo(wSW.sx, wSW.sy);
-  ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.stroke();
-
-  // Door
-  const doorW = 0.5, doorH = wallH * 0.78;
-  const ddx0 = x0 + (b.w - doorW) / 2, ddx1 = ddx0 + doorW;
-  const dP1 = worldToScreen(ddx0, y1, 0), dP2 = worldToScreen(ddx1, y1, 0);
-  const dP3 = worldToScreen(ddx1, y1, doorH), dP4 = worldToScreen(ddx0, y1, doorH);
-  ctx.fillStyle = '#3a2515';
-  ctx.beginPath();
-  ctx.moveTo(dP1.sx, dP1.sy); ctx.lineTo(dP2.sx, dP2.sy);
-  ctx.lineTo(dP3.sx, dP3.sy); ctx.lineTo(dP4.sx, dP4.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = b.palette.beam; ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.moveTo(dP4.sx, dP4.sy); ctx.lineTo(dP3.sx, dP3.sy); ctx.stroke();
-
-  // === East wall ===
-  ctx.fillStyle = b.palette.wallSide;
-  ctx.beginPath();
-  ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(bNE.sx, bNE.sy);
-  ctx.lineTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.strokeStyle = b.palette.beam; ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.moveTo(bNE.sx, bNE.sy); ctx.lineTo(wNE.sx, wNE.sy); ctx.stroke();
-
-  // Two cross-pane windows on east wall
-  for (let wi = 0; wi < 2; wi++) {
-    const winSize = 0.26, winZ0 = wallH * (wi === 0 ? 0.32 : 0.62);
-    const winZ1 = winZ0 + winSize;
-    const wyMid = y0 + b.h / 2, wyw0 = y0 + b.h * 0.25, wyw1 = wyw0 + winSize;
-    const wP1 = worldToScreen(x1, wyw0, winZ0), wP2 = worldToScreen(x1, wyw1, winZ0);
-    const wP3 = worldToScreen(x1, wyw1, winZ1), wP4 = worldToScreen(x1, wyw0, winZ1);
-    ctx.fillStyle = '#ffe8a0';
-    ctx.beginPath();
-    ctx.moveTo(wP1.sx, wP1.sy); ctx.lineTo(wP2.sx, wP2.sy);
-    ctx.lineTo(wP3.sx, wP3.sy); ctx.lineTo(wP4.sx, wP4.sy);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 0.8; ctx.stroke();
-    const wm1 = worldToScreen(x1, wyw0, winZ0 + winSize / 2);
-    const wm2 = worldToScreen(x1, wyw1, winZ0 + winSize / 2);
-    const wm3 = worldToScreen(x1, (wyw0 + wyw1) / 2, winZ0);
-    const wm4 = worldToScreen(x1, (wyw0 + wyw1) / 2, winZ1);
-    ctx.strokeStyle = b.palette.beam; ctx.lineWidth = 0.7;
-    ctx.beginPath();
-    ctx.moveTo(wm1.sx, wm1.sy); ctx.lineTo(wm2.sx, wm2.sy);
-    ctx.moveTo(wm3.sx, wm3.sy); ctx.lineTo(wm4.sx, wm4.sy);
-    ctx.stroke();
-  }
-
-  // === East roof slope (thatched — curved straw lines + scalloped eave) ===
-  ctx.fillStyle = b.palette.roof;
-  ctx.beginPath();
-  ctx.moveTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.lineTo(ridgeS.sx, ridgeS.sy); ctx.lineTo(ridgeN.sx, ridgeN.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 1; ctx.stroke();
-
-  // Curved thatch lines (slight outward bow from eave to ridge)
-  ctx.strokeStyle = b.palette.roofShadow; ctx.lineWidth = 1;
-  const thN = 7;
-  for (let i = 0; i <= thN; i++) {
-    const t  = i / thN;
-    const ex = wNE.sx + (wSE.sx - wNE.sx) * t;
-    const ey = wNE.sy + (wSE.sy - wNE.sy) * t;
-    const rx = ridgeN.sx + (ridgeS.sx - ridgeN.sx) * t;
-    const ry = ridgeN.sy + (ridgeS.sy - ridgeN.sy) * t;
-    // control point bows outward (away from ridge) by ~2 px for straw curve
-    const cpx = (ex + rx) / 2 + 2.5;
-    const cpy = (ey + ry) / 2 + 1.5;
-    ctx.beginPath();
-    ctx.moveTo(ex, ey);
-    ctx.quadraticCurveTo(cpx, cpy, rx, ry);
-    ctx.stroke();
-  }
-
-  // Scalloped eave fringe — darker thatch draping below the eave edge
-  const fringeN = 5;
-  const edx = wSE.sx - wNE.sx, edy = wSE.sy - wNE.sy;
-  ctx.fillStyle = b.palette.roofShadow;
-  ctx.beginPath();
-  ctx.moveTo(wNE.sx, wNE.sy);
-  ctx.lineTo(wSE.sx, wSE.sy);
-  // wavy return path from wSE → wNE, scallops dip below (+y = visually lower)
-  for (let i = 0; i < fringeN; i++) {
-    const t1 = (fringeN - i - 0.5) / fringeN;
-    const t2 = (fringeN - i - 1)   / fringeN;
-    ctx.quadraticCurveTo(
-      wNE.sx + edx * t1, wNE.sy + edy * t1 + 6,
-      wNE.sx + edx * t2, wNE.sy + edy * t2
-    );
-  }
-  ctx.closePath(); ctx.fill();
-
-  // === South gable (thatched triangle with scalloped base) ===
-  ctx.fillStyle = b.palette.roof;
-  ctx.beginPath();
-  ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.lineTo(ridgeS.sx, ridgeS.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.strokeStyle = b.palette.beam; ctx.lineWidth = 1.4;
-  ctx.beginPath();
-  ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(ridgeS.sx, ridgeS.sy); ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.stroke();
-
-  // Gable eave fringe (scalloped, smaller than east slope)
-  const gbdx = wSE.sx - wSW.sx, gbdy = wSE.sy - wSW.sy;
-  ctx.fillStyle = b.palette.roofShadow;
-  ctx.beginPath();
-  ctx.moveTo(wSW.sx, wSW.sy);
-  ctx.lineTo(wSE.sx, wSE.sy);
-  for (let i = 0; i < 3; i++) {
-    const t1 = (3 - i - 0.5) / 3;
-    const t2 = (3 - i - 1)   / 3;
-    ctx.quadraticCurveTo(
-      wSW.sx + gbdx * t1, wSW.sy + gbdy * t1 + 5,
-      wSW.sx + gbdx * t2, wSW.sy + gbdy * t2
-    );
-  }
-  ctx.closePath(); ctx.fill();
-
-  // === Chimney (sits on east slope near the ridge) ===
-  const peakZ = b.wallH + b.roofPeak;
-  const chW = 0.20, chH = 0.34;
-  const chX = cx + 0.06, chY = y0 + b.h * 0.28;
-  const chBZ = peakZ - 0.04, chTZ = peakZ + chH;
-  // South face
-  const cSB1 = worldToScreen(chX,        chY + chW * 0.5, chBZ);
-  const cSB2 = worldToScreen(chX + chW,  chY + chW * 0.5, chBZ);
-  const cST2 = worldToScreen(chX + chW,  chY + chW * 0.5, chTZ);
-  const cST1 = worldToScreen(chX,        chY + chW * 0.5, chTZ);
-  ctx.fillStyle = '#7a6a56';
-  ctx.beginPath();
-  ctx.moveTo(cSB1.sx, cSB1.sy); ctx.lineTo(cSB2.sx, cSB2.sy);
-  ctx.lineTo(cST2.sx, cST2.sy); ctx.lineTo(cST1.sx, cST1.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 0.8; ctx.stroke();
-  // East face (darker)
-  const cEB1 = worldToScreen(chX + chW, chY - chW * 0.5, chBZ);
-  const cEB2 = worldToScreen(chX + chW, chY + chW * 0.5, chBZ);
-  const cET2 = worldToScreen(chX + chW, chY + chW * 0.5, chTZ);
-  const cET1 = worldToScreen(chX + chW, chY - chW * 0.5, chTZ);
-  ctx.fillStyle = '#5a4a38';
-  ctx.beginPath();
-  ctx.moveTo(cEB1.sx, cEB1.sy); ctx.lineTo(cEB2.sx, cEB2.sy);
-  ctx.lineTo(cET2.sx, cET2.sy); ctx.lineTo(cET1.sx, cET1.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 0.8; ctx.stroke();
-  // Top cap (small dark opening)
-  ctx.fillStyle = '#2a1a0e';
-  ctx.beginPath();
-  ctx.moveTo(cST1.sx, cST1.sy); ctx.lineTo(cST2.sx, cST2.sy);
-  ctx.lineTo(cET2.sx, cET2.sy); ctx.lineTo(cET1.sx, cET1.sy);
-  ctx.closePath(); ctx.fill();
-}
-
-// ---- TAVERN -----------------------------------------------------------
-function drawTavern(b) {
-  const ctx = state.ctx;
-  const { x0, y0, x1, y1, cx, wallH, bNE, bSE, bSW, wNE, wSE, wSW, ridgeN, ridgeS } = buildingCorners(b);
+  const hy = b.h / 2;
+  const wallH = b.wallH;
   const p = b.palette;
 
-  ctx.lineWidth = 1;
+  // Main gabled box (5 plank dividers)
+  const { c } = drawGabledBox(b, p, { plankCount: 5 });
 
-  // === South wall (dark planks) ===
-  ctx.fillStyle = p.wall;
+  // Arched door — left of centre on south wall
+  drawArchDoor(c, p, hy, 0.22, wallH * 0.62, -0.30);
+  // Side window — right of door on south wall
+  drawGabledWindow(c, p, hy, 0.40, wallH * 0.55, 0.16, 0.18);
+  // Small attic window in the gable triangle (positioned proportional to peak)
+  drawGabledWindow(c, p, hy, 0, wallH + b.roofPeak * 0.45, 0.08, 0.08);
+
+  // Chimney — east side, near the ridge. Aligned with smoke-emit baked at init.
+  const { cx } = buildingCorners(b);
+  drawChimney(ctx, b, cx + 0.08, b.wy + b.h * 0.28, '#7a6555');
+}
+
+// ---- TAVERN — ported from assets/model-standalone.html drawTavern ----
+function drawTavern(b) {
+  const ctx = state.ctx;
+  const hy = b.h / 2, hx = b.w / 2;
+  const wallH = b.wallH;
+  const p = b.palette;
+
+  // Main gabled box — 7 plank dividers (wider/taller than cottage)
+  const { c } = drawGabledBox(b, p, { plankCount: 7 });
+
+  // Centred arched front door
+  drawArchDoor(c, p, hy, 0.24, wallH * 0.50, 0);
+
+  // Lower row of 2 windows flanking the door
+  drawGabledWindow(c, p, hy, -0.65, wallH * 0.36, 0.14, 0.16);
+  drawGabledWindow(c, p, hy,  0.65, wallH * 0.36, 0.14, 0.16);
+  // Upper row of 2 windows (second storey)
+  drawGabledWindow(c, p, hy, -0.40, wallH * 0.85, 0.12, 0.14);
+  drawGabledWindow(c, p, hy,  0.40, wallH * 0.85, 0.12, 0.14);
+
+  // Mid-storey timber band across the south wall
+  ctx.strokeStyle = p.woodLine; ctx.lineWidth = 3;
+  const beamL = c(-hx, hy, wallH * 0.62);
+  const beamR = c( hx, hy, wallH * 0.62);
   ctx.beginPath();
-  ctx.moveTo(bSW.sx, bSW.sy); ctx.lineTo(bSE.sx, bSE.sy);
-  ctx.lineTo(wSE.sx, wSE.sy); ctx.lineTo(wSW.sx, wSW.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.stroke();
-  // Horizontal plank lines on south wall
-  drawPlankLines(ctx, bSW, bSE, wSE, wSW, 5, 'rgba(0,0,0,0.25)');
-  // Corner beam posts
-  ctx.strokeStyle = p.beam; ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(bSW.sx, bSW.sy); ctx.lineTo(wSW.sx, wSW.sy);
-  ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.moveTo(beamL.sx, beamL.sy); ctx.lineTo(beamR.sx, beamR.sy);
   ctx.stroke();
 
-  // Wide tavern door (60% of wall width)
-  const tdW = b.w * 0.60, tdH = wallH * 0.82;
-  const tdx0 = x0 + (b.w - tdW) / 2, tdx1 = tdx0 + tdW;
-  const tdP1 = worldToScreen(tdx0, y1, 0), tdP2 = worldToScreen(tdx1, y1, 0);
-  const tdP3 = worldToScreen(tdx1, y1, tdH), tdP4 = worldToScreen(tdx0, y1, tdH);
-  ctx.fillStyle = p.beam;
-  ctx.beginPath();
-  ctx.moveTo(tdP1.sx, tdP1.sy); ctx.lineTo(tdP2.sx, tdP2.sy);
-  ctx.lineTo(tdP3.sx, tdP3.sy); ctx.lineTo(tdP4.sx, tdP4.sy);
-  ctx.closePath(); ctx.fill();
-  // Door centre divider
-  const tdMid = worldToScreen((tdx0 + tdx1) / 2, y1, 0);
-  const tdMidT = worldToScreen((tdx0 + tdx1) / 2, y1, tdH);
-  ctx.strokeStyle = 'rgba(255,200,120,0.35)'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(tdMid.sx, tdMid.sy); ctx.lineTo(tdMidT.sx, tdMidT.sy); ctx.stroke();
+  // Attic window in gable triangle (proportional to peak height)
+  drawGabledWindow(c, p, hy, 0, wallH + b.roofPeak * 0.45, 0.09, 0.09);
 
-  // Hanging sign — bracket arm + board + beer-mug pictogram
-  const signAX = x0 + b.w * 0.16, signAY = y1;
-  const signBX = signAX + 0.34;
-  const armTop = worldToScreen(signAX, signAY, wallH * 0.76);
-  const armBot = worldToScreen(signAX, signAY, wallH * 0.38);
-  const sgnTL  = worldToScreen(signAX,  signAY, wallH * 0.72);
-  const sgnTR  = worldToScreen(signBX,  signAY, wallH * 0.72);
-  const sgnBR  = worldToScreen(signBX,  signAY, wallH * 0.44);
-  const sgnBL  = worldToScreen(signAX,  signAY, wallH * 0.44);
-  // bracket arm
-  ctx.strokeStyle = p.beam; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(armTop.sx, armTop.sy); ctx.lineTo(armBot.sx, armBot.sy); ctx.stroke();
-  // sign board
-  ctx.fillStyle = '#c8a056';
+  // Hanging tavern sign on the east edge of the south wall
+  const sp = c(hx - 0.05, hy, wallH * 0.72);
+  ctx.strokeStyle = p.woodLine; ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(sgnTL.sx, sgnTL.sy); ctx.lineTo(sgnTR.sx, sgnTR.sy);
-  ctx.lineTo(sgnBR.sx, sgnBR.sy); ctx.lineTo(sgnBL.sx, sgnBL.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = '#7a4a10'; ctx.lineWidth = 1; ctx.stroke();
-  // Beer mug: trapezoid body + foam + handle (screen-space)
-  const sCX = (sgnTL.sx + sgnTR.sx + sgnBR.sx + sgnBL.sx) / 4;
-  const sCY = (sgnTL.sy + sgnTR.sy + sgnBR.sy + sgnBL.sy) / 4;
-  const mW = 4.5, mH = 6;
-  // body (trapezoid — slightly wider at top)
-  ctx.fillStyle = '#d4a030';
-  ctx.beginPath();
-  ctx.moveTo(sCX - mW * 1.1, sCY - mH * 0.5);
-  ctx.lineTo(sCX + mW * 1.1, sCY - mH * 0.5);
-  ctx.lineTo(sCX + mW,       sCY + mH * 0.5);
-  ctx.lineTo(sCX - mW,       sCY + mH * 0.5);
-  ctx.closePath(); ctx.fill();
-  // foam top
-  ctx.fillStyle = '#f5f0e0';
-  ctx.beginPath();
-  ctx.ellipse(sCX, sCY - mH * 0.5, mW * 1.1, mH * 0.28, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // handle arc
-  ctx.strokeStyle = '#7a4a10'; ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.arc(sCX + mW + 1.5, sCY, mH * 0.38, -Math.PI * 0.55, Math.PI * 0.55);
+  ctx.moveTo(sp.sx, sp.sy);
+  ctx.lineTo(sp.sx + 14, sp.sy);
+  ctx.lineTo(sp.sx + 14, sp.sy + 6);
   ctx.stroke();
-  ctx.strokeStyle = '#7a4a10'; ctx.lineWidth = 0.7;
-  ctx.beginPath();
-  ctx.moveTo(sgnTL.sx, sgnTL.sy); ctx.lineTo(sgnTR.sx, sgnTR.sy);
-  ctx.lineTo(sgnBR.sx, sgnBR.sy); ctx.lineTo(sgnBL.sx, sgnBL.sy);
-  ctx.closePath(); ctx.stroke();
+  ctx.fillStyle = p.sign;
+  ctx.fillRect(sp.sx + 8, sp.sy + 6, 18, 14);
+  ctx.strokeStyle = p.trim; ctx.lineWidth = 1;
+  ctx.strokeRect(sp.sx + 8, sp.sy + 6, 18, 14);
+  ctx.fillStyle = p.signTxt;
+  ctx.fillRect(sp.sx + 12, sp.sy + 10, 8, 7);
 
-  // South wall windows (two small paned windows flanking the door)
-  const winH = wallH * 0.38, winW = b.w * 0.12, winZ0 = wallH * 0.45;
-  for (const wx_off of [x0 + b.w * 0.06, x0 + b.w * 0.78]) {
-    const wP1 = worldToScreen(wx_off,          y1, winZ0);
-    const wP2 = worldToScreen(wx_off + winW,   y1, winZ0);
-    const wP3 = worldToScreen(wx_off + winW,   y1, winZ0 + winH);
-    const wP4 = worldToScreen(wx_off,          y1, winZ0 + winH);
-    ctx.fillStyle = '#ffe8a0';
-    ctx.beginPath();
-    ctx.moveTo(wP1.sx, wP1.sy); ctx.lineTo(wP2.sx, wP2.sy);
-    ctx.lineTo(wP3.sx, wP3.sy); ctx.lineTo(wP4.sx, wP4.sy);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = p.beam; ctx.lineWidth = 0.8; ctx.stroke();
-    // cross pane
-    const wMx = (wP1.sx + wP2.sx) / 2, wMy = (wP1.sy + wP2.sy) / 2;
-    const wTx = (wP4.sx + wP3.sx) / 2, wTy = (wP4.sy + wP3.sy) / 2;
-    const wLx = (wP1.sx + wP4.sx) / 2, wLy = (wP1.sy + wP4.sy) / 2;
-    const wRx = (wP2.sx + wP3.sx) / 2, wRy = (wP2.sy + wP3.sy) / 2;
-    ctx.strokeStyle = p.beam; ctx.lineWidth = 0.6;
-    ctx.beginPath(); ctx.moveTo(wMx, wMy); ctx.lineTo(wTx, wTy); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(wLx, wLy); ctx.lineTo(wRx, wRy); ctx.stroke();
-  }
-
-  // === East wall (darker planks) ===
-  ctx.fillStyle = p.wallSide;
-  ctx.beginPath();
-  ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(bNE.sx, bNE.sy);
-  ctx.lineTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.stroke();
-  drawPlankLines(ctx, bSE, bNE, wNE, wSE, 5, 'rgba(0,0,0,0.22)');
-  ctx.strokeStyle = p.beam; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(bNE.sx, bNE.sy); ctx.lineTo(wNE.sx, wNE.sy); ctx.stroke();
-
-  // Round porthole windows on east wall (2 circles, screen-space)
-  for (let wi = 0; wi < 2; wi++) {
-    const winZ  = wallH * (wi === 0 ? 0.30 : 0.62);
-    const wyMid = y0 + b.h * 0.5;
-    const winCtr = worldToScreen(x1, wyMid, winZ + 0.13);
-    const r = 5.5;
-    ctx.fillStyle = '#ffe8a0';
-    ctx.beginPath(); ctx.arc(winCtr.sx, winCtr.sy, r, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = p.beam; ctx.lineWidth = 1.5; ctx.stroke();
-    // cross pane
-    ctx.strokeStyle = p.beam; ctx.lineWidth = 0.7;
-    ctx.beginPath();
-    ctx.moveTo(winCtr.sx - r * 0.7, winCtr.sy); ctx.lineTo(winCtr.sx + r * 0.7, winCtr.sy);
-    ctx.moveTo(winCtr.sx, winCtr.sy - r * 0.7); ctx.lineTo(winCtr.sx, winCtr.sy + r * 0.7);
-    ctx.stroke();
-  }
-
-  // === East roof slope (orange shingles as chevron rows) ===
-  ctx.fillStyle = p.roof;
-  ctx.beginPath();
-  ctx.moveTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.lineTo(ridgeS.sx, ridgeS.sy); ctx.lineTo(ridgeN.sx, ridgeN.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 1; ctx.stroke();
-  // Chevron shingle rows (darker horizontal bands)
-  ctx.strokeStyle = p.roofShadow; ctx.lineWidth = 1.5;
-  const shingleN = 5;
-  for (let i = 1; i < shingleN; i++) {
-    const t = i / shingleN;
-    const ex = wNE.sx + (wSE.sx - wNE.sx) * t, ey = wNE.sy + (wSE.sy - wNE.sy) * t;
-    const rx = ridgeN.sx + (ridgeS.sx - ridgeN.sx) * t, ry = ridgeN.sy + (ridgeS.sy - ridgeN.sy) * t;
-    ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(rx, ry); ctx.stroke();
-  }
-  ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.moveTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy); ctx.stroke();
-
-  // === South gable (dark wood) ===
-  ctx.fillStyle = p.wall;
-  ctx.beginPath();
-  ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.lineTo(ridgeS.sx, ridgeS.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.strokeStyle = p.beam; ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(ridgeS.sx, ridgeS.sy); ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.stroke();
-
-  // === Chimney (brick, east slope near ridge) ===
-  const peakZ = b.wallH + b.roofPeak;
-  const chW = 0.22, chH = 0.38;
-  const chX = cx + 0.10, chY = y0 + b.h * 0.25;
-  const chBZ = peakZ - 0.06, chTZ = peakZ + chH;
-  const cSB1 = worldToScreen(chX,       chY + chW * 0.5, chBZ);
-  const cSB2 = worldToScreen(chX + chW, chY + chW * 0.5, chBZ);
-  const cST2 = worldToScreen(chX + chW, chY + chW * 0.5, chTZ);
-  const cST1 = worldToScreen(chX,       chY + chW * 0.5, chTZ);
-  ctx.fillStyle = '#8a5a44';
-  ctx.beginPath();
-  ctx.moveTo(cSB1.sx, cSB1.sy); ctx.lineTo(cSB2.sx, cSB2.sy);
-  ctx.lineTo(cST2.sx, cST2.sy); ctx.lineTo(cST1.sx, cST1.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 0.8; ctx.stroke();
-  // Brick rows on south face
-  ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 0.6;
-  for (let i = 1; i < 4; i++) {
-    const t = i / 4;
-    ctx.beginPath();
-    ctx.moveTo(cSB1.sx + (cST1.sx - cSB1.sx) * t, cSB1.sy + (cST1.sy - cSB1.sy) * t);
-    ctx.lineTo(cSB2.sx + (cST2.sx - cSB2.sx) * t, cSB2.sy + (cST2.sy - cSB2.sy) * t);
-    ctx.stroke();
-  }
-  const cEB1 = worldToScreen(chX + chW, chY - chW * 0.5, chBZ);
-  const cEB2 = worldToScreen(chX + chW, chY + chW * 0.5, chBZ);
-  const cET2 = worldToScreen(chX + chW, chY + chW * 0.5, chTZ);
-  const cET1 = worldToScreen(chX + chW, chY - chW * 0.5, chTZ);
-  ctx.fillStyle = '#6a3a28';
-  ctx.beginPath();
-  ctx.moveTo(cEB1.sx, cEB1.sy); ctx.lineTo(cEB2.sx, cEB2.sy);
-  ctx.lineTo(cET2.sx, cET2.sy); ctx.lineTo(cET1.sx, cET1.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 0.8; ctx.stroke();
-  ctx.fillStyle = '#2a1a0e';
-  ctx.beginPath();
-  ctx.moveTo(cST1.sx, cST1.sy); ctx.lineTo(cST2.sx, cST2.sy);
-  ctx.lineTo(cET2.sx, cET2.sy); ctx.lineTo(cET1.sx, cET1.sy);
-  ctx.closePath(); ctx.fill();
-
-  // === Giant beer mug landmark on roof ridge ===
-  // Centre on the ridge midpoint (halfway between ridgeN and ridgeS)
-  const mgx = (ridgeN.sx + ridgeS.sx) / 2;
-  const mgy = (ridgeN.sy + ridgeS.sy) / 2 + 18;
-  const mgW = 19, mgH = 26;  // half-width, full height
-
-  // Mug body — rounded trapezoid (wider at bottom than top, like a barrel)
-  ctx.fillStyle = '#c8842a';
-  ctx.beginPath();
-  ctx.moveTo(mgx - mgW * 0.88, mgy);
-  ctx.lineTo(mgx + mgW * 0.88, mgy);
-  ctx.quadraticCurveTo(mgx + mgW, mgy, mgx + mgW, mgy - mgH * 0.15);
-  ctx.lineTo(mgx + mgW * 0.82, mgy - mgH);
-  ctx.lineTo(mgx - mgW * 0.82, mgy - mgH);
-  ctx.lineTo(mgx - mgW, mgy - mgH * 0.15);
-  ctx.quadraticCurveTo(mgx - mgW, mgy, mgx - mgW * 0.88, mgy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = '#7a4010'; ctx.lineWidth = 1.2; ctx.stroke();
-
-  // Vertical stave lines (dark grain)
-  ctx.strokeStyle = 'rgba(80,30,0,0.35)'; ctx.lineWidth = 0.8;
-  for (let si = -2; si <= 2; si++) {
-    const bx = mgx + si * mgW * 0.32;
-    ctx.beginPath();
-    ctx.moveTo(bx - si * 0.5, mgy - 2);
-    ctx.lineTo(bx - si * 1.5, mgy - mgH + 2);
-    ctx.stroke();
-  }
-
-  // Metal bands (2 horizontal dark strips)
-  ctx.fillStyle = '#4a3018';
-  for (const bt of [0.28, 0.68]) {
-    const by = mgy - mgH * bt;
-    ctx.beginPath();
-    ctx.moveTo(mgx - mgW * (1 - bt * 0.08), by + 2);
-    ctx.lineTo(mgx + mgW * (1 - bt * 0.08), by + 2);
-    ctx.lineTo(mgx + mgW * (1 - bt * 0.08) * 0.95, by - 2);
-    ctx.lineTo(mgx - mgW * (1 - bt * 0.08) * 0.95, by - 2);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = '#2a1808'; ctx.lineWidth = 0.5; ctx.stroke();
-  }
-
-  // Rim highlight at top
-  ctx.fillStyle = '#e8a040';
-  ctx.beginPath();
-  ctx.ellipse(mgx, mgy - mgH + 1.5, mgW * 0.82, 4.5, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#7a4010'; ctx.lineWidth = 0.8; ctx.stroke();
-
-  // Foam (white frothy top)
-  ctx.fillStyle = '#f5f0e8';
-  ctx.beginPath();
-  ctx.ellipse(mgx, mgy - mgH - 1, mgW * 0.78, 6, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Foam bumps
-  ctx.fillStyle = '#ffffff';
-  for (let fi = -2; fi <= 2; fi++) {
-    ctx.beginPath();
-    ctx.arc(mgx + fi * mgW * 0.28, mgy - mgH - 3, 4.5, Math.PI, 0);
-    ctx.fill();
-  }
-
-  // Handle — thick C-curve arching to the right
-  ctx.strokeStyle = '#7a4010'; ctx.lineWidth = 5;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(mgx + mgW * 0.82, mgy - mgH * 0.25);
-  ctx.quadraticCurveTo(mgx + mgW + 16, mgy - mgH * 0.5, mgx + mgW * 0.82, mgy - mgH * 0.78);
-  ctx.stroke();
-  ctx.strokeStyle = '#c8842a'; ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(mgx + mgW * 0.82, mgy - mgH * 0.25);
-  ctx.quadraticCurveTo(mgx + mgW + 16, mgy - mgH * 0.5, mgx + mgW * 0.82, mgy - mgH * 0.78);
-  ctx.stroke();
-  ctx.lineCap = 'butt';
+  // Chimney — east side, near ridge
+  const { cx } = buildingCorners(b);
+  drawChimney(ctx, b, cx + 0.08, b.wy + b.h * 0.28, '#7a6555');
 }
 
 // ---- WINDMILL ---------------------------------------------------------
+// Octagonal stone tower with multi-band conical cap, ported from
+// assets/model-standalone.html (classic palette).
 function drawWindmill(b) {
   const ctx = state.ctx;
-  const { x0, y0, x1, y1, cx, cy, wallH, peakZ, bNE, bSE, bSW } = buildingCorners(b);
+  const { cx, cy, wallH, peakZ } = buildingCorners(b);
   const p = b.palette;
 
-  // Tapered top corners — tower narrows by 'taper' wu per side, giving an
-  // octagonal-profile round-tower silhouette instead of a plain rectangle.
-  const taper = 0.30;
-  const wtNE = worldToScreen(x1 - taper, y0 + taper, wallH);
-  const wtSE = worldToScreen(x1 - taper, y1 - taper, wallH);
-  const wtSW = worldToScreen(x0 + taper, y1 - taper, wallH);
-  const peak  = worldToScreen(cx, cy, peakZ);
+  // Local-coords helper: c(lx, ly, z) gives screen pt for offset (lx, ly) from
+  // building centre, at world height z. Matches the reference's `c()` shape.
+  const c = (lx, ly, z) => worldToScreen(cx + lx, cy + ly, z);
 
-  ctx.lineWidth = 1;
-  const stoneRows = 7;
+  // Octagon geometry — half-extent r=1.0 fits inside our 2x2 footprint, with
+  // chamfer ch=0.5 giving 8 equal-ish facets. Taper narrows toward top.
+  const r = 1.0, ch = 0.5;
+  const taperTop = 0.32;
+  const baseR = r, baseCh = ch;
+  const topR = r - taperTop, topCh = ch - taperTop * (ch / r);
+  const capBase = wallH + 0.05;
 
-  // === South wall (tapered trapezoid — wider at base) ===
-  ctx.fillStyle = p.wall;
+  // Compute an 8-corner ring at height z, for the given outer radius/chamfer.
+  // Order CCW: 0 S-left, 1 S-right, 2 E-south, 3 E-north, 4 N-right, 5 N-left,
+  // 6 W-north, 7 W-south.
+  function ring(R, CH, z) {
+    return [
+      c(-CH,  R, z),  c( CH,  R, z),
+      c( R,  CH, z),  c( R, -CH, z),
+      c( CH, -R, z),  c(-CH, -R, z),
+      c(-R, -CH, z),  c(-R,  CH, z),
+    ];
+  }
+  const B = ring(baseR, baseCh, 0);
+  const T = ring(topR,  topCh,  wallH);
+
+  // Soft ground shadow polygon
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
   ctx.beginPath();
-  ctx.moveTo(bSW.sx, bSW.sy); ctx.lineTo(bSE.sx, bSE.sy);
-  ctx.lineTo(wtSE.sx, wtSE.sy); ctx.lineTo(wtSW.sx, wtSW.sy);
+  const sh = [
+    c(-baseR - 0.1,  baseR + 0.15, 0),
+    c( baseR + 0.4,  baseR + 0.05, 0),
+    c( baseR + 1.0,  baseR - 0.5,  0),
+    c( baseR + 0.4, -baseR + 0.1,  0),
+    c(-baseR + 0.1, -baseR - 0.1,  0),
+    c(-baseR - 0.3, -baseR + 0.3,  0),
+  ];
+  ctx.moveTo(sh[0].sx, sh[0].sy);
+  for (let i = 1; i < sh.length; i++) ctx.lineTo(sh[i].sx, sh[i].sy);
   ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.stroke();
-  ctx.strokeStyle = p.beam; ctx.lineWidth = 0.7;
-  for (let i = 1; i < stoneRows; i++) {
-    const t = i / stoneRows;
+
+  // Three visible faces (S, SE, E), drawn back-to-front so the south face
+  // outline sits cleanly on top at the shared corner.
+  const faces = [
+    { i0: 0, i1: 1, fill: p.stoneS },  // S
+    { i0: 1, i1: 2, fill: shade(p.stoneS, 0.92) },  // SE
+    { i0: 2, i1: 3, fill: p.stoneE },  // E
+  ];
+
+  for (const f of [faces[2], faces[1], faces[0]]) {
+    const a = B[f.i0], bb = B[f.i1], bt = T[f.i1], at = T[f.i0];
+    fillPoly(ctx, f.fill, [a, bb, bt, at], 'rgba(0,0,0,0.35)', 1);
+
+    // Top highlight strip (slight brighten near the eave)
+    const hAt = lerpPt(at, a, 0.08);
+    const hBt = lerpPt(bt, bb, 0.08);
+    fillPoly(ctx, shade(f.fill, 1.12), [at, bt, hBt, hAt], null);
+
+    // Stone brick courses with staggered verticals
+    const rows = 7;
+    ctx.strokeStyle = p.mortar; ctx.lineWidth = 0.8;
+    for (let i = 1; i < rows; i++) {
+      const t = i / rows;
+      const pa = lerpPt(a, at, t);
+      const pb = lerpPt(bb, bt, t);
+      ctx.beginPath(); ctx.moveTo(pa.sx, pa.sy); ctx.lineTo(pb.sx, pb.sy); ctx.stroke();
+      // staggered vertical seam between this row and the next
+      const stagger = i % 2 === 0 ? 0.33 : 0.66;
+      const next_t = (i + 1) / rows;
+      const pa2 = lerpPt(a, at, next_t);
+      const pb2 = lerpPt(bb, bt, next_t);
+      const m  = lerpPt(pa, pb, stagger);
+      const m2 = lerpPt(pa2, pb2, stagger);
+      ctx.beginPath(); ctx.moveTo(m.sx, m.sy); ctx.lineTo(m2.sx, m2.sy); ctx.stroke();
+    }
+
+    // Crisp facet edge along this face's right-hand corner
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(bb.sx, bb.sy); ctx.lineTo(bt.sx, bt.sy); ctx.stroke();
+  }
+
+  // === Arched door on south face (between corners 0 and 1) ===
+  const dW = 0.34, dH = wallH * 0.42;
+  const d1 = c(-dW, baseR, 0);
+  const d2 = c( dW, baseR, 0);
+  const d3 = c( dW, baseR, dH);
+  const d4 = c(-dW, baseR, dH);
+  ctx.fillStyle = p.doorDk;
+  ctx.beginPath();
+  ctx.moveTo(d1.sx, d1.sy); ctx.lineTo(d2.sx, d2.sy);
+  ctx.lineTo(d3.sx, d3.sy);
+  ctx.quadraticCurveTo((d3.sx + d4.sx) / 2, d3.sy - 14, d4.sx, d4.sy);
+  ctx.closePath(); ctx.fill();
+  // Door planks (lighter inset)
+  ctx.fillStyle = p.door;
+  const ins = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(d1.sx + ins, d1.sy - 0.4);
+  ctx.lineTo(d2.sx - ins, d2.sy - 0.4);
+  ctx.lineTo(d3.sx - ins, d3.sy + 1);
+  ctx.quadraticCurveTo((d3.sx + d4.sx) / 2, d3.sy - 10, d4.sx + ins, d4.sy + 1);
+  ctx.closePath(); ctx.fill();
+  // Plank seams + iron handle
+  ctx.strokeStyle = p.doorDk; ctx.lineWidth = 1;
+  for (let k = 1; k < 3; k++) {
+    const t = k / 3;
+    const px = lerp(d1.sx, d2.sx, t);
     ctx.beginPath();
-    ctx.moveTo(bSW.sx + (wtSW.sx - bSW.sx) * t, bSW.sy + (wtSW.sy - bSW.sy) * t);
-    ctx.lineTo(bSE.sx + (wtSE.sx - bSE.sx) * t, bSE.sy + (wtSE.sy - bSE.sy) * t);
+    ctx.moveTo(px, d1.sy - 1);
+    ctx.lineTo(px, lerp(d1.sy, d3.sy, 0.92));
     ctx.stroke();
   }
-  // SE corner edge — visible facet line hinting at the octagonal profile
-  ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 1.8;
-  ctx.beginPath(); ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(wtSE.sx, wtSE.sy); ctx.stroke();
+  ctx.fillStyle = p.doorIron;
+  ctx.beginPath();
+  ctx.arc(lerp(d1.sx, d2.sx, 0.62), lerp(d1.sy, d3.sy, 0.55), 2.2, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Arched door
-  const wdW = 0.30, wdH = wallH * 0.48;
-  const wdx0 = x0 + (b.w - wdW) / 2, wdx1 = wdx0 + wdW;
-  const wdP1 = worldToScreen(wdx0, y1, 0),   wdP2 = worldToScreen(wdx1, y1, 0);
-  const wdP3 = worldToScreen(wdx1, y1, wdH), wdP4 = worldToScreen(wdx0, y1, wdH);
-  ctx.fillStyle = '#1a1210';
+  // === Small arched glowing window on south face, mid-height ===
+  const wY = wallH * 0.66;
+  const ww = 0.16, wh = 0.32;
+  const w1 = c(-ww, baseR * 0.95, wY);
+  const w2 = c( ww, baseR * 0.95, wY);
+  const w3 = c( ww, baseR * 0.95, wY + wh);
+  const w4 = c(-ww, baseR * 0.95, wY + wh);
+  ctx.fillStyle = p.window;
   ctx.beginPath();
-  ctx.moveTo(wdP1.sx, wdP1.sy); ctx.lineTo(wdP2.sx, wdP2.sy);
-  ctx.lineTo(wdP3.sx, wdP3.sy); ctx.lineTo(wdP4.sx, wdP4.sy);
+  ctx.moveTo(w1.sx, w1.sy); ctx.lineTo(w2.sx, w2.sy);
+  ctx.lineTo(w3.sx, w3.sy);
+  ctx.quadraticCurveTo((w3.sx + w4.sx) / 2, w3.sy - 6, w4.sx, w4.sy);
   ctx.closePath(); ctx.fill();
-  // Arch: small bezier bump at the top of the door
-  ctx.strokeStyle = p.beam; ctx.lineWidth = 1;
+  ctx.fillStyle = p.windowGlow; ctx.globalAlpha = 0.55;
   ctx.beginPath();
-  ctx.moveTo(wdP4.sx, wdP4.sy);
-  ctx.quadraticCurveTo((wdP4.sx + wdP3.sx) / 2, wdP4.sy - 4, wdP3.sx, wdP3.sy);
+  ctx.arc((w1.sx + w2.sx) / 2, (w1.sy + w3.sy) / 2, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // === Conical cap — 2 stacked bands of octagonal rings + tip triangles ===
+  const peak = c(0, 0, peakZ);
+  const capR1 = topR + 0.10, capCh1 = topCh + 0.10;
+  const capR2 = topR * 0.55, capCh2 = topCh * 0.55;
+  const capR3 = topR * 0.18, capCh3 = topCh * 0.18;
+  const C0 = ring(capR1, capCh1, capBase);
+  const C1 = ring(capR2, capCh2, capBase + (peakZ - capBase) * 0.55);
+  const C2 = ring(capR3, capCh3, capBase + (peakZ - capBase) * 0.88);
+
+  // Cap base rim (darker band)
+  const rimB = ring(capR1 + 0.04, capCh1 + 0.04, capBase - 0.04);
+  for (const f of [faces[2], faces[1], faces[0]]) {
+    const a = rimB[f.i0], bb = rimB[f.i1], bt = C0[f.i1], at = C0[f.i0];
+    fillPoly(ctx, p.capRim, [a, bb, bt, at], 'rgba(0,0,0,0.5)', 1);
+  }
+
+  // Cap bands: E (capB darkest), SE (capA medium), S (capC lightest)
+  function drawCapBand(ringA, ringB, fS, fSE, fE) {
+    const order = [
+      { i0: 2, i1: 3, fill: fE  },
+      { i0: 1, i1: 2, fill: fSE },
+      { i0: 0, i1: 1, fill: fS  },
+    ];
+    for (const f of order) {
+      const a = ringA[f.i0], bb = ringA[f.i1], bt = ringB[f.i1], at = ringB[f.i0];
+      fillPoly(ctx, f.fill, [a, bb, bt, at], 'rgba(0,0,0,0.45)', 1);
+    }
+  }
+  drawCapBand(C0, C1, p.capC, p.capA, p.capB);
+  drawCapBand(C1, C2, shade(p.capC, 1.05), shade(p.capA, 1.05), shade(p.capB, 1.05));
+
+  // Tip triangles to the peak
+  const tipFaces = [
+    { i: 2, j: 3, fill: shade(p.capB, 1.00) },
+    { i: 1, j: 2, fill: shade(p.capA, 1.10) },
+    { i: 0, j: 1, fill: shade(p.capC, 1.15) },
+  ];
+  for (const f of tipFaces) {
+    fillPoly(ctx, f.fill, [C2[f.i], C2[f.j], peak], 'rgba(0,0,0,0.45)', 1);
+  }
+
+  // Weather-vane / finial: gold orb on a short spike above the peak
+  const finBase = c(0, 0, peakZ);
+  const finTip  = c(0, 0, peakZ + 0.35);
+  ctx.strokeStyle = p.hubDk; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(finBase.sx, finBase.sy); ctx.lineTo(finTip.sx, finTip.sy);
   ctx.stroke();
+  ctx.fillStyle = p.hub;
+  ctx.beginPath(); ctx.arc(finTip.sx, finTip.sy, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = p.hubDk;
+  ctx.beginPath(); ctx.arc(finTip.sx, finTip.sy, 1.2, 0, Math.PI * 2); ctx.fill();
 
-  // === East wall (tapered, darker stone) ===
-  ctx.fillStyle = p.wallSide;
-  ctx.beginPath();
-  ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(bNE.sx, bNE.sy);
-  ctx.lineTo(wtNE.sx, wtNE.sy); ctx.lineTo(wtSE.sx, wtSE.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.strokeStyle = p.beam; ctx.lineWidth = 0.7;
-  for (let i = 1; i < stoneRows; i++) {
-    const t = i / stoneRows;
-    ctx.beginPath();
-    ctx.moveTo(bSE.sx + (wtSE.sx - bSE.sx) * t, bSE.sy + (wtSE.sy - bSE.sy) * t);
-    ctx.lineTo(bNE.sx + (wtNE.sx - bNE.sx) * t, bNE.sy + (wtNE.sy - bNE.sy) * t);
-    ctx.stroke();
-  }
-  drawEastWindow(ctx, b, p);
-
-  // === 4 spinning windmill blades — flat rectangular boards, X pattern ===
-  // Blade wheel mounted on south face, centred at wallH * 0.72
-  const bladeCenter = worldToScreen(cx, y1, wallH * 0.72);
-  const blLen = 46;   // half-length of each blade arm (screen px) — extends past tower width
-  const blW  = 8;     // half-width of each blade (rectangular boards)
-  const innerGap = 6; // blank zone near hub
-
-  ctx.save();
-  ctx.translate(bladeCenter.sx, bladeCenter.sy);
-  ctx.rotate(state.windmillAngle + Math.PI / 4);
+  // === 4 spinning blades on south face ===
+  // Real-windmill rotation: blades spin around a horizontal axle that points
+  // OUT of the south face (i.e. along world +y, perpendicular to the door).
+  // So the blade tips trace a circle in the X-Z plane at constant y = baseR.
+  // After iso projection that circle becomes a tilted ellipse — which is the
+  // correct windmill look.
+  const hubY = baseR;            // south face exterior (world y offset from cx,cy)
+  const hubZ = wallH * 0.72;
+  const blLen_w  = 1.33;         // blade tip radius (1.90 * 0.70 — 30% shorter)
+  const blW_w    = 0.207;        // blade half-thickness (0.18 * 1.15 — 15% wider)
+  const innerGap = 0.11;         // dead zone near the hub (scaled with length)
 
   for (let i = 0; i < 4; i++) {
-    ctx.save();
-    ctx.rotate(i * Math.PI / 2);
+    const ang = state.windmillAngle + Math.PI / 4 + i * Math.PI / 2;
+    const cs = Math.cos(ang), sn = Math.sin(ang);
+    // Blade-frame (long, narrow rectangle):
+    //   length axis = (cs, sn) in (x, z)
+    //   width  axis = (-sn, cs)
+    const cornerL = (rad, side) => {
+      const dx = rad * cs - side * blW_w * sn;
+      const dz = rad * sn + side * blW_w * cs;
+      return c(dx, hubY, hubZ + dz);
+    };
+    const p1 = cornerL(innerGap, -1);
+    const p2 = cornerL(innerGap, +1);
+    const p3 = cornerL(blLen_w, +1);
+    const p4 = cornerL(blLen_w, -1);
+    fillPoly(ctx, '#7a5028', [p1, p2, p3, p4], '#4a2c10', 1);
 
-    // Dark wood outer frame
-    ctx.fillStyle = '#7a5028';
-    ctx.beginPath();
-    ctx.moveTo(-blW, innerGap);
-    ctx.lineTo( blW, innerGap);
-    ctx.lineTo( blW, blLen);
-    ctx.lineTo(-blW, blLen);
-    ctx.closePath(); ctx.fill();
-
-    // Canvas / sail strip (lighter centre)
-    const cw = blW * 0.55;
-    ctx.fillStyle = '#d4c090';
-    ctx.beginPath();
-    ctx.moveTo(-cw, innerGap + 2);
-    ctx.lineTo( cw, innerGap + 2);
-    ctx.lineTo( cw, blLen - 3);
-    ctx.lineTo(-cw, blLen - 3);
-    ctx.closePath(); ctx.fill();
-
-    // Outline
-    ctx.strokeStyle = '#4a2c10'; ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(-blW, innerGap);
-    ctx.lineTo( blW, innerGap);
-    ctx.lineTo( blW, blLen);
-    ctx.lineTo(-blW, blLen);
-    ctx.closePath(); ctx.stroke();
-
-    ctx.restore();
+    // Lighter canvas sail strip down the middle
+    const cwf = 0.55;
+    const cornerS = (rad, side) => {
+      const dx = rad * cs - side * blW_w * cwf * sn;
+      const dz = rad * sn + side * blW_w * cwf * cs;
+      return c(dx, hubY, hubZ + dz);
+    };
+    const s1 = cornerS(innerGap + 0.02, -1);
+    const s2 = cornerS(innerGap + 0.02, +1);
+    const s3 = cornerS(blLen_w  - 0.03, +1);
+    const s4 = cornerS(blLen_w  - 0.03, -1);
+    fillPoly(ctx, '#d4c090', [s1, s2, s3, s4], null);
   }
 
-  // Hub ring — golden circle anchoring all 4 blades
-  ctx.fillStyle = '#c8941a';
-  ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#7a5010'; ctx.lineWidth = 1.5; ctx.stroke();
+  // Gold hub disc on the south face
+  const hubScreen = c(0, hubY, hubZ);
+  ctx.fillStyle = p.hub;
+  ctx.beginPath(); ctx.arc(hubScreen.sx, hubScreen.sy, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = p.hubDk; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.fillStyle = '#2a1808';
-  ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
-
-  ctx.restore();
-
-  // === Pyramid cap — rests on the tapered tower top ===
-  ctx.fillStyle = p.roof;
-  ctx.beginPath();
-  ctx.moveTo(wtSW.sx, wtSW.sy); ctx.lineTo(wtSE.sx, wtSE.sy);
-  ctx.lineTo(peak.sx, peak.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.stroke();
-
-  ctx.fillStyle = p.roofShadow;
-  ctx.beginPath();
-  ctx.moveTo(wtSE.sx, wtSE.sy); ctx.lineTo(wtNE.sx, wtNE.sy);
-  ctx.lineTo(peak.sx, peak.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.beginPath(); ctx.arc(hubScreen.sx, hubScreen.sy, 3, 0, Math.PI * 2); ctx.fill();
 }
 
-// ---- FARM -------------------------------------------------------------
+// ---- FARM (barn) — ported from assets/model-standalone.html drawFarm --
 function drawFarm(b) {
   const ctx = state.ctx;
-  const { x0, y0, x1, y1, cx, wallH, bNE, bSE, bSW, wNE, wSE, wSW, ridgeN, ridgeS } = buildingCorners(b);
+  const hy = b.h / 2, hx = b.w / 2;
+  const wallH = b.wallH;
   const p = b.palette;
 
-  ctx.lineWidth = 1;
+  // Main barn body — 8 plank dividers, wider eave overhang
+  const { c } = drawGabledBox(b, p, { plankCount: 8, roofOverhang: 0.25 });
 
-  // === South wall (red planks) ===
-  ctx.fillStyle = p.wall;
+  // Big double barn doors centred on south wall
+  const dW = 0.55, dH = wallH * 0.72;
+  const d1 = c(-dW, hy, 0),  d2 = c( dW, hy, 0);
+  const d3 = c( dW, hy, dH), d4 = c(-dW, hy, dH);
+  fillPoly(ctx, p.doorDk, [d1, d2, d3, d4], null);
+  // Two door leaves with a gap down the centre
+  const mid  = lerpPt(d1, d2, 0.5);
+  const midT = lerpPt(d4, d3, 0.5);
+  ctx.fillStyle = p.door;
   ctx.beginPath();
-  ctx.moveTo(bSW.sx, bSW.sy); ctx.lineTo(bSE.sx, bSE.sy);
-  ctx.lineTo(wSE.sx, wSE.sy); ctx.lineTo(wSW.sx, wSW.sy);
+  ctx.moveTo(d1.sx + 1.5, d1.sy);
+  ctx.lineTo(mid.sx - 1, mid.sy);
+  ctx.lineTo(midT.sx - 1, midT.sy + 1);
+  ctx.lineTo(d4.sx + 1.5, d4.sy + 1);
   ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.stroke();
-  drawPlankLines(ctx, bSW, bSE, wSE, wSW, 4, 'rgba(0,0,0,0.20)');
-
-  // Corner posts
-  ctx.strokeStyle = p.beam; ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.moveTo(bSW.sx, bSW.sy); ctx.lineTo(wSW.sx, wSW.sy);
-  ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(wSE.sx, wSE.sy);
+  ctx.moveTo(mid.sx + 1, mid.sy);
+  ctx.lineTo(d2.sx - 1.5, d2.sy);
+  ctx.lineTo(d3.sx - 1.5, d3.sy + 1);
+  ctx.lineTo(midT.sx + 1, midT.sy + 1);
+  ctx.closePath(); ctx.fill();
+  // X cross-braces
+  ctx.strokeStyle = p.doorDk; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(d1.sx + 2, d1.sy);   ctx.lineTo(midT.sx - 1, midT.sy + 2);
+  ctx.moveTo(mid.sx - 1, mid.sy); ctx.lineTo(d4.sx + 2, d4.sy + 2);
+  ctx.moveTo(mid.sx + 1, mid.sy); ctx.lineTo(d3.sx - 2, d3.sy + 2);
+  ctx.moveTo(d2.sx - 2, d2.sy);   ctx.lineTo(midT.sx + 1, midT.sy + 2);
+  ctx.stroke();
+  // Trim frame around the door opening
+  ctx.strokeStyle = p.trim; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(d1.sx - 1, d1.sy);
+  ctx.lineTo(d4.sx - 1, d4.sy);
+  ctx.lineTo(d3.sx + 1, d3.sy);
+  ctx.lineTo(d2.sx + 1, d2.sy);
   ctx.stroke();
 
-  // Large double barn door (~70% width)
-  const fdW = b.w * 0.70, fdH = wallH * 0.90;
-  const fdx0 = x0 + (b.w - fdW) / 2, fdx1 = fdx0 + fdW;
-  const fdP1 = worldToScreen(fdx0, y1, 0), fdP2 = worldToScreen(fdx1, y1, 0);
-  const fdP3 = worldToScreen(fdx1, y1, fdH), fdP4 = worldToScreen(fdx0, y1, fdH);
-  ctx.fillStyle = '#2a1808';
+  // Hayloft diamond window in the gable (proportional to peak height)
+  const hlc = c(0, hy, wallH + b.roofPeak * 0.45);
+  const hwd = 16, hht = 14;
+  ctx.fillStyle = p.window;
   ctx.beginPath();
-  ctx.moveTo(fdP1.sx, fdP1.sy); ctx.lineTo(fdP2.sx, fdP2.sy);
-  ctx.lineTo(fdP3.sx, fdP3.sy); ctx.lineTo(fdP4.sx, fdP4.sy);
+  ctx.moveTo(hlc.sx,       hlc.sy - hht);
+  ctx.lineTo(hlc.sx + hwd, hlc.sy + hht * 0.4);
+  ctx.lineTo(hlc.sx,       hlc.sy + hht);
+  ctx.lineTo(hlc.sx - hwd, hlc.sy + hht * 0.4);
   ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = p.beam; ctx.lineWidth = 1; ctx.stroke();
-  // Centre door divider
-  const fdMid  = worldToScreen((fdx0 + fdx1) / 2, y1, 0);
-  const fdMidT = worldToScreen((fdx0 + fdx1) / 2, y1, fdH);
-  ctx.strokeStyle = 'rgba(200,160,80,0.4)'; ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.moveTo(fdMid.sx, fdMid.sy); ctx.lineTo(fdMidT.sx, fdMidT.sy); ctx.stroke();
+  ctx.fillStyle = p.windowGlow; ctx.globalAlpha = 0.45;
+  ctx.beginPath(); ctx.arc(hlc.sx, hlc.sy, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = p.woodLine; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(hlc.sx, hlc.sy - hht); ctx.lineTo(hlc.sx, hlc.sy + hht);
+  ctx.moveTo(hlc.sx - hwd, hlc.sy + hht * 0.4);
+  ctx.lineTo(hlc.sx + hwd, hlc.sy + hht * 0.4);
+  ctx.stroke();
 
-  // === East wall ===
-  ctx.fillStyle = p.wallSide;
-  ctx.beginPath();
-  ctx.moveTo(bSE.sx, bSE.sy); ctx.lineTo(bNE.sx, bNE.sy);
-  ctx.lineTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
-  drawPlankLines(ctx, bSE, bNE, wNE, wSE, 4, 'rgba(0,0,0,0.18)');
-  ctx.strokeStyle = p.beam; ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.moveTo(bNE.sx, bNE.sy); ctx.lineTo(wNE.sx, wNE.sy); ctx.stroke();
-
-  // === East roof slope (steep, thatched) ===
-  ctx.fillStyle = p.roof;
-  ctx.beginPath();
-  ctx.moveTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.lineTo(ridgeS.sx, ridgeS.sy); ctx.lineTo(ridgeN.sx, ridgeN.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.strokeStyle = p.roofShadow; ctx.lineWidth = 1;
-  for (let i = 1; i < 6; i++) {
-    const t = i / 6;
+  // Small east-wall side windows (2 small glowing slits)
+  for (const ty of [0.4, -0.4]) {
+    const eW = 0.10, eH = 0.14, ez = wallH * 0.5;
+    const e1 = c(hx, ty + eW, ez - eH);
+    const e2 = c(hx, ty - eW, ez - eH);
+    const e3 = c(hx, ty - eW, ez + eH);
+    const e4 = c(hx, ty + eW, ez + eH);
+    fillPoly(ctx, p.window, [e1, e2, e3, e4], null);
+    ctx.fillStyle = p.windowGlow; ctx.globalAlpha = 0.5;
     ctx.beginPath();
-    ctx.moveTo(wNE.sx + (wSE.sx - wNE.sx) * t, wNE.sy + (wSE.sy - wNE.sy) * t);
-    ctx.lineTo(ridgeN.sx + (ridgeS.sx - ridgeN.sx) * t, ridgeN.sy + (ridgeS.sy - ridgeN.sy) * t);
+    ctx.arc((e1.sx + e3.sx) / 2, (e1.sy + e3.sy) / 2, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Hay bale next to east wall
+  const hb = c(hx + 0.4, hy - 0.1, 0);
+  ctx.fillStyle = '#d8b95a';
+  ctx.beginPath();
+  ctx.ellipse(hb.sx, hb.sy - 10, 20, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#8a6a1a'; ctx.lineWidth = 0.8;
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath();
+    ctx.arc(hb.sx, hb.sy - 10, 16 - Math.abs(i) * 2,
+      Math.PI - 0.2 + i * 0.1, 0.2 + i * 0.1);
     ctx.stroke();
   }
-  ctx.lineWidth = 2; ctx.beginPath();
-  ctx.moveTo(wNE.sx, wNE.sy); ctx.lineTo(wSE.sx, wSE.sy); ctx.stroke();
-
-  // === South gable (tall, with hayloft window) ===
-  ctx.fillStyle = p.wall;
-  ctx.beginPath();
-  ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.lineTo(ridgeS.sx, ridgeS.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.strokeStyle = p.beam; ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.moveTo(wSW.sx, wSW.sy); ctx.lineTo(ridgeS.sx, ridgeS.sy); ctx.lineTo(wSE.sx, wSE.sy);
-  ctx.stroke();
-
-  // Hayloft window: small square in gable centre
-  const hlSize = 0.16;
-  const hlZ    = wallH + b.roofPeak * 0.42;
-  const hlX0 = cx - hlSize / 2, hlX1 = cx + hlSize / 2;
-  const hlP1 = worldToScreen(hlX0, y1, hlZ);
-  const hlP2 = worldToScreen(hlX1, y1, hlZ);
-  const hlP3 = worldToScreen(hlX1, y1, hlZ + hlSize);
-  const hlP4 = worldToScreen(hlX0, y1, hlZ + hlSize);
-  ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath();
-  ctx.moveTo(hlP1.sx, hlP1.sy); ctx.lineTo(hlP2.sx, hlP2.sy);
-  ctx.lineTo(hlP3.sx, hlP3.sy); ctx.lineTo(hlP4.sx, hlP4.sy);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = p.beam; ctx.lineWidth = 0.8; ctx.stroke();
 }
 
 // ---------- Trees ----------
