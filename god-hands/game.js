@@ -1079,199 +1079,248 @@ function drawFarm(b) {
 }
 
 // ---------- Trees ----------
+// Ported from assets/model-standalone.html "classic" tree set. Each kind is
+// pre-rendered once into an offscreen canvas (sprite cache) using the same
+// iso projection as the world (TILE_W/TILE_H/ELEV_H), then drawn with
+// drawImage every frame. This keeps the live render path O(1) per tree.
 
-// Pick a tree kind with weighted probability
-// oak 45%, pine 30%, birch 17%, dead ~8%  (dead ≈ 1 in 12)
+const TREE_PALETTES = {
+  oak:    { dk: '#3a6a24', md: '#4f8232', lt: '#7ab04a', hi: '#9bc55c' },
+  pine:   { dk: '#1f4a22', md: '#2f6630', lt: '#3f8042', hi: '#5fa050' },
+  birch:  { dk: '#4f7228', md: '#7a9a36', lt: '#9bba4a', hi: '#bcd266' },
+  autumn: { dk: '#a44818', md: '#d8893c', lt: '#e8a050', hi: '#f0c060' },
+  apple:  { dk: '#3a6a24', md: '#4f8232', lt: '#7ab04a', hi: '#9bc55c' },
+};
+const TRUNK_DEFAULT = { front: '#7a5028', side: '#4a2c10', hi: '#a47038', edge: '#2a1808' };
+const TRUNK_BIRCH   = { front: '#d8d4c0', side: '#a0a090', hi: '#f0ece0', edge: '#505048' };
+const TRUNK_DEAD    = { front: '#7a6a5a', side: '#4a3828', hi: '#9a8a78', edge: '#1a1208' };
+
+// Pick a tree kind with weighted probability.
+// oak 28% / pine 22% / birch 12% / autumn 14% / apple 16% / dead 8%
 function pickTreeKind() {
   const r = Math.random();
-  if (r < 0.45) return 'oak';
-  if (r < 0.75) return 'pine';
-  if (r < 0.92) return 'birch';
+  if (r < 0.28) return 'oak';
+  if (r < 0.50) return 'pine';
+  if (r < 0.62) return 'birch';
+  if (r < 0.76) return 'autumn';
+  if (r < 0.92) return 'apple';
   return 'dead';
 }
 
-// Polygon fill helper — pts = [[x,y], ...]
-function poly(ctx, color, pts) {
+// Local iso projection for the offscreen sprite canvas. Same math as
+// worldToScreen() but with an explicit (cx, cy) screen origin.
+function spriteW2S(wx, wy, wz, cx, cy) {
+  return {
+    sx: (wx - wy) * (CONFIG.TILE_W / 2) + cx,
+    sy: (wx + wy) * (CONFIG.TILE_H / 2) - wz * CONFIG.ELEV_H + cy,
+  };
+}
+
+// Tapered trunk box — south (front) + east (side) faces + top cap.
+function drawTreeTrunk(ctx, cx, cy, h, baseW, topW, leanX, leanY, pal) {
+  const c = (x, y, z) => spriteW2S(x, y, z, cx, cy);
+  const b1 = c(-baseW, +baseW, 0), b2 = c(+baseW, +baseW, 0);
+  const b3 = c(+baseW, -baseW, 0);
+  const t1 = c(leanX - topW, leanY + topW, h);
+  const t2 = c(leanX + topW, leanY + topW, h);
+  const t3 = c(leanX + topW, leanY - topW, h);
+  const t4 = c(leanX - topW, leanY - topW, h);
+  fillPoly(ctx, pal.front, [b1, b2, t2, t1], pal.edge, 1.2);
+  fillPoly(ctx, pal.side,  [b2, b3, t3, t2], pal.edge, 1.2);
+  fillPoly(ctx, pal.hi,    [t1, t2, t3, t4], pal.edge, 1);
+}
+
+// Faceted blob crown — n triangles around a peak with under-ring belly
+// facets. Each facet shaded by its outward direction relative to the
+// camera (south = light, east = mid, west/north = dark). One facet is
+// brightened to read as the camera-facing highlight.
+function drawTreeBlobCrown(ctx, cx, cy, palette, topX, topY, topZ, rx, ry, rz, facets) {
+  const c = (x, y, z) => spriteW2S(x, y, z, cx, cy);
+  const peak = c(topX, topY, topZ);
+  const ring = [], under = [];
+  for (let i = 0; i < facets; i++) {
+    const a = (i / facets) * Math.PI * 2;
+    ring.push(c(topX + Math.cos(a) * rx, topY + Math.sin(a) * ry, topZ - rz));
+    under.push(c(topX + Math.cos(a) * rx * 0.55, topY + Math.sin(a) * ry * 0.55, topZ - rz * 1.6));
+  }
+  for (let i = 0; i < facets; i++) {
+    const j = (i + 1) % facets;
+    const a = ((i + 0.5) / facets) * Math.PI * 2;
+    const front = Math.sin(a), right = Math.cos(a);
+    let fill;
+    if (front > 0.3)       fill = palette.lt;
+    else if (front > -0.3) fill = right > 0 ? palette.md : palette.dk;
+    else                   fill = palette.dk;
+    fillPoly(ctx, fill, [peak, ring[i], ring[j]], palette.dk, 1);
+    fillPoly(ctx, shade(fill, 0.88), [ring[i], ring[j], under[j], under[i]], palette.dk, 1);
+  }
+  // Brightest facet — the one most facing the camera
+  let bestI = 0, bestS = -2;
+  for (let i = 0; i < facets; i++) {
+    const a = ((i + 0.5) / facets) * Math.PI * 2;
+    const s = Math.sin(a) + Math.cos(a) * 0.3;
+    if (s > bestS) { bestS = s; bestI = i; }
+  }
+  fillPoly(ctx, palette.hi, [peak, ring[bestI], ring[(bestI + 1) % facets]], palette.dk, 1);
+}
+
+// Tiny fruit dot — solid circle + small highlight crescent
+function drawTreeFruit(ctx, cx, cy, x, y, z, r, color, hiColor) {
+  const p = spriteW2S(x, y, z, cx, cy);
   ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(pts[0][0], pts[0][1]);
-  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-  ctx.closePath();
-  ctx.fill();
+  ctx.beginPath(); ctx.arc(p.sx, p.sy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = hiColor;
+  ctx.beginPath(); ctx.arc(p.sx - r * 0.35, p.sy - r * 0.4, r * 0.35, 0, Math.PI * 2); ctx.fill();
 }
 
-// Draw a thin branch as two polygon quads (light / shadow sides)
-function thinBranch(ctx, x0, y0, x1, y1, w, colLight, colDark) {
-  const dx = x1 - x0, dy = y1 - y0;
-  const len = Math.hypot(dx, dy) || 1;
-  const nx = -dy / len * w, ny = dx / len * w;
-  const tip = 0.25; // taper ratio at tip
-  poly(ctx, colLight, [
-    [x0 - nx, y0 - ny], [x0 + nx, y0 + ny],
-    [x1 + nx * tip, y1 + ny * tip], [x1 - nx * tip, y1 - ny * tip],
-  ]);
-  poly(ctx, colDark, [
-    [x0 + nx, y0 + ny], [x0 + nx * 2, y0 + ny * 2],
-    [x1 + nx * 2 * tip, y1 + ny * 2 * tip], [x1 + nx * tip, y1 + ny * tip],
-  ]);
-}
-
-// --- Sprite draw helpers (draw into offscreen ctx at anchor cx, base) ---
+// ---- Sprite generators (one per kind) ----
 
 function drawOakSprite(ctx, cx, base, s) {
-  const th = 9 * s; // trunk height
-  const tw = 4 * s; // trunk half-width
-  // Trunk — 2 trapezoid facets
-  poly(ctx, '#7a5030', [
-    [cx - tw, base], [cx, base], [cx - tw * 0.5, base - th], [cx - tw * 0.85, base - th],
-  ]);
-  poly(ctx, '#4a2e18', [
-    [cx, base], [cx + tw, base], [cx + tw * 0.85, base - th], [cx - tw * 0.5, base - th],
-  ]);
-
-  // Crown — irregular polygon, 3-tone faceting
-  const cr = base - th;
-  // A=apex  B=upper-left  C=left  D=lower-left  E=bot-left  F=bot-right  G=right  H=upper-right
-  const A  = [cx,         cr - 32*s];
-  const B  = [cx - 9*s,  cr - 24*s];
-  const C  = [cx - 16*s, cr - 14*s];
-  const D  = [cx - 13*s, cr -  4*s];
-  const E  = [cx,        cr -  2*s];
-  const F  = [cx + 13*s, cr -  5*s];
-  const G  = [cx + 15*s, cr - 16*s];
-  const H  = [cx +  7*s, cr - 27*s];
-  // Shadow base (whole crown)
-  poly(ctx, '#1e4a12', [A, B, C, D, E, F, G, H]);
-  // Left / highlight facet
-  poly(ctx, '#3a7226', [A, B, C, D, E, [cx, cr - 4*s], [cx, cr - 28*s]]);
-  // Top-tip brightest
-  poly(ctx, '#52a03c', [A, B, H]);
-  // Outline
-  ctx.strokeStyle = 'rgba(0,0,0,0.45)';
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(A[0], A[1]);
-  [B, C, D, E, F, G, H].forEach(p => ctx.lineTo(p[0], p[1]));
-  ctx.closePath();
-  ctx.stroke();
+  drawTreeTrunk(ctx, cx, base, 1.1 * s, 0.16 * s, 0.11 * s, 0, 0, TRUNK_DEFAULT);
+  drawTreeBlobCrown(ctx, cx, base, TREE_PALETTES.oak,
+    -0.05 * s, 0, 2.1 * s, 0.85 * s, 0.85 * s, 0.35 * s, 7);
+  drawTreeBlobCrown(ctx, cx, base, TREE_PALETTES.oak,
+    0.55 * s, 0.30 * s, 1.55 * s, 0.45 * s, 0.45 * s, 0.25 * s, 6);
+  // Branch nub poking out between the two crown blobs
+  const a = spriteW2S(0, 0, 1.1 * s, cx, base);
+  const b = spriteW2S(0.35 * s, 0.15 * s, 1.55 * s, cx, base);
+  ctx.strokeStyle = TRUNK_DEFAULT.edge; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
+  ctx.lineCap = 'butt';
 }
 
 function drawPineSprite(ctx, cx, base, s) {
-  // Trunk — narrow 2-trapezoid
-  const th = 6 * s, tw = 2.5 * s;
-  poly(ctx, '#6a4828', [
-    [cx - tw, base], [cx, base], [cx - tw * 0.6, base - th], [cx - tw * 0.9, base - th],
-  ]);
-  poly(ctx, '#3a2818', [
-    [cx, base], [cx + tw, base], [cx + tw * 0.9, base - th], [cx - tw * 0.6, base - th],
-  ]);
-
-  // 3 triangular tiers (painter: bottom first)
+  drawTreeTrunk(ctx, cx, base, 0.5 * s, 0.13 * s, 0.10 * s, 0, 0, TRUNK_DEFAULT);
+  const c = (x, y, z) => spriteW2S(x, y, z, cx, base);
+  const pp = TREE_PALETTES.pine;
   const tiers = [
-    { eaveY: base - 8*s,  tipY: base - 22*s, hw: 14*s },
-    { eaveY: base - 18*s, tipY: base - 30*s, hw: 10*s },
-    { eaveY: base - 26*s, tipY: base - 38*s, hw:  6*s },
+    { z: 0.5  * s, r: 0.80 * s, h: 0.90 * s },
+    { z: 1.2  * s, r: 0.65 * s, h: 0.85 * s },
+    { z: 1.85 * s, r: 0.45 * s, h: 0.95 * s },
   ];
-  for (const tier of tiers) {
-    const { eaveY, tipY, hw } = tier;
-    // full triangle (right/shadow side)
-    poly(ctx, '#0e3a10', [[cx - hw, eaveY], [cx + hw, eaveY], [cx, tipY]]);
-    // left half highlight
-    poly(ctx, '#2a6820', [[cx - hw, eaveY], [cx, eaveY], [cx, tipY]]);
-  }
-  // Tip brightest triangle
-  const top = tiers[2];
-  poly(ctx, '#3e8a30', [[cx, top.tipY], [cx - top.hw * 0.4, top.eaveY], [cx, top.eaveY]]);
-  // Outline each tier
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-  ctx.lineWidth = 0.8;
-  for (const { eaveY, tipY, hw } of tiers) {
-    ctx.beginPath();
-    ctx.moveTo(cx - hw, eaveY); ctx.lineTo(cx + hw, eaveY); ctx.lineTo(cx, tipY);
-    ctx.closePath(); ctx.stroke();
+  for (const t of tiers) {
+    const facets = 8;
+    const peak = c(0, 0, t.z + t.h);
+    const ring = [], under = [];
+    for (let i = 0; i < facets; i++) {
+      const a = (i / facets) * Math.PI * 2;
+      ring.push(c(Math.cos(a) * t.r, Math.sin(a) * t.r, t.z));
+      under.push(c(Math.cos(a) * t.r * 0.85, Math.sin(a) * t.r * 0.85, t.z - 0.08 * s));
+    }
+    for (let i = 0; i < facets; i++) {
+      const j = (i + 1) % facets;
+      const a = ((i + 0.5) / facets) * Math.PI * 2;
+      const front = Math.sin(a), right = Math.cos(a);
+      let fill;
+      if (front > 0.3)       fill = pp.lt;
+      else if (front > -0.3) fill = right > 0 ? pp.md : pp.dk;
+      else                   fill = pp.dk;
+      fillPoly(ctx, fill, [peak, ring[i], ring[j]], pp.dk, 1);
+      fillPoly(ctx, shade(fill, 0.85), [ring[i], ring[j], under[j], under[i]], pp.dk, 1);
+    }
   }
 }
 
 function drawBirchSprite(ctx, cx, base, s) {
-  // Trunk — tall & pale, 2-facet
-  const th = 16 * s, tw = 2.5 * s;
-  poly(ctx, '#d8d4c0', [
-    [cx - tw, base], [cx, base], [cx - tw * 0.5, base - th], [cx - tw * 0.85, base - th],
-  ]);
-  poly(ctx, '#a0a090', [
-    [cx, base], [cx + tw, base], [cx + tw * 0.85, base - th], [cx - tw * 0.5, base - th],
-  ]);
-  // Dark bark notches (3 horizontal thin rects)
+  drawTreeTrunk(ctx, cx, base, 1.4 * s, 0.10 * s, 0.07 * s, 0, 0, TRUNK_BIRCH);
+  // Dark bark notches on the south face
+  const c = (x, y, z) => spriteW2S(x, y, z, cx, base);
   for (let i = 0; i < 3; i++) {
-    const ny = base - (5 + i * 4.5) * s;
-    poly(ctx, '#505048', [
-      [cx - tw, ny], [cx + tw * 0.6, ny],
-      [cx + tw * 0.6, ny - 1.5 * s], [cx - tw, ny - 1.5 * s],
-    ]);
+    const ny = (0.30 + i * 0.32) * s;
+    const n1 = c(-0.10 * s, 0.10 * s, ny);
+    const n2 = c( 0.06 * s, 0.10 * s, ny);
+    const n3 = c( 0.06 * s, 0.10 * s, ny + 0.06 * s);
+    const n4 = c(-0.10 * s, 0.10 * s, ny + 0.06 * s);
+    fillPoly(ctx, TRUNK_BIRCH.edge, [n1, n2, n3, n4], null);
   }
-
-  // Crown — tall slim polygon
-  const cr = base - th;
-  const A  = [cx,         cr - 26*s];
-  const B  = [cx -  6*s,  cr - 19*s];
-  const C  = [cx -  9*s,  cr - 12*s];
-  const D  = [cx -  7*s,  cr -  4*s];
-  const E  = [cx +  7*s,  cr -  4*s];
-  const F  = [cx +  8*s,  cr - 14*s];
-  const G  = [cx +  4*s,  cr - 22*s];
-  poly(ctx, '#1e4a0e', [A, B, C, D, E, F, G]);
-  poly(ctx, '#366018', [A, B, C, D, [cx, cr - 5*s], [cx, cr - 24*s]]);
-  poly(ctx, '#4a7a22', [A, B, G]);
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(A[0], A[1]);
-  [B, C, D, E, F, G].forEach(p => ctx.lineTo(p[0], p[1]));
-  ctx.closePath(); ctx.stroke();
+  // Slim, taller single faceted crown
+  drawTreeBlobCrown(ctx, cx, base, TREE_PALETTES.birch,
+    0, 0, 2.3 * s, 0.50 * s, 0.50 * s, 0.45 * s, 7);
 }
 
 function drawDeadSprite(ctx, cx, base, s) {
-  // Trunk — 2-trapezoid, dark gray-brown
-  const th = 24 * s, tw = 4 * s;
-  poly(ctx, '#5c4838', [
-    [cx - tw, base], [cx, base], [cx - tw * 0.4, base - th], [cx - tw * 0.8, base - th],
-  ]);
-  poly(ctx, '#3a2820', [
-    [cx, base], [cx + tw, base], [cx + tw * 0.8, base - th], [cx - tw * 0.4, base - th],
-  ]);
+  drawTreeTrunk(ctx, cx, base, 1.55 * s, 0.13 * s, 0.07 * s, 0, 0, TRUNK_DEAD);
+  // Branches as strokes from the trunk top to scattered 3D endpoints
+  const top = spriteW2S(0, 0, 1.55 * s, cx, base);
+  const branchTips = [
+    spriteW2S(-0.62 * s,  0.10 * s, 2.00 * s, cx, base),
+    spriteW2S( 0.55 * s, -0.10 * s, 1.95 * s, cx, base),
+    spriteW2S(-0.38 * s, -0.32 * s, 2.10 * s, cx, base),
+    spriteW2S( 0.30 * s,  0.36 * s, 2.05 * s, cx, base),
+  ];
+  ctx.strokeStyle = TRUNK_DEAD.side; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+  for (const tip of branchTips) {
+    ctx.beginPath(); ctx.moveTo(top.sx, top.sy); ctx.lineTo(tip.sx, tip.sy); ctx.stroke();
+  }
+  // A twig pair off each branch tip
+  ctx.lineWidth = 1.3;
+  for (let i = 0; i < branchTips.length; i++) {
+    const tip = branchTips[i];
+    const dx = (i % 2 === 0) ? -6 : 6;
+    const tw1 = { sx: tip.sx + dx,     sy: tip.sy - 7 };
+    const tw2 = { sx: tip.sx + dx / 2, sy: tip.sy - 11 };
+    ctx.beginPath(); ctx.moveTo(tip.sx, tip.sy); ctx.lineTo(tw1.sx, tw1.sy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tip.sx, tip.sy); ctx.lineTo(tw2.sx, tw2.sy); ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+}
 
-  // Branches as thin polygon pairs
-  const br = base - th;
-  thinBranch(ctx, cx - tw * 0.1, br,             cx - 18*s, br - 10*s, 3*s, '#5c4838', '#3a2820');
-  thinBranch(ctx, cx + tw * 0.1, br,             cx + 15*s, br -  8*s, 3*s, '#5c4838', '#3a2820');
-  thinBranch(ctx, cx - tw * 0.3, br - th * 0.38, cx - 13*s, br - th * 0.38 - 9*s, 2*s, '#5c4838', '#3a2820');
-  thinBranch(ctx, cx + tw * 0.3, br - th * 0.32, cx + 11*s, br - th * 0.32 - 8*s, 2*s, '#5c4838', '#3a2820');
-  // Sub-branches
-  thinBranch(ctx, cx - 10*s, br - 6*s, cx - 15*s, br - 13*s, 1.4*s, '#3a2820', '#3a2820');
-  thinBranch(ctx, cx +  9*s, br - 5*s, cx + 13*s, br - 11*s, 1.4*s, '#3a2820', '#3a2820');
-  // Trunk outline
-  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(cx - tw, base); ctx.lineTo(cx + tw, base);
-  ctx.lineTo(cx + tw * 0.8, base - th); ctx.lineTo(cx - tw * 0.8, base - th);
-  ctx.closePath(); ctx.stroke();
+function drawAutumnSprite(ctx, cx, base, s) {
+  drawTreeTrunk(ctx, cx, base, 0.85 * s, 0.17 * s, 0.12 * s, 0.05 * s, 0, TRUNK_DEFAULT);
+  drawTreeBlobCrown(ctx, cx, base, TREE_PALETTES.autumn,
+    0, 0, 1.95 * s, 1.05 * s, 0.95 * s, 0.45 * s, 8);
+  // Two branch tips poking through the crown
+  const trunkTop = spriteW2S(0, 0, 0.85 * s, cx, base);
+  const bL = spriteW2S(-0.70 * s, -0.35 * s, 1.50 * s, cx, base);
+  const bR = spriteW2S( 0.80 * s,  0.20 * s, 1.60 * s, cx, base);
+  ctx.strokeStyle = TRUNK_DEFAULT.edge; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(trunkTop.sx, trunkTop.sy); ctx.lineTo(bL.sx, bL.sy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(trunkTop.sx, trunkTop.sy); ctx.lineTo(bR.sx, bR.sy); ctx.stroke();
+  ctx.lineCap = 'butt';
+}
+
+function drawAppleSprite(ctx, cx, base, s) {
+  drawTreeTrunk(ctx, cx, base, 0.95 * s, 0.16 * s, 0.11 * s, 0, 0, TRUNK_DEFAULT);
+  // Crown peak lowered from 2.0 -> 1.55 so the blob's under-ring meets the
+  // trunk top (1.55 - 0.35*1.6 = 0.99 ≈ trunk top 0.95). Fixes "floating
+  // bush" gap between trunk and crown.
+  drawTreeBlobCrown(ctx, cx, base, TREE_PALETTES.apple,
+    0, 0, 1.55 * s, 0.90 * s, 0.85 * s, 0.35 * s, 7);
+  drawTreeBlobCrown(ctx, cx, base, TREE_PALETTES.apple,
+    -0.50 * s, 0.35 * s, 1.25 * s, 0.40 * s, 0.40 * s, 0.22 * s, 6);
+  // Scattered red fruit dots — z values shifted by -0.45 to stay on the
+  // lowered crown.
+  const fruits = [
+    [ 0.25,  0.55, 1.40], [-0.20,  0.50, 1.20], [ 0.55,  0.10, 1.25],
+    [-0.55,  0.30, 1.40], [ 0.10,  0.30, 1.55], [-0.30, -0.10, 1.50],
+    [ 0.40, -0.20, 1.35],
+  ];
+  for (const [x, y, z] of fruits) {
+    drawTreeFruit(ctx, cx, base, x * s, y * s, z * s, 3.5, '#c83030', '#ff7a6a');
+  }
 }
 
 // Build a pre-rendered tree sprite; returns { canvas, anchorX, anchorY }
+// Global uniform scale 0.6 — trees are 60% of the reference size (≈40%
+// shorter). All trunk + crown world-coord parameters scale together so
+// proportions stay correct.
+const TREE_SCALE = 0.6;
 function buildTreeSprite(kind, size) {
-  const W = 80, H = 90;
+  const W = 140, H = 200;
   const oc  = document.createElement('canvas');
   oc.width  = W;
   oc.height = H;
   const ctx = oc.getContext('2d');
-  const cx  = W / 2;    // horizontal centre — also the draw anchor X
-  const base = H - 8;   // base of trunk — also the draw anchor Y
+  const cx   = W / 2;     // anchor X — trunk base horizontally
+  const base = H - 12;    // anchor Y — trunk base vertically
+  const s = size * TREE_SCALE;
   switch (kind) {
-    case 'oak':   drawOakSprite(ctx, cx, base, size);   break;
-    case 'pine':  drawPineSprite(ctx, cx, base, size);  break;
-    case 'birch': drawBirchSprite(ctx, cx, base, size); break;
-    case 'dead':  drawDeadSprite(ctx, cx, base, size);  break;
+    case 'oak':    drawOakSprite(ctx, cx, base, s);    break;
+    case 'pine':   drawPineSprite(ctx, cx, base, s);   break;
+    case 'birch':  drawBirchSprite(ctx, cx, base, s);  break;
+    case 'dead':   drawDeadSprite(ctx, cx, base, s);   break;
+    case 'autumn': drawAutumnSprite(ctx, cx, base, s); break;
+    case 'apple':  drawAppleSprite(ctx, cx, base, s);  break;
   }
   return { canvas: oc, anchorX: cx, anchorY: base };
 }
