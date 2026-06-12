@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="min-height:100vh; background:#0a0a0b; color:#e8e6e1; font-family:ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; padding:72px 48px 96px">
+  <div style="max-width:1260px; margin:0 auto">
+
+    <div style="font-family:ui-monospace, 'SF Mono', Menlo, monospace; font-size:12px; letter-spacing:0.18em; color:#8a877f; margin-bottom:14px">GAME PORTFOLIO · ASSET EXPLORATION</div>
+    <h1 style="font-size:40px; font-weight:600; margin:0 0 18px; letter-spacing:-0.01em">Retro cartridge — six takes</h1>
+    <div style="max-width:760px; font-size:14px; line-height:1.65; color:#a8a59d; margin-bottom:12px">
+      Floppy-disk-style game cartridge built from your reference: recessed label well flush to the top edge, embossed <strong style="color:#cfccc4">MURPHEY</strong> wordmark molded over the long groove, side grip ridges, cross + dot grid, screw, engraved triangle, and the tan connector tab. Surface is mottled plastic with grain — pure CSS/SVG, no bitmaps, so it scales clean.
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(560px, 1fr)); gap:28px; margin-top:44px">
+
+      <sc-for list="{{ cards }}" as="card" hint-placeholder-count="6">
+        <div data-screen-label="{{ card.label }}" style="background:#101013; border:1px solid #1f1f24; border-radius:18px; padding:28px 32px 48px; display:flex; flex-direction:column; gap:34px">
+          <div style="font-family:ui-monospace, 'SF Mono', Menlo, monospace; font-size:12px; letter-spacing:0.12em; color:#8a877f">{{ card.head }}</div>
+
+          <div style="align-self:center; width:460px; height:396px; position:relative; margin-top:14px">
+            <!-- connector tab -->
+            <div style="position:absolute; top:-15px; right:40px; width:88px; height:34px; border-radius:7px 7px 3px 3px; background:linear-gradient(180deg,{{ card.pal.tabA }},{{ card.pal.tabB }}); box-shadow:inset 0 1px 1px {{ card.pal.tabHi }}, inset 0 -2px 3px {{ card.pal.tabSh }}"></div>
+
+            <!-- body shell -->
+            <div style="position:absolute; inset:0; border-radius:14px; overflow:hidden; background:linear-gradient(150deg,{{ card.pal.bgA }} 0%,{{ card.pal.bgB }} 46%,{{ card.pal.bgC }} 100%); box-shadow:inset 0 1px 1px {{ card.pal.lip }}, inset -3px -5px 12px {{ card.pal.sh }}, 0 30px 60px rgba(0,0,0,0.6), 0 10px 24px rgba(0,0,0,0.5)">
+
+              <!-- mottle / uneven plastic for retro contrast -->
+              <div style="position:absolute; inset:0; background:radial-gradient(42% 34% at 22% 72%, {{ card.pal.mLo }}, transparent 60%), radial-gradient(38% 28% at 82% 28%, {{ card.pal.mHi }}, transparent 55%), radial-gradient(52% 44% at 64% 98%, {{ card.pal.mLo }}, transparent 66%), radial-gradient(30% 24% at 6% 24%, {{ card.pal.mHi }}, transparent 60%), radial-gradient(34% 30% at 92% 86%, {{ card.pal.mLo }}, transparent 62%)"></div>
+
+              <!-- recessed label well — flush to top edge -->
+              <div style="position:absolute; left:28px; top:14px; width:300px; height:230px; border-radius:11px; background:linear-gradient(165deg,{{ card.pal.wellA }},{{ card.pal.wellB }}); box-shadow:inset 0 3px 10px {{ card.pal.sh }}, inset 0 1px 2px {{ card.pal.sh }}, 0 1px 0 {{ card.pal.lip }}"></div>
+
+              <!-- round hole top-right -->
+              <div style="position:absolute; right:32px; top:24px; width:46px; height:46px; border-radius:50%; background:{{ card.pal.hole }}; box-shadow:inset 0 4px 8px {{ card.pal.sh }}, inset 0 -1px 1px {{ card.pal.lip }}, 0 1px 1px {{ card.pal.lip }}"></div>
+
+              <!-- diagonal grip ridges -->
+              <div style="position:absolute; right:6px; top:92px; width:118px; height:120px; clip-path:polygon(34% 0, 100% 0, 100% 100%, 0 100%); background:repeating-linear-gradient(180deg, {{ card.pal.lip }} 0px, {{ card.pal.lip }} 1px, transparent 1px, transparent 4px, {{ card.pal.ridgeLo }} 4px, {{ card.pal.ridgeLo }} 9px, transparent 9px, transparent 13px)"></div>
+
+              <!-- embossed cross -->
+              <div style="position:absolute; right:104px; top:242px; width:24px; height:24px">
+                <div style="position:absolute; left:9px; top:0; width:6px; height:24px; background:{{ card.pal.emb }}; border-radius:2px; box-shadow:0 1px 0 {{ card.pal.lip }}"></div>
+                <div style="position:absolute; left:0; top:9px; width:24px; height:6px; background:{{ card.pal.emb }}; border-radius:2px; box-shadow:0 1px 0 {{ card.pal.lip }}"></div>
+              </div>
+              <!-- 2x2 dots -->
+              <div style="position:absolute; right:46px; top:248px; display:grid; grid-template-columns:6px 6px; gap:6px">
+                <div style="width:6px; height:6px; border-radius:50%; background:{{ card.pal.emb }}; box-shadow:0 1px 0 {{ card.pal.lip }}"></div>
+                <div style="width:6px; height:6px; border-radius:50%; background:{{ card.pal.emb }}; box-shadow:0 1px 0 {{ card.pal.lip }}"></div>
+                <div style="width:6px; height:6px; border-radius:50%; background:{{ card.pal.emb }}; box-shadow:0 1px 0 {{ card.pal.lip }}"></div>
+                <div style="width:6px; height:6px; border-radius:50%; background:{{ card.pal.emb }}; box-shadow:0 1px 0 {{ card.pal.lip }}"></div>
+              </div>
+
+              <!-- molded embossed wordmark -->
+              <div style="position:absolute; left:34px; top:256px; font-family:'Helvetica Neue', Arial, sans-serif; font-weight:800; font-size:25px; letter-spacing:3px; line-height:1; color:{{ card.pal.beamColor }}; text-shadow:{{ card.pal.beamShadow }}">MURPHEY</div>
+
+              <!-- long groove bar -->
+              <div style="position:absolute; left:32px; top:300px; right:36px; height:14px; border-radius:7px; background:{{ card.pal.grooveBg }}; box-shadow:inset 0 2px 4px {{ card.pal.sh }}, 0 1px 0 {{ card.pal.lip }}"></div>
+
+              <!-- side switch -->
+              <div style="position:absolute; left:10px; top:188px; width:12px; height:20px; background:{{ card.pal.sh }}; border-radius:2px; box-shadow:inset 0 1px 2px {{ card.pal.sh }}, 0 1px 0 {{ card.pal.lip }}">
+                <div style="position:absolute; left:3px; top:4px; width:6px; height:6px; background:{{ card.pal.swNub }}; border-radius:1px"></div>
+              </div>
+
+              <!-- screw -->
+              <div style="position:absolute; left:54px; top:336px; width:18px; height:18px; border-radius:50%; background:radial-gradient(circle at 35% 30%,{{ card.pal.scrA }},{{ card.pal.scrB }}); box-shadow:inset 0 1px 2px {{ card.pal.sh }}, 0 1px 0 {{ card.pal.lip }}">
+                <div style="position:absolute; left:8px; top:3px; width:2px; height:12px; background:{{ card.pal.scrSlot }}"></div>
+                <div style="position:absolute; left:3px; top:8px; width:12px; height:2px; background:{{ card.pal.scrSlot }}"></div>
+              </div>
+
+              <!-- engraved triangle -->
+              <div style="position:absolute; right:52px; bottom:28px; width:46px; height:27px">
+                <div style="position:absolute; left:0; right:0; top:2px; bottom:0; clip-path:polygon(0 0,100% 0,50% 100%); background:{{ card.pal.lip }}"></div>
+                <div style="position:absolute; left:0; right:0; top:0; bottom:2px; clip-path:polygon(0 0,100% 0,50% 100%); background:{{ card.pal.sh }}"></div>
+                <div style="position:absolute; left:8px; right:8px; top:4px; bottom:10px; clip-path:polygon(0 0,100% 0,50% 100%); background:{{ card.pal.triFace }}"></div>
+              </div>
+
+              <!-- seam line -->
+              <div style="position:absolute; left:32px; bottom:14px; width:272px; height:3px; border-radius:2px; background:{{ card.pal.sh }}; box-shadow:0 1px 0 {{ card.pal.lip }}"></div>
+
+              <!-- grain -->
+              <div style="position:absolute; inset:0; background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22220%22%20height=%22220%22%3E%3Cfilter%20id=%22n%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.9%22%20numOctaves=%222%22%20stitchTiles=%22stitch%22%2F%3E%3C%2Ffilter%3E%3Crect%20width=%22220%22%20height=%22220%22%20filter=%22url%28%23n%29%22%2F%3E%3C%2Fsvg%3E); opacity:{{ card.pal.nOp }}; mix-blend-mode:overlay; filter:grayscale(1) contrast(1.1)"></div>
+              <div style="position:absolute; inset:0; background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22460%22%20height=%22396%22%3E%3Cfilter%20id=%22b%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.013%22%20numOctaves=%223%22%20stitchTiles=%22stitch%22%2F%3E%3C%2Ffilter%3E%3Crect%20width=%22460%22%20height=%22396%22%20filter=%22url%28%23b%29%22%2F%3E%3C%2Fsvg%3E); opacity:{{ card.pal.bOp }}; mix-blend-mode:overlay; filter:grayscale(1) contrast(1.2)"></div>
+
+              <!-- wear: scratches, scuffs, dust -->
+              <div style="position:absolute; inset:0; background-image:{{ card.wearUrl }}; background-size:cover; opacity:{{ card.pal.wearOp }}; mix-blend-mode:overlay"></div>
+              <!-- rubbed edge / corner shine -->
+              <div style="position:absolute; inset:0; border-radius:14px; opacity:0.85; background:radial-gradient(circle at 2% 3%, {{ card.pal.lip }}, transparent 7%), radial-gradient(circle at 98% 3%, {{ card.pal.lip }}, transparent 7%), radial-gradient(circle at 2% 97%, {{ card.pal.lip }}, transparent 7%), radial-gradient(circle at 99% 60%, {{ card.pal.lip }}, transparent 5%), radial-gradient(circle at 1% 45%, {{ card.pal.lip }}, transparent 5%)"></div>
+
+              <!-- sheen -->
+              <div style="position:absolute; inset:0; background:linear-gradient(108deg, transparent 30%, {{ card.pal.sheen }} 42%, transparent 52%)"></div>
+              <div style="position:absolute; inset:0; background:radial-gradient(120% 90% at 30% -10%, {{ card.pal.sheen }}, transparent 55%)"></div>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+
+    </div>
+
+    <div style="margin-top:48px; max-width:760px">
+      <div style="font-family:ui-monospace, 'SF Mono', Menlo, monospace; font-size:12px; letter-spacing:0.14em; color:#8a877f; margin-bottom:10px">NEXT STEPS</div>
+      <ul style="margin:0; padding-left:18px; font-size:14px; line-height:1.8; color:#a8a59d">
+        <li>Swap <strong style="color:#cfccc4">MURPHEY</strong> for any wordmark anytime — it's one text node per take.</li>
+        <li>I can add a drag-and-drop slot in the label well for per-game artwork.</li>
+        <li>Pick a winner (or a mix of details) and I'll build the portfolio grid, one cartridge per game.</li>
+        <li>Can export any take as a crisp 2× PNG for use elsewhere.</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  wear(seed) {
+    this._wearCache = this._wearCache || {};
+    if (this._wearCache[seed]) return this._wearCache[seed];
+    let s = (seed * 2654435761) >>> 0;
+    const rnd = () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    const R = (a, b) => a + (b - a) * rnd();
+    let g = "";
+    // soft scuff patches
+    for (let i = 0; i < 6; i++) {
+      const cx = R(20, 440), cy = R(20, 376), rx = R(16, 50), ry = R(9, 26), rot = R(0, 180);
+      const col = rnd() > 0.5 ? "255,255,255" : "0,0,0", op = R(0.03, 0.08).toFixed(3);
+      g += "<ellipse cx='" + cx.toFixed(1) + "' cy='" + cy.toFixed(1) + "' rx='" + rx.toFixed(1) + "' ry='" + ry.toFixed(1) + "' transform='rotate(" + rot.toFixed(1) + " " + cx.toFixed(1) + " " + cy.toFixed(1) + ")' fill='rgba(" + col + "," + op + ")' filter='url(#bl)'/>";
+    }
+    // hairline scratches
+    for (let i = 0; i < 22; i++) {
+      const x1 = R(10, 450), y1 = R(10, 386), len = R(12, 76);
+      const ang = rnd() > 0.5 ? R(-0.5, 0.5) : Math.PI / 2 + R(-0.5, 0.5);
+      const x2 = x1 + Math.cos(ang) * len, y2 = y1 + Math.sin(ang) * len;
+      const col = rnd() > 0.45 ? "255,255,255" : "0,0,0";
+      const op = R(0.22, 0.6).toFixed(2), w = R(0.4, 0.9).toFixed(2);
+      g += "<line x1='" + x1.toFixed(1) + "' y1='" + y1.toFixed(1) + "' x2='" + x2.toFixed(1) + "' y2='" + y2.toFixed(1) + "' stroke='rgba(" + col + "," + op + ")' stroke-width='" + w + "'/>";
+    }
+    // dust specks
+    for (let i = 0; i < 16; i++) {
+      const cx = R(8, 452), cy = R(8, 388), r = R(0.4, 1.4);
+      const col = rnd() > 0.5 ? "255,255,255" : "0,0,0", op = R(0.18, 0.5).toFixed(2);
+      g += "<circle cx='" + cx.toFixed(1) + "' cy='" + cy.toFixed(1) + "' r='" + r.toFixed(2) + "' fill='rgba(" + col + "," + op + ")'/>";
+    }
+    const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='460' height='396'><defs><filter id='bl'><feGaussianBlur stdDeviation='3'/></filter></defs><g stroke-linecap='round'>" + g + "</g></svg>";
+    const url = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+    this._wearCache[seed] = url;
+    return url;
+  }
+  renderVals() {
+    const cards = [
+      {
+        label: "01 Matte Black",
+        head: "01 · MATTE BLACK — faithful to the reference",
+        pal: {
+          bgA:"#26262b", bgB:"#161619", bgC:"#0c0c0e",
+          wellA:"#141416", wellB:"#08080a", hole:"#050506",
+          tabA:"#ded5c1", tabB:"#b6ac96", tabHi:"rgba(255,255,255,0.55)", tabSh:"rgba(0,0,0,0.25)",
+          scrA:"#2c2c30", scrB:"#0a0a0c", scrSlot:"rgba(0,0,0,0.85)",
+          triFace:"#141416", grooveBg:"#050506", swNub:"#3a3a3f",
+          ridgeLo:"rgba(0,0,0,0.6)", emb:"rgba(0,0,0,0.55)",
+          lip:"rgba(255,255,255,0.06)", sh:"rgba(0,0,0,0.85)",
+          mLo:"rgba(0,0,0,0.45)", mHi:"rgba(255,255,255,0.05)",
+          sheen:"rgba(255,255,255,0.10)", nOp:"0.55", bOp:"0.4",
+          beamColor:"#34343a", beamShadow:"0 -1px 0 rgba(255,255,255,0.13), 0 2px 2px rgba(0,0,0,0.9)"
+        }
+      },
+      {
+        label: "02 Retro Grey",
+        head: "02 · RETRO GREY — classic console plastic",
+        pal: {
+          bgA:"#d4d1c9", bgB:"#b6b3ab", bgC:"#928f88",
+          wellA:"#a8a59d", wellB:"#8a877f", hole:"#1e1d1a",
+          tabA:"#56544e", tabB:"#3a3933", tabHi:"rgba(255,255,255,0.2)", tabSh:"rgba(0,0,0,0.35)",
+          scrA:"#9a978f", scrB:"#5d5b54", scrSlot:"rgba(0,0,0,0.5)",
+          triFace:"#b2afa7", grooveBg:"#7c7971", swNub:"#76736c",
+          ridgeLo:"rgba(0,0,0,0.3)", emb:"rgba(0,0,0,0.28)",
+          lip:"rgba(255,255,255,0.55)", sh:"rgba(60,54,44,0.4)",
+          mLo:"rgba(40,36,30,0.28)", mHi:"rgba(255,255,255,0.3)",
+          sheen:"rgba(255,255,255,0.22)", nOp:"0.4", bOp:"0.3",
+          beamColor:"#cfccc3", beamShadow:"0 -1px 0 rgba(255,255,255,0.65), 0 2px 2px rgba(40,34,24,0.4)"
+        }
+      },
+      {
+        label: "03 Smoke",
+        head: "03 · SMOKE — gloss translucent, faint internals",
+        pal: {
+          bgA:"#30303a", bgB:"#1f1f27", bgC:"#141418",
+          wellA:"#101015", wellB:"#0a0a0e", hole:"#06060a",
+          tabA:"#4a4a52", tabB:"#313137", tabHi:"rgba(255,255,255,0.25)", tabSh:"rgba(0,0,0,0.4)",
+          scrA:"#34343c", scrB:"#101015", scrSlot:"rgba(0,0,0,0.85)",
+          triFace:"#1a1a20", grooveBg:"#060608", swNub:"#44444c",
+          ridgeLo:"rgba(0,0,0,0.55)", emb:"rgba(0,0,0,0.5)",
+          lip:"rgba(255,255,255,0.1)", sh:"rgba(0,0,0,0.8)",
+          mLo:"rgba(0,0,0,0.4)", mHi:"rgba(190,155,90,0.07)",
+          sheen:"rgba(255,255,255,0.13)", nOp:"0.45", bOp:"0.35",
+          beamColor:"#3b3b46", beamShadow:"0 -1px 0 rgba(255,255,255,0.14), 0 2px 2px rgba(0,0,0,0.85)"
+        }
+      },
+      {
+        label: "04 Bone",
+        head: "04 · BONE — light shell, black tab",
+        pal: {
+          bgA:"#e8e2d1", bgB:"#d2cbb8", bgC:"#b7af9b",
+          wellA:"#cac3b0", wellB:"#b3ac98", hole:"#2a2620",
+          tabA:"#26262a", tabB:"#121214", tabHi:"rgba(255,255,255,0.15)", tabSh:"rgba(0,0,0,0.5)",
+          scrA:"#a89f8a", scrB:"#6b6453", scrSlot:"rgba(50,42,26,0.6)",
+          triFace:"#cfc8b5", grooveBg:"#8c8470", swNub:"#9a927e",
+          ridgeLo:"rgba(70,58,36,0.3)", emb:"rgba(70,58,36,0.3)",
+          lip:"rgba(255,255,255,0.65)", sh:"rgba(90,78,54,0.4)",
+          mLo:"rgba(80,66,42,0.25)", mHi:"rgba(255,255,255,0.35)",
+          sheen:"rgba(255,255,255,0.28)", nOp:"0.36", bOp:"0.28",
+          beamColor:"#e7e1d0", beamShadow:"0 -1px 0 rgba(255,255,255,0.75), 0 2px 2px rgba(70,58,36,0.45)"
+        }
+      },
+      {
+        label: "05 Slate",
+        head: "05 · SLATE — cool grey-blue, bone tab",
+        pal: {
+          bgA:"#47505d", bgB:"#333a45", bgC:"#242831",
+          wellA:"#2a2f38", wellB:"#1d2128", hole:"#13161b",
+          tabA:"#ded5c1", tabB:"#b6ac96", tabHi:"rgba(255,255,255,0.55)", tabSh:"rgba(0,0,0,0.25)",
+          scrA:"#4b525e", scrB:"#1b1f26", scrSlot:"rgba(0,0,0,0.7)",
+          triFace:"#303641", grooveBg:"#0f1218", swNub:"#515a68",
+          ridgeLo:"rgba(0,0,0,0.45)", emb:"rgba(0,0,0,0.42)",
+          lip:"rgba(255,255,255,0.1)", sh:"rgba(0,0,0,0.7)",
+          mLo:"rgba(0,0,0,0.38)", mHi:"rgba(255,255,255,0.08)",
+          sheen:"rgba(255,255,255,0.12)", nOp:"0.48", bOp:"0.32",
+          beamColor:"#59626f", beamShadow:"0 -1px 0 rgba(255,255,255,0.16), 0 2px 2px rgba(0,0,0,0.75)"
+        }
+      },
+      {
+        label: "06 Olive",
+        head: "06 · OLIVE — field-kit drab, black tab",
+        pal: {
+          bgA:"#65674f", bgB:"#4b4d3a", bgC:"#373925",
+          wellA:"#3f4133", wellB:"#2c2e22", hole:"#1c1e14",
+          tabA:"#26262a", tabB:"#121214", tabHi:"rgba(255,255,255,0.15)", tabSh:"rgba(0,0,0,0.5)",
+          scrA:"#5c5e4b", scrB:"#23251a", scrSlot:"rgba(0,0,0,0.65)",
+          triFace:"#454736", grooveBg:"#171910", swNub:"#6b6d59",
+          ridgeLo:"rgba(0,0,0,0.4)", emb:"rgba(0,0,0,0.4)",
+          lip:"rgba(255,255,255,0.13)", sh:"rgba(0,0,0,0.65)",
+          mLo:"rgba(0,0,0,0.36)", mHi:"rgba(255,255,255,0.09)",
+          sheen:"rgba(255,255,255,0.1)", nOp:"0.48", bOp:"0.32",
+          beamColor:"#6e7059", beamShadow:"0 -1px 0 rgba(255,255,255,0.16), 0 2px 2px rgba(0,0,0,0.7)"
+        }
+      }
+    ];
+    const wearOps = ["0.6", "0.5", "0.65", "0.5", "0.6", "0.55"];
+    cards.forEach((c, i) => { c.wearUrl = this.wear(i + 1); c.pal.wearOp = wearOps[i]; });
+    return { cards };
+  }
+}
+</script>
+</body>
+</html>

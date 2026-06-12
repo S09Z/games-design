@@ -1,5 +1,57 @@
-dist
-dist-*
+# OS & System Files
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+.idea/
+
+# Node & Package Management
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Build & Dist
+dist/
+dist-*/
+build/
+*.min.js
+*.min.css
+
+# Editor & IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.sublime-project
+.sublime-workspace
+
+# Environment & Config
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Temporary Files
+*.tmp
+.tmp/
+temp/
+
+# Playwright & Testing
+.playwright-mcp/
+test-results/
+
+# Claude Code
+.claude/plans/
+.claude/worktrees/
+.claude-plugin/
+
+# Haskell (legacy entries)
 cabal-dev
 *.o
 *.hi
@@ -21,3 +73,8 @@ cabal.project.local
 cabal.project.local~
 .HTF/
 .ghc.environment.*
+
+*/screenshots/*.png
+*/uploads/*.png
+
+.vscode/

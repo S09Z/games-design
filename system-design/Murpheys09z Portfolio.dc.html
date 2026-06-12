@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;padding:0;background:#0a0a0c;}
+  *{box-sizing:border-box;}
+  @keyframes drift0{0%,100%{transform:translate(0,0)}50%{transform:translate(7px,-9px)}}
+  @keyframes drift1{0%,100%{transform:translate(0,0)}50%{transform:translate(-8px,-6px)}}
+  @keyframes drift2{0%,100%{transform:translate(0,0)}50%{transform:translate(5px,10px)}}
+  @keyframes drift3{0%,100%{transform:translate(0,0)}50%{transform:translate(-6px,8px)}}
+  @keyframes drift4{0%,100%{transform:translate(0,0)}50%{transform:translate(9px,4px)}}
+  @keyframes drift5{0%,100%{transform:translate(0,0)}50%{transform:translate(-5px,-10px)}}
+  @keyframes ovFade{from{opacity:0}to{opacity:1}}
+  @keyframes ovFadeOut{from{opacity:1}to{opacity:0}}
+  @keyframes consoleDrop{0%{transform:translateY(-128%);opacity:0}55%{opacity:1}100%{transform:translateY(0);opacity:1}}
+  @keyframes consoleUp{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-128%);opacity:0}}
+  @keyframes cartDrop{0%{transform:translateY(-122px);opacity:0}24%{opacity:1}80%{transform:translateY(7px)}100%{transform:translateY(0);opacity:1}}
+  @keyframes screenOn{0%{opacity:0;filter:brightness(0) saturate(0.4)}35%{opacity:1;filter:brightness(1.7) saturate(1.1)}100%{opacity:1;filter:brightness(1) saturate(1)}}
+</style>
+</helmet>
+<div style="position:fixed; inset:0; overflow:hidden; background:radial-gradient(125% 95% at 50% 16%, #1a1a1f 0%, #0d0d10 56%, #060608 100%); font-family:'Space Grotesk', ui-sans-serif, system-ui, sans-serif; color:#e8e6e1; user-select:none">
+
+  <div style="position:absolute; inset:0; pointer-events:none; background:radial-gradient(130% 110% at 50% 45%, transparent 58%, rgba(0,0,0,0.6) 100%)"></div>
+  <div style="position:absolute; inset:0; pointer-events:none; opacity:0.35; mix-blend-mode:overlay; background:repeating-linear-gradient(0deg, rgba(0,0,0,0.5) 0 1px, transparent 1px 4px)"></div>
+
+  <!-- ===================== SCALING STAGE (1600x1000) ===================== -->
+  <div style="position:absolute; left:50%; top:50%; width:1600px; height:1000px; transform:translate(-50%,-50%) scale({{ stageScale }}); transform-origin:center center">
+
+  <!-- ===================== CLUSTER ===================== -->
+  <div style="position:absolute; left:50%; top:49.5%; width:1150px; height:840px; transform:translate(-50%,-50%)">
+    <sc-for list="{{ cards }}" as="c" hint-placeholder-count="25">
+      <div style="position:absolute; left:{{ c.x }}px; top:{{ c.y }}px; width:{{ c.w }}px; height:{{ c.h }}px; z-index:{{ c.z }}; animation:{{ c.drift }} {{ c.dur }}s ease-in-out infinite; animation-delay:{{ c.delay }}s">
+
+        <div onMouseEnter="{{ c.onEnter }}" onMouseLeave="{{ onLeave }}" onClick="{{ c.onClick }}" style="position:absolute; inset:0; cursor:pointer; transform-origin:center center; transform:rotate({{ c.rot }}deg) translateY({{ c.lift }}px) scale({{ c.scale }}); filter:{{ c.filter }}; transition:transform .42s cubic-bezier(.2,.85,.25,1), filter .35s ease; will-change:transform">
+
+          <!-- highlight ring / glow -->
+          <div style="position:absolute; inset:-5px; border-radius:{{ c.ringRadius }}px; box-shadow:0 0 0 1.5px rgba(196,255,216,0.6), 0 0 30px 7px rgba(86,255,160,0.3), 0 38px 66px rgba(0,0,0,0.62); opacity:{{ c.frameOp }}; transition:opacity .35s ease; pointer-events:none"></div>
+
+          <!-- ===== AUTHENTIC CARTRIDGE (native 460x396, scaled) ===== -->
+          <div style="position:absolute; left:0; top:0; width:460px; height:396px; transform:scale({{ c.baseScale }}); transform-origin:top left">
+
+            <!-- connector tab -->
+            <div style="position:absolute; top:-15px; right:40px; width:88px; height:34px; border-radius:7px 7px 3px 3px; background:linear-gradient(180deg,{{ c.pal.tabA }},{{ c.pal.tabB }}); box-shadow:inset 0 1px 1px {{ c.pal.tabHi }}, inset 0 -2px 3px {{ c.pal.tabSh }}"></div>
+
+            <!-- body shell -->
+            <div style="position:absolute; inset:0; border-radius:14px; overflow:hidden; background:linear-gradient(150deg,{{ c.pal.bgA }} 0%,{{ c.pal.bgB }} 46%,{{ c.pal.bgC }} 100%); box-shadow:inset 0 1px 1px {{ c.pal.lip }}, inset -3px -5px 12px {{ c.pal.sh }}, 0 30px 60px rgba(0,0,0,0.6), 0 10px 24px rgba(0,0,0,0.5)">
+
+              <!-- mottle -->
+              <div style="position:absolute; inset:0; background:radial-gradient(42% 34% at 22% 72%, {{ c.pal.mLo }}, transparent 60%), radial-gradient(38% 28% at 82% 28%, {{ c.pal.mHi }}, transparent 55%), radial-gradient(52% 44% at 64% 98%, {{ c.pal.mLo }}, transparent 66%), radial-gradient(30% 24% at 6% 24%, {{ c.pal.mHi }}, transparent 60%), radial-gradient(34% 30% at 92% 86%, {{ c.pal.mLo }}, transparent 62%)"></div>
+
+              <!-- recessed label well — cover art -->
+              <div style="position:absolute; left:28px; top:14px; width:300px; height:230px; border-radius:11px; overflow:hidden; background:linear-gradient(165deg,{{ c.pal.wellA }},{{ c.pal.wellB }}); box-shadow:inset 0 3px 10px {{ c.pal.sh }}, inset 0 1px 2px {{ c.pal.sh }}, 0 1px 0 {{ c.pal.lip }}">
+                {{ c.sceneEl }}
+                <div style="position:absolute; inset:0; pointer-events:none; mix-blend-mode:multiply; background:repeating-linear-gradient(0deg, rgba(0,0,0,0.32) 0 1px, transparent 1px 3px)"></div>
+                <div style="position:absolute; inset:0; pointer-events:none; background:radial-gradient(120% 100% at 50% 42%, rgba(70,255,150,0.05), transparent 55%)"></div>
+                <div style="position:absolute; inset:0; pointer-events:none; background:radial-gradient(130% 115% at 50% 44%, transparent 56%, rgba(0,0,0,0.5) 100%)"></div>
+                <div style="position:absolute; inset:0; pointer-events:none; background:radial-gradient(120% 70% at 50% -12%, rgba(255,255,255,0.13), transparent 50%), linear-gradient(122deg, rgba(255,255,255,0.09) 0%, transparent 26%)"></div>
+                <div style="position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 0 2px rgba(0,0,0,0.5), inset 0 3px 8px rgba(0,0,0,0.7)"></div>
+              </div>
+
+              <!-- round hole top-right -->
+              <div style="position:absolute; right:32px; top:24px; width:46px; height:46px; border-radius:50%; background:{{ c.pal.hole }}; box-shadow:inset 0 4px 8px {{ c.pal.sh }}, inset 0 -1px 1px {{ c.pal.lip }}, 0 1px 1px {{ c.pal.lip }}"></div>
+
+              <!-- diagonal grip ridges -->
+              <div style="position:absolute; right:6px; top:92px; width:118px; height:120px; clip-path:polygon(34% 0, 100% 0, 100% 100%, 0 100%); background:repeating-linear-gradient(180deg, {{ c.pal.lip }} 0px, {{ c.pal.lip }} 1px, transparent 1px, transparent 4px, {{ c.pal.ridgeLo }} 4px, {{ c.pal.ridgeLo }} 9px, transparent 9px, transparent 13px)"></div>
+
+              <!-- embossed cross -->
+              <div style="position:absolute; right:104px; top:242px; width:24px; height:24px">
+                <div style="position:absolute; left:9px; top:0; width:6px; height:24px; background:{{ c.pal.emb }}; border-radius:2px; box-shadow:0 1px 0 {{ c.pal.lip }}"></div>
+                <div style="position:absolute; left:0; top:9px; width:24px; height:6px; background:{{ c.pal.emb }}; border-radius:2px; box-shadow:0 1px 0 {{ c.pal.lip }}"></div>
+              </div>
+              <!-- 2x2 dots -->
+              <div style="position:absolute; right:46px; top:248px; display:grid; grid-template-columns:6px 6px; gap:6px">
+                <div style="width:6px; height:6px; border-radius:50%; background:{{ c.pal.emb }}; box-shadow:0 1px 0 {{ c.pal.lip }}"></div>
+                <div style="width:6px; height:6px; border-radius:50%; background:{{ c.pal.emb }}; box-shadow:0 1px 0 {{ c.pal.lip }}"></div>
+                <div style="width:6px; height:6px; border-radius:50%; background:{{ c.pal.emb }}; box-shadow:0 1px 0 {{ c.pal.lip }}"></div>
+                <div style="width:6px; height:6px; border-radius:50%; background:{{ c.pal.emb }}; box-shadow:0 1px 0 {{ c.pal.lip }}"></div>
+              </div>
+
+              <!-- molded embossed wordmark = GAME TITLE -->
+              <div style="position:absolute; left:34px; top:256px; right:14px; font-family:'Helvetica Neue', Arial, sans-serif; font-weight:800; font-size:24px; letter-spacing:2px; line-height:1; color:{{ c.pal.beamColor }}; text-shadow:{{ c.pal.beamShadow }}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ c.title }}</div>
+
+              <!-- long groove bar -->
+              <div style="position:absolute; left:32px; top:300px; right:36px; height:14px; border-radius:7px; background:{{ c.pal.grooveBg }}; box-shadow:inset 0 2px 4px {{ c.pal.sh }}, 0 1px 0 {{ c.pal.lip }}"></div>
+
+              <!-- side switch -->
+              <div style="position:absolute; left:10px; top:188px; width:12px; height:20px; background:{{ c.pal.sh }}; border-radius:2px; box-shadow:inset 0 1px 2px {{ c.pal.sh }}, 0 1px 0 {{ c.pal.lip }}">
+                <div style="position:absolute; left:3px; top:4px; width:6px; height:6px; background:{{ c.pal.swNub }}; border-radius:1px"></div>
+              </div>
+
+              <!-- screw -->
+              <div style="position:absolute; left:54px; top:336px; width:18px; height:18px; border-radius:50%; background:radial-gradient(circle at 35% 30%,{{ c.pal.scrA }},{{ c.pal.scrB }}); box-shadow:inset 0 1px 2px {{ c.pal.sh }}, 0 1px 0 {{ c.pal.lip }}">
+                <div style="position:absolute; left:8px; top:3px; width:2px; height:12px; background:{{ c.pal.scrSlot }}"></div>
+                <div style="position:absolute; left:3px; top:8px; width:12px; height:2px; background:{{ c.pal.scrSlot }}"></div>
+              </div>
+
+              <!-- engraved triangle -->
+              <div style="position:absolute; right:52px; bottom:28px; width:46px; height:27px">
+                <div style="position:absolute; left:0; right:0; top:2px; bottom:0; clip-path:polygon(0 0,100% 0,50% 100%); background:{{ c.pal.lip }}"></div>
+                <div style="position:absolute; left:0; right:0; top:0; bottom:2px; clip-path:polygon(0 0,100% 0,50% 100%); background:{{ c.pal.sh }}"></div>
+                <div style="position:absolute; left:8px; right:8px; top:4px; bottom:10px; clip-path:polygon(0 0,100% 0,50% 100%); background:{{ c.pal.triFace }}"></div>
+              </div>
+
+              <!-- seam line -->
+              <div style="position:absolute; left:32px; bottom:14px; width:272px; height:3px; border-radius:2px; background:{{ c.pal.sh }}; box-shadow:0 1px 0 {{ c.pal.lip }}"></div>
+
+              <!-- grain -->
+              <div style="position:absolute; inset:0; background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22220%22%20height=%22220%22%3E%3Cfilter%20id=%22n%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.9%22%20numOctaves=%222%22%20stitchTiles=%22stitch%22%2F%3E%3C%2Ffilter%3E%3Crect%20width=%22220%22%20height=%22220%22%20filter=%22url%28%23n%29%22%2F%3E%3C%2Fsvg%3E); opacity:{{ c.pal.nOp }}; mix-blend-mode:overlay; filter:grayscale(1) contrast(1.1)"></div>
+
+              <!-- wear: scratches, scuffs, dust -->
+              <div style="position:absolute; inset:0; background-image:{{ c.wearUrl }}; background-size:cover; opacity:{{ c.pal.wearOp }}; mix-blend-mode:overlay"></div>
+
+              <!-- rubbed edge / corner shine -->
+              <div style="position:absolute; inset:0; border-radius:14px; opacity:0.85; background:radial-gradient(circle at 2% 3%, {{ c.pal.lip }}, transparent 7%), radial-gradient(circle at 98% 3%, {{ c.pal.lip }}, transparent 7%), radial-gradient(circle at 2% 97%, {{ c.pal.lip }}, transparent 7%), radial-gradient(circle at 99% 60%, {{ c.pal.lip }}, transparent 5%), radial-gradient(circle at 1% 45%, {{ c.pal.lip }}, transparent 5%)"></div>
+
+              <!-- sheen -->
+              <div style="position:absolute; inset:0; background:linear-gradient(108deg, transparent 30%, {{ c.pal.sheen }} 42%, transparent 52%)"></div>
+              <div style="position:absolute; inset:0; background:radial-gradient(120% 90% at 30% -10%, {{ c.pal.sheen }}, transparent 55%)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- ===================== LEFT: YEARS ===================== -->
+  <div onMouseLeave="{{ onLeave }}" style="position:absolute; left:42px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:8px; z-index:900">
+    <sc-for list="{{ years }}" as="y" hint-placeholder-count="18">
+      <div onMouseEnter="{{ y.onEnter }}" style="font-family:ui-monospace, 'SF Mono', Menlo, monospace; font-size:14px; letter-spacing:0.04em; color:{{ y.col }}; cursor:pointer; transition:color .2s ease, transform .2s ease; transform:translateX({{ y.dx }}px)">{{ y.year }}</div>
+    </sc-for>
+  </div>
+
+  <!-- ===================== RIGHT: TITLES ===================== -->
+  <div onMouseLeave="{{ onLeave }}" style="position:absolute; right:42px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; align-items:flex-end; gap:3px; z-index:900">
+    <div onClick="{{ onRandom }}" style="font-size:14px; font-weight:700; color:#f3f1ec; cursor:pointer; margin-bottom:4px; letter-spacing:0.02em">Random</div>
+    <sc-for list="{{ titles }}" as="t" hint-placeholder-count="25">
+      <div onMouseEnter="{{ t.onEnter }}" onClick="{{ t.onClick }}" style="font-size:13px; line-height:1.32; white-space:nowrap; color:{{ t.col }}; cursor:pointer; text-align:right; transition:color .2s ease, transform .2s ease; transform:translateX({{ t.dx }}px)">{{ t.title }}</div>
+    </sc-for>
+  </div>
+
+  <!-- ===================== TOP-LEFT PILL ===================== -->
+  <div onMouseEnter="{{ onNew }}" onMouseLeave="{{ onLeave }}" style="position:absolute; left:32px; top:28px; padding:9px 17px; border-radius:20px; background:rgba(18,20,24,0.55); border:1px solid rgba(255,255,255,0.13); color:#d6d3cb; font-size:13px; font-weight:500; cursor:pointer; backdrop-filter:blur(6px); z-index:950">New releases</div>
+
+  <!-- ===================== TOP-RIGHT TITLE BLOCK ===================== -->
+  <div style="position:absolute; right:34px; top:24px; text-align:right; z-index:950">
+    <div style="font-weight:700; font-size:27px; letter-spacing:-0.6px; color:#f3f1ec; line-height:1">Murpheys09z</div>
+    <div style="font-size:10.5px; letter-spacing:3.5px; color:#8a877f; margin-top:4px">CARTRIDGE ARCHIVE</div>
+    <div style="margin-top:11px; display:flex; gap:7px; justify-content:flex-end; align-items:center">
+      <div style="width:34px; height:34px; border-radius:50%; border:1px solid rgba(255,255,255,0.18); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; color:#cfccc4; cursor:pointer">EN</div>
+    </div>
+  </div>
+
+  <!-- ===================== BOTTOM-LEFT COPYRIGHT ===================== -->
+  <div style="position:absolute; left:36px; bottom:24px; font-size:12px; color:#6f6c64; z-index:950">© 2026 Murpheys09z</div>
+
+  <!-- ===================== BOTTOM-RIGHT NAV ===================== -->
+  <div style="position:absolute; right:34px; bottom:22px; display:flex; gap:20px; align-items:center; font-size:13px; z-index:950">
+    <span style="color:#e8e6e1; cursor:pointer">All Games</span>
+    <span style="color:#b3b0a8; cursor:pointer">Portfolio</span>
+    <span style="color:#b3b0a8; cursor:pointer">About</span>
+    <span style="color:#b3b0a8; cursor:pointer">Contact</span>
+    <span style="color:#b3b0a8; cursor:pointer">Legal</span>
+    <svg width="22" height="14" viewBox="0 0 22 14" fill="none" style="margin-left:2px"><path d="M2 11 L9 3 L15 9 L20 4" stroke="#b3b0a8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+  </div>
+
+  </div>
+  <!-- end stage -->
+
+  <!-- ===================== INSERT-CARTRIDGE OVERLAY ===================== -->
+  <sc-if value="{{ showConsole }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onClose }}" style="position:fixed; inset:0; z-index:5000; display:flex; align-items:center; justify-content:center; background:rgba(4,5,7,0.8); backdrop-filter:blur(8px); animation:{{ ovAnim }}">
+
+      <div onClick="{{ stop }}" style="position:relative; width:760px; height:1010px; transform:scale({{ cscale }}); transform-origin:center center; cursor:default">
+
+        <!-- whole console drops in -->
+        <div style="position:absolute; inset:0; animation:{{ consoleAnim }}">
+
+          <!-- spotlight -->
+          <div style="position:absolute; top:-30px; left:50%; transform:translateX(-50%); width:740px; height:740px; background:radial-gradient(circle at 50% 40%, rgba(120,255,170,0.07), transparent 60%); pointer-events:none"></div>
+          <!-- floor shadow -->
+          <div style="position:absolute; left:90px; bottom:24px; width:580px; height:80px; border-radius:50%; background:radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.6), transparent 70%); filter:blur(10px)"></div>
+
+          <!-- ===== CONSOLE BODY ===== -->
+          <div style="position:absolute; left:20px; top:300px; width:720px; height:680px">
+            <div style="position:absolute; inset:0; border-radius:32px; overflow:hidden; background:linear-gradient(155deg,#2a2a2f 0%,#19191d 46%,#0c0c0f 100%); box-shadow:inset 0 2px 2px rgba(255,255,255,0.12), inset -5px -8px 20px rgba(0,0,0,0.6), 0 44px 84px rgba(0,0,0,0.62), 0 16px 34px rgba(0,0,0,0.5)">
+              <div style="position:absolute; inset:0; background:radial-gradient(40% 30% at 18% 70%, rgba(0,0,0,0.4), transparent 60%), radial-gradient(36% 26% at 84% 26%, rgba(255,255,255,0.06), transparent 55%), radial-gradient(50% 42% at 64% 96%, rgba(0,0,0,0.38), transparent 66%)"></div>
+              <div style="position:absolute; inset:7px; border-radius:26px; box-shadow:inset 0 2px 3px rgba(255,255,255,0.1), inset 0 -4px 8px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.05); pointer-events:none"></div>
+
+              <!-- SCREEN MODULE -->
+              <div style="position:absolute; left:28px; top:34px; width:664px; height:404px; border-radius:28px; background:linear-gradient(158deg,#2f2f34,#1d1d21 55%,#121215); box-shadow:inset 0 2px 2px rgba(255,255,255,0.16), inset 0 -4px 9px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.08), 0 2px 4px rgba(0,0,0,0.4)">
+                <div style="position:absolute; inset:9px; border-radius:22px; box-shadow:inset 0 5px 10px rgba(0,0,0,0.72), inset 0 1px 2px rgba(0,0,0,0.88), inset 0 -2px 3px rgba(255,255,255,0.07); pointer-events:none; z-index:2"></div>
+                <div style="position:absolute; left:16px; top:16px; width:632px; height:372px; border-radius:18px; background:linear-gradient(160deg,#202023,#0a0a0c); box-shadow:inset 0 7px 18px rgba(0,0,0,0.95), inset 0 3px 6px rgba(0,0,0,0.9), inset 0 0 0 2px rgba(0,0,0,0.78), 0 2px 0 rgba(255,255,255,0.18)">
+                  <!-- CRT GLASS -->
+                  <div style="position:absolute; inset:14px; border-radius:12px; overflow:hidden; background:radial-gradient(130% 110% at 50% 42%, #0d1813 0%, #07110c 55%, #030705 100%); box-shadow:inset 0 0 46px rgba(0,0,0,0.92), inset 0 9px 20px rgba(0,0,0,0.95), inset 0 0 0 2px rgba(0,0,0,0.9)">
+                    <!-- game art powers on -->
+                    <div style="position:absolute; inset:0; animation:{{ screenAnim }}">
+                      <div style="position:absolute; inset:0">{{ insScreen }}</div>
+                      <div style="position:absolute; inset:0; background:radial-gradient(120% 100% at 50% 42%, rgba(70,255,150,0.12), transparent 60%); mix-blend-mode:screen"></div>
+                      <div style="position:absolute; left:22px; bottom:18px; font-family:ui-monospace, Menlo, monospace; font-size:23px; color:#9bffbe; text-shadow:0 0 8px rgba(120,255,170,0.85)">&#9654; {{ ins.title }}</div>
+                      <div style="position:absolute; right:22px; top:16px; font-family:ui-monospace, Menlo, monospace; font-size:13px; letter-spacing:2px; color:#9bffbe; text-shadow:0 0 6px rgba(120,255,170,0.7)">LOADED</div>
+                    </div>
+                    <!-- scanlines + glass -->
+                    <div style="position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.28) 3px, rgba(0,0,0,0.28) 4px); mix-blend-mode:multiply"></div>
+                    <div style="position:absolute; inset:0; pointer-events:none; background:radial-gradient(135% 120% at 50% 44%, transparent 60%, rgba(0,0,0,0.55) 100%)"></div>
+                    <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(125deg, rgba(255,255,255,0.07) 0%, transparent 26%)"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- grilles -->
+              <div style="position:absolute; left:44px; top:462px; width:170px; height:56px; border-radius:7px; clip-path:polygon(0 0, 100% 0, 100% 74%, 86% 100%, 0 100%); background:repeating-linear-gradient(180deg, transparent 0px, transparent 8px, rgba(0,0,0,0.6) 8px, rgba(0,0,0,0.6) 11px, rgba(255,255,255,0.1) 11px, rgba(255,255,255,0.1) 12px); box-shadow:inset 0 1px 1px rgba(255,255,255,0.1)"></div>
+              <div style="position:absolute; left:506px; top:462px; width:170px; height:56px; border-radius:7px; clip-path:polygon(0 0, 100% 0, 100% 100%, 14% 100%, 0 74%); background:repeating-linear-gradient(180deg, transparent 0px, transparent 8px, rgba(0,0,0,0.6) 8px, rgba(0,0,0,0.6) 11px, rgba(255,255,255,0.1) 11px, rgba(255,255,255,0.1) 12px); box-shadow:inset 0 1px 1px rgba(255,255,255,0.1)"></div>
+
+              <!-- nameplate -->
+              <div style="position:absolute; left:214px; top:468px; width:292px; text-align:center">
+                <div style="font-family:'Helvetica Neue', Arial, sans-serif; font-weight:800; font-size:16px; letter-spacing:3px; color:#43434a; text-shadow:0 -1px 0 rgba(255,255,255,0.18), 0 1px 0 rgba(0,0,0,0.55), 0 2px 3px rgba(0,0,0,0.85)">MURPHEYS09Z</div>
+                <div style="margin-top:3px; font-family:'Helvetica Neue', Arial, sans-serif; font-weight:700; font-size:10px; letter-spacing:5px; color:#3b3b41; text-shadow:0 -1px 0 rgba(255,255,255,0.15), 0 1px 2px rgba(0,0,0,0.8)">GAME&nbsp;PLAYER</div>
+              </div>
+              <div style="position:absolute; left:60px; top:478px; width:15px; height:15px; border-radius:50%; background:radial-gradient(circle at 38% 32%, #5a5a60, #2a2a2e 68%, #141416); box-shadow:inset 0 1px 1px rgba(255,255,255,0.3)"></div>
+              <div style="position:absolute; left:646px; top:478px; width:15px; height:15px; border-radius:50%; background:radial-gradient(circle at 38% 32%, #5a5a60, #2a2a2e 68%, #141416); box-shadow:inset 0 1px 1px rgba(255,255,255,0.3)"></div>
+
+              <!-- CONTROL TRAY -->
+              <div style="position:absolute; left:36px; top:520px; width:648px; height:138px; border-radius:18px; overflow:hidden; background:linear-gradient(168deg,#3e3e42 0%,#262629 46%,#141416 100%); box-shadow:0 16px 30px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.18), inset 0 -4px 12px rgba(0,0,0,0.7)">
+                <div style="position:absolute; inset:0; clip-path:polygon(45% 0, 100% 0, 100% 100%, 37% 100%); background:linear-gradient(158deg,#56565c 0%,#3e3e44 56%,#28282c 100%)"></div>
+                <div style="position:absolute; left:289px; top:-8px; width:3px; height:156px; transform:rotate(-19deg); background:linear-gradient(180deg, rgba(255,255,255,0.3), rgba(255,255,255,0.06))"></div>
+
+                <!-- D-PAD -->
+                <div style="position:absolute; left:20px; top:14px; width:140px; height:110px; border-radius:18px; background:linear-gradient(160deg,#34343a,#1d1d20 60%,#121214); box-shadow:0 4px 8px rgba(0,0,0,0.55), inset 0 2px 2px rgba(255,255,255,0.16), inset 0 -3px 6px rgba(0,0,0,0.75)">
+                  <div style="position:absolute; left:24px; top:9px; width:92px; height:92px">
+                    <div style="position:absolute; left:31px; top:0; width:30px; height:92px; border-radius:7px; background:linear-gradient(180deg,#43434a 0%,#26262a 48%,#0e0e10 100%); box-shadow:inset 0 2px 2px rgba(255,255,255,0.24), inset 0 -3px 4px rgba(0,0,0,0.75)"></div>
+                    <div style="position:absolute; left:0; top:31px; width:92px; height:30px; border-radius:7px; background:linear-gradient(90deg,#3b3b42 0%,#26262a 50%,#141416 100%); box-shadow:inset 0 2px 2px rgba(255,255,255,0.18), inset 0 -3px 4px rgba(0,0,0,0.75)"></div>
+                    <div style="position:absolute; left:30px; top:30px; width:32px; height:32px; border-radius:50%; background:radial-gradient(circle at 42% 36%, #38383e, #0a0a0c 78%); box-shadow:inset 0 2px 3px rgba(0,0,0,0.75)"></div>
+                  </div>
+                </div>
+
+                <!-- RED button -->
+                <div style="position:absolute; left:290px; top:29px; width:82px; height:82px; border-radius:50%; background:radial-gradient(circle at 50% 40%, #46464c, #1c1c20); box-shadow:inset 0 3px 5px rgba(0,0,0,0.7), inset 0 -2px 2px rgba(255,255,255,0.16)"></div>
+                <div style="position:absolute; left:299px; top:38px; width:64px; height:64px; border-radius:50%; background:radial-gradient(circle at 38% 30%, #ff9484, #ee4631 40%, #bd1a0b 72%, #6f0f04); box-shadow:inset 0 3px 4px rgba(255,255,255,0.55), inset 0 -6px 9px rgba(0,0,0,0.45), 0 3px 6px rgba(0,0,0,0.5)">
+                  <div style="position:absolute; left:16px; top:11px; width:20px; height:13px; border-radius:50%; background:radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.7), transparent 70%); transform:rotate(-18deg)"></div>
+                </div>
+                <div style="position:absolute; left:392px; top:66px; width:8px; height:8px; border-radius:50%; background:#e6f06a; box-shadow:0 0 6px rgba(220,255,90,0.9)"></div>
+
+                <!-- A -->
+                <div style="position:absolute; left:436px; top:42px; width:48px; height:48px; border-radius:50%; background:radial-gradient(circle at 50% 38%, #6a6a70, #2c2c30); box-shadow:inset 0 1px 1px rgba(255,255,255,0.28), inset 0 -2px 3px rgba(0,0,0,0.5)"></div>
+                <div style="position:absolute; left:441px; top:47px; width:38px; height:38px; border-radius:50%; background:radial-gradient(circle at 38% 30%, #3c3c40, #0a0a0c 80%); box-shadow:inset 0 2px 3px rgba(255,255,255,0.2), inset 0 -3px 4px rgba(0,0,0,0.65)"></div>
+                <div style="position:absolute; left:455px; top:94px; font-family:ui-monospace,Menlo,monospace; font-size:12px; color:rgba(235,232,225,0.62)">A</div>
+                <!-- B -->
+                <div style="position:absolute; left:524px; top:42px; width:48px; height:48px; border-radius:50%; background:radial-gradient(circle at 50% 38%, #6a6a70, #2c2c30); box-shadow:inset 0 1px 1px rgba(255,255,255,0.28), inset 0 -2px 3px rgba(0,0,0,0.5)"></div>
+                <div style="position:absolute; left:529px; top:47px; width:38px; height:38px; border-radius:50%; background:radial-gradient(circle at 38% 30%, #3c3c40, #0a0a0c 80%); box-shadow:inset 0 2px 3px rgba(255,255,255,0.2), inset 0 -3px 4px rgba(0,0,0,0.65)"></div>
+                <div style="position:absolute; left:543px; top:94px; font-family:ui-monospace,Menlo,monospace; font-size:12px; color:rgba(235,232,225,0.62)">B</div>
+              </div>
+
+              <div style="position:absolute; left:175px; bottom:-3px; width:54px; height:10px; border-radius:0 0 4px 4px; background:linear-gradient(180deg,#34343a,#0d0d0f)"></div>
+              <div style="position:absolute; right:175px; bottom:-3px; width:54px; height:10px; border-radius:0 0 4px 4px; background:linear-gradient(180deg,#34343a,#0d0d0f)"></div>
+              <div style="position:absolute; inset:0; pointer-events:none; background:radial-gradient(120% 80% at 28% -10%, rgba(255,255,255,0.12), transparent 52%)"></div>
+            </div>
+          </div>
+
+          <!-- ===== CARTRIDGE BAY (back wall) ===== -->
+          <div style="position:absolute; left:178px; top:290px; width:404px; height:54px; border-radius:10px 10px 0 0; background:linear-gradient(180deg,#1a1a1d,#0a0a0c); box-shadow:inset 0 6px 12px rgba(0,0,0,0.85), 0 2px 4px rgba(0,0,0,0.5)">
+            <div style="position:absolute; left:24px; right:24px; top:8px; height:18px; border-radius:4px; background:#050506; box-shadow:inset 0 3px 6px rgba(0,0,0,0.95)"></div>
+          </div>
+          <div style="position:absolute; left:230px; top:304px; width:300px; height:30px; background:radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.6), transparent 70%); filter:blur(6px)"></div>
+
+          <!-- ===== CARTRIDGE (plugs in) ===== -->
+          <div style="position:absolute; left:190px; top:38px; width:380px; height:300px; animation:{{ cartAnim }}">
+            <div style="position:absolute; inset:0; border-radius:16px 16px 4px 4px; overflow:hidden; background:linear-gradient(150deg,{{ ins.pal.bgA }} 0%,{{ ins.pal.bgB }} 46%,{{ ins.pal.bgC }} 100%); box-shadow:inset 0 1px 1px {{ ins.pal.lip }}, inset -3px -4px 10px {{ ins.pal.sh }}, -22px 10px 38px rgba(0,0,0,0.5), 0 6px 14px rgba(0,0,0,0.4)">
+              <div style="position:absolute; inset:0; background:radial-gradient(40% 26% at 20% 64%, {{ ins.pal.mLo }}, transparent 60%), radial-gradient(34% 22% at 82% 26%, {{ ins.pal.mHi }}, transparent 55%), radial-gradient(48% 38% at 60% 98%, {{ ins.pal.mLo }}, transparent 66%)"></div>
+              <!-- top grip ridges -->
+              <div style="position:absolute; left:28px; right:28px; top:12px; height:24px; border-radius:5px; background:repeating-linear-gradient(90deg, {{ ins.pal.lip }} 0px, {{ ins.pal.lip }} 1px, transparent 1px, transparent 5px, {{ ins.pal.ridgeLo }} 5px, {{ ins.pal.ridgeLo }} 10px, transparent 10px, transparent 14px)"></div>
+              <!-- label well: cover art -->
+              <div style="position:absolute; left:30px; top:50px; width:320px; height:150px; border-radius:11px; overflow:hidden; background:linear-gradient(165deg,{{ ins.pal.wellA }},{{ ins.pal.wellB }}); box-shadow:inset 0 3px 10px {{ ins.pal.sh }}, inset 0 1px 2px {{ ins.pal.sh }}, 0 1px 0 {{ ins.pal.lip }}">
+                <div style="position:absolute; inset:0">{{ ins.sceneEl }}</div>
+                <div style="position:absolute; inset:0; mix-blend-mode:multiply; background:repeating-linear-gradient(0deg, rgba(0,0,0,0.3) 0 1px, transparent 1px 3px)"></div>
+                <div style="position:absolute; inset:0; background:radial-gradient(130% 115% at 50% 44%, transparent 56%, rgba(0,0,0,0.5) 100%)"></div>
+                <div style="position:absolute; inset:0; box-shadow:inset 0 0 0 2px rgba(0,0,0,0.5)"></div>
+              </div>
+              <!-- game title embossed -->
+              <div style="position:absolute; left:30px; right:24px; top:212px; font-family:'Helvetica Neue', Arial, sans-serif; font-weight:800; font-size:26px; letter-spacing:2px; line-height:1; color:{{ ins.pal.beamColor }}; text-shadow:{{ ins.pal.beamShadow }}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ ins.title }}</div>
+              <!-- lower groove -->
+              <div style="position:absolute; left:40px; top:246px; right:40px; height:13px; border-radius:7px; background:{{ ins.pal.grooveBg }}; box-shadow:inset 0 2px 4px {{ ins.pal.sh }}, 0 1px 0 {{ ins.pal.lip }}"></div>
+              <!-- screw -->
+              <div style="position:absolute; left:50px; top:270px; width:18px; height:18px; border-radius:50%; background:radial-gradient(circle at 35% 30%,{{ ins.pal.scrA }},{{ ins.pal.scrB }}); box-shadow:inset 0 1px 2px {{ ins.pal.sh }}, 0 1px 0 {{ ins.pal.lip }}"><div style="position:absolute; left:8px; top:3px; width:2px; height:12px; background:{{ ins.pal.scrSlot }}"></div><div style="position:absolute; left:3px; top:8px; width:12px; height:2px; background:{{ ins.pal.scrSlot }}"></div></div>
+              <!-- triangle -->
+              <div style="position:absolute; right:48px; top:268px; width:44px; height:26px">
+                <div style="position:absolute; left:0; right:0; top:2px; bottom:0; clip-path:polygon(0 0,100% 0,50% 100%); background:{{ ins.pal.lip }}"></div>
+                <div style="position:absolute; left:0; right:0; top:0; bottom:2px; clip-path:polygon(0 0,100% 0,50% 100%); background:{{ ins.pal.sh }}"></div>
+                <div style="position:absolute; left:8px; right:8px; top:4px; bottom:9px; clip-path:polygon(0 0,100% 0,50% 100%); background:{{ ins.pal.triFace }}"></div>
+              </div>
+              <!-- grain -->
+              <div style="position:absolute; inset:0; background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22220%22%20height=%22220%22%3E%3Cfilter%20id=%22n%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.9%22%20numOctaves=%222%22%20stitchTiles=%22stitch%22%2F%3E%3C%2Ffilter%3E%3Crect%20width=%22220%22%20height=%22220%22%20filter=%22url%28%23n%29%22%2F%3E%3C%2Fsvg%3E); opacity:{{ ins.pal.nOp }}; mix-blend-mode:overlay; filter:grayscale(1) contrast(1.1)"></div>
+              <!-- wear -->
+              <div style="position:absolute; inset:0; background-image:{{ ins.wearUrl }}; background-size:cover; opacity:{{ ins.pal.wearOp }}; mix-blend-mode:overlay"></div>
+              <!-- sheen -->
+              <div style="position:absolute; inset:0; background:linear-gradient(118deg, transparent 28%, {{ ins.pal.sheen }} 40%, transparent 50%)"></div>
+              <div style="position:absolute; inset:0; background:radial-gradient(120% 80% at 30% -8%, {{ ins.pal.sheen }}, transparent 55%)"></div>
+            </div>
+          </div>
+
+          <!-- ===== BAY FRONT LIP (covers seam) ===== -->
+          <div style="position:absolute; left:176px; top:304px; width:408px; height:30px; border-radius:0 0 9px 9px; background:linear-gradient(180deg,#3a3a40 0%,#1e1e22 55%,#101012 100%); box-shadow:0 6px 12px rgba(0,0,0,0.55), inset 0 2px 1px rgba(255,255,255,0.16), inset 0 -3px 5px rgba(0,0,0,0.7)">
+            <div style="position:absolute; left:0; right:0; top:0; height:2px; background:rgba(255,255,255,0.22)"></div>
+            <div style="position:absolute; left:18px; top:11px; width:13px; height:13px; border-radius:50%; background:radial-gradient(circle at 38% 32%, #54545a, #232327 68%, #121214); box-shadow:inset 0 1px 1px rgba(255,255,255,0.25)"></div>
+            <div style="position:absolute; right:18px; top:11px; width:13px; height:13px; border-radius:50%; background:radial-gradient(circle at 38% 32%, #54545a, #232327 68%, #121214); box-shadow:inset 0 1px 1px rgba(255,255,255,0.25)"></div>
+          </div>
+
+        </div>
+
+        <!-- close hint -->
+        <div onClick="{{ onClose }}" style="position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); font-family:ui-monospace, Menlo, monospace; font-size:13px; letter-spacing:1px; color:rgba(232,230,225,0.55); cursor:pointer">EJECT · click anywhere or press ESC</div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { active: null, seed: 1, scale: 1, cscale: 1, inserted: null, closing: false };
+    this.fit = () => {
+      const s = Math.min(window.innerWidth / 1600, window.innerHeight / 1000);
+      const cs = Math.min((window.innerWidth * 0.94) / 760, (window.innerHeight * 0.92) / 1040);
+      this.setState({ scale: s, cscale: cs });
+    };
+    this.onCardClick = (id) => {
+      if (this.state.inserted != null) return;
+      try { if (!this.ac) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) this.ac = new AC(); } if (this.ac && this.ac.state === "suspended") this.ac.resume(); } catch (e) {}
+      this.setState({ inserted: id, closing: false });
+      clearTimeout(this._snd); this._snd = setTimeout(() => this.playInsert(), 1380);
+    };
+    this.onClose = () => {
+      if (this.state.inserted == null || this.state.closing) return;
+      clearTimeout(this._snd);
+      this.setState({ closing: true });
+      clearTimeout(this._closeT); this._closeT = setTimeout(() => this.setState({ inserted: null, closing: false }), 440);
+    };
+    this.onKey = (e) => { if (e.key === "Escape") this.onClose(); };
+    this.stop = (e) => { if (e) e.stopPropagation(); };
+    this.YEARS = [2006,2007,2008,2009,2010,2011,2012,2013,2015,2016,2017,2019,2021,2022,2023,2024,2025,2026];
+    this.NAMES = ["NEON DRIFT","CRYPT OF AZEL","STAR HAULER","PIXEL KNIGHT","MEGA RALLY","VOID RUNNER","SLIME KINGDOM","GHOST CIRCUIT","IRON COMET","LASER MONKS","DUNE PILOT","BYTE BRAWL","HEX WITCH","TURBO GECKO","MOON DICE","GLITCH GARDEN","ZEPHYR ACE","ROGUE TOASTER","CANDY VOID","STATIC SAINTS","ORBIT FOX","PUNK FROGS","DELTA DIVERS","NOVA NOMAD","CHROME PONY","GRAVITY JAM","ASH & EMBER","SOLAR SHARK","MAGNET MAZE","BLITZ BAKERY","ECHO VALLEY","KAIJU CAFE","VHS PHANTOM"];
+    const matteBlack = { bgA:"#26262b", bgB:"#161619", bgC:"#0c0c0e", wellA:"#141416", wellB:"#08080a", hole:"#050506", tabA:"#ded5c1", tabB:"#b6ac96", tabHi:"rgba(255,255,255,0.55)", tabSh:"rgba(0,0,0,0.25)", scrA:"#2c2c30", scrB:"#0a0a0c", scrSlot:"rgba(0,0,0,0.85)", triFace:"#141416", grooveBg:"#050506", swNub:"#3a3a3f", ridgeLo:"rgba(0,0,0,0.6)", emb:"rgba(0,0,0,0.55)", lip:"rgba(255,255,255,0.06)", sh:"rgba(0,0,0,0.85)", mLo:"rgba(0,0,0,0.45)", mHi:"rgba(255,255,255,0.05)", sheen:"rgba(255,255,255,0.10)", nOp:"0.55", wearOp:"0.6", beamColor:"#34343a", beamShadow:"0 -1px 0 rgba(255,255,255,0.13), 0 2px 2px rgba(0,0,0,0.9)" };
+    const retroGrey = { bgA:"#d4d1c9", bgB:"#b6b3ab", bgC:"#928f88", wellA:"#a8a59d", wellB:"#8a877f", hole:"#1e1d1a", tabA:"#56544e", tabB:"#3a3933", tabHi:"rgba(255,255,255,0.2)", tabSh:"rgba(0,0,0,0.35)", scrA:"#9a978f", scrB:"#5d5b54", scrSlot:"rgba(0,0,0,0.5)", triFace:"#b2afa7", grooveBg:"#7c7971", swNub:"#76736c", ridgeLo:"rgba(0,0,0,0.3)", emb:"rgba(0,0,0,0.28)", lip:"rgba(255,255,255,0.55)", sh:"rgba(60,54,44,0.4)", mLo:"rgba(40,36,30,0.28)", mHi:"rgba(255,255,255,0.3)", sheen:"rgba(255,255,255,0.22)", nOp:"0.4", wearOp:"0.5", beamColor:"#cfccc3", beamShadow:"0 -1px 0 rgba(255,255,255,0.65), 0 2px 2px rgba(40,34,24,0.4)" };
+    const smoke = { bgA:"#30303a", bgB:"#1f1f27", bgC:"#141418", wellA:"#101015", wellB:"#0a0a0e", hole:"#06060a", tabA:"#4a4a52", tabB:"#313137", tabHi:"rgba(255,255,255,0.25)", tabSh:"rgba(0,0,0,0.4)", scrA:"#34343c", scrB:"#101015", scrSlot:"rgba(0,0,0,0.85)", triFace:"#1a1a20", grooveBg:"#060608", swNub:"#44444c", ridgeLo:"rgba(0,0,0,0.55)", emb:"rgba(0,0,0,0.5)", lip:"rgba(255,255,255,0.1)", sh:"rgba(0,0,0,0.8)", mLo:"rgba(0,0,0,0.4)", mHi:"rgba(190,155,90,0.07)", sheen:"rgba(255,255,255,0.13)", nOp:"0.45", wearOp:"0.65", beamColor:"#3b3b46", beamShadow:"0 -1px 0 rgba(255,255,255,0.14), 0 2px 2px rgba(0,0,0,0.85)" };
+    const slate = { bgA:"#47505d", bgB:"#333a45", bgC:"#242831", wellA:"#2a2f38", wellB:"#1d2128", hole:"#13161b", tabA:"#ded5c1", tabB:"#b6ac96", tabHi:"rgba(255,255,255,0.55)", tabSh:"rgba(0,0,0,0.25)", scrA:"#4b525e", scrB:"#1b1f26", scrSlot:"rgba(0,0,0,0.7)", triFace:"#303641", grooveBg:"#0f1218", swNub:"#515a68", ridgeLo:"rgba(0,0,0,0.45)", emb:"rgba(0,0,0,0.42)", lip:"rgba(255,255,255,0.1)", sh:"rgba(0,0,0,0.7)", mLo:"rgba(0,0,0,0.38)", mHi:"rgba(255,255,255,0.08)", sheen:"rgba(255,255,255,0.12)", nOp:"0.48", wearOp:"0.6", beamColor:"#59626f", beamShadow:"0 -1px 0 rgba(255,255,255,0.16), 0 2px 2px rgba(0,0,0,0.75)" };
+    const olive = { bgA:"#65674f", bgB:"#4b4d3a", bgC:"#373925", wellA:"#3f4133", wellB:"#2c2e22", hole:"#1c1e14", tabA:"#26262a", tabB:"#121214", tabHi:"rgba(255,255,255,0.15)", tabSh:"rgba(0,0,0,0.5)", scrA:"#5c5e4b", scrB:"#23251a", scrSlot:"rgba(0,0,0,0.65)", triFace:"#454736", grooveBg:"#171910", swNub:"#6b6d59", ridgeLo:"rgba(0,0,0,0.4)", emb:"rgba(0,0,0,0.4)", lip:"rgba(255,255,255,0.13)", sh:"rgba(0,0,0,0.65)", mLo:"rgba(0,0,0,0.36)", mHi:"rgba(255,255,255,0.09)", sheen:"rgba(255,255,255,0.1)", nOp:"0.48", wearOp:"0.55", beamColor:"#6e7059", beamShadow:"0 -1px 0 rgba(255,255,255,0.16), 0 2px 2px rgba(0,0,0,0.7)" };
+    const bone = { bgA:"#e8e2d1", bgB:"#d2cbb8", bgC:"#b7af9b", wellA:"#cac3b0", wellB:"#b3ac98", hole:"#2a2620", tabA:"#26262a", tabB:"#121214", tabHi:"rgba(255,255,255,0.15)", tabSh:"rgba(0,0,0,0.5)", scrA:"#a89f8a", scrB:"#6b6453", scrSlot:"rgba(50,42,26,0.6)", triFace:"#cfc8b5", grooveBg:"#8c8470", swNub:"#9a927e", ridgeLo:"rgba(70,58,36,0.3)", emb:"rgba(70,58,36,0.3)", lip:"rgba(255,255,255,0.65)", sh:"rgba(90,78,54,0.4)", mLo:"rgba(80,66,42,0.25)", mHi:"rgba(255,255,255,0.35)", sheen:"rgba(255,255,255,0.28)", nOp:"0.36", wearOp:"0.5", beamColor:"#3a342a", beamShadow:"0 -1px 0 rgba(255,255,255,0.55), 0 1px 2px rgba(70,58,36,0.4)" };
+    this.PALS = [matteBlack, smoke, slate, olive, retroGrey, matteBlack, bone, smoke];
+  }
+
+  componentDidMount() { window.addEventListener("resize", this.fit); window.addEventListener("keydown", this.onKey); this.fit(); }
+  componentWillUnmount() { window.removeEventListener("resize", this.fit); window.removeEventListener("keydown", this.onKey); clearTimeout(this._snd); clearTimeout(this._closeT); }
+
+  playInsert() {
+    const ac = this.ac; if (!ac) return;
+    const t = ac.currentTime;
+    const dur = 0.1, sr = ac.sampleRate;
+    const buf = ac.createBuffer(1, Math.floor(sr * dur), sr);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+    const src = ac.createBufferSource(); src.buffer = buf;
+    const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 2400;
+    const ng = ac.createGain(); ng.gain.setValueAtTime(0.5, t); ng.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    src.connect(lp); lp.connect(ng); ng.connect(ac.destination); src.start(t);
+    const o = ac.createOscillator(); o.type = "sine";
+    o.frequency.setValueAtTime(175, t); o.frequency.exponentialRampToValueAtTime(58, t + 0.17);
+    const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5, t + 0.012); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + 0.22);
+    [[523.25, 0.16], [783.99, 0.29]].forEach(function (p) {
+      const oo = ac.createOscillator(); oo.type = "square"; oo.frequency.value = p[0];
+      const gg = ac.createGain(); gg.gain.setValueAtTime(0.0001, t + p[1]); gg.gain.linearRampToValueAtTime(0.12, t + p[1] + 0.01); gg.gain.exponentialRampToValueAtTime(0.001, t + p[1] + 0.14);
+      oo.connect(gg); gg.connect(ac.destination); oo.start(t + p[1]); oo.stop(t + p[1] + 0.16);
+    });
+  }
+
+  rng(seed) {
+    let s = (seed * 2654435761) >>> 0;
+    return () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  }
+
+  wear(seed) {
+    this._wc = this._wc || {};
+    if (this._wc[seed]) return this._wc[seed];
+    const rnd = this.rng(seed * 911 + 7);
+    const R = (a, b) => a + (b - a) * rnd();
+    let g = "";
+    for (let i = 0; i < 6; i++) {
+      const cx = R(20, 440), cy = R(20, 376), rx = R(16, 50), ry = R(9, 26), rot = R(0, 180);
+      const col = rnd() > 0.5 ? "255,255,255" : "0,0,0", op = R(0.03, 0.08).toFixed(3);
+      g += "<ellipse cx='" + cx.toFixed(1) + "' cy='" + cy.toFixed(1) + "' rx='" + rx.toFixed(1) + "' ry='" + ry.toFixed(1) + "' transform='rotate(" + rot.toFixed(1) + " " + cx.toFixed(1) + " " + cy.toFixed(1) + ")' fill='rgba(" + col + "," + op + ")' filter='url(#bl)'/>";
+    }
+    for (let i = 0; i < 22; i++) {
+      const x1 = R(10, 450), y1 = R(10, 386), len = R(12, 76);
+      const ang = rnd() > 0.5 ? R(-0.5, 0.5) : Math.PI / 2 + R(-0.5, 0.5);
+      const x2 = x1 + Math.cos(ang) * len, y2 = y1 + Math.sin(ang) * len;
+      const col = rnd() > 0.45 ? "255,255,255" : "0,0,0";
+      const op = R(0.22, 0.6).toFixed(2), w = R(0.4, 0.9).toFixed(2);
+      g += "<line x1='" + x1.toFixed(1) + "' y1='" + y1.toFixed(1) + "' x2='" + x2.toFixed(1) + "' y2='" + y2.toFixed(1) + "' stroke='rgba(" + col + "," + op + ")' stroke-width='" + w + "'/>";
+    }
+    for (let i = 0; i < 16; i++) {
+      const cx = R(8, 452), cy = R(8, 388), r = R(0.4, 1.4);
+      const col = rnd() > 0.5 ? "255,255,255" : "0,0,0", op = R(0.18, 0.5).toFixed(2);
+      g += "<circle cx='" + cx.toFixed(1) + "' cy='" + cy.toFixed(1) + "' r='" + r.toFixed(2) + "' fill='rgba(" + col + "," + op + ")'/>";
+    }
+    const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='460' height='396'><defs><filter id='bl'><feGaussianBlur stdDeviation='3'/></filter></defs><g stroke-linecap='round'>" + g + "</g></svg>";
+    const url = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+    this._wc[seed] = url;
+    return url;
+  }
+
+  scene(type, seed) {
+    const r = this.rng(seed);
+    const D = (style, kids) => React.createElement("div", { style }, ...(kids || []));
+    const abs = { position: "absolute" };
+    const full = { position: "absolute", left: 0, top: 0, right: 0, bottom: 0 };
+    let L = [];
+    const pick = (arr) => arr[Math.floor(r() * arr.length)];
+
+    if (type === 0) {
+      const sk = pick([["#2a1a4f","#7a2b86","#e0467f"],["#0e2350","#2f5fb0","#ff7a4d"],["#241048","#5a2bb0","#ff4d8d"]]);
+      L = [
+        D({ ...full, background:`linear-gradient(180deg, ${sk[0]} 0%, ${sk[1]} 56%, ${sk[2]} 100%)` }),
+        D({ ...abs, left:"50%", top:"22%", width:"48%", height:"48%", transform:"translate(-50%,-26%)", borderRadius:"50%", background:"radial-gradient(circle at 50% 42%, #ffe26b, #ff6a5f 62%, transparent 73%)" }),
+        D({ ...abs, left:"50%", top:"22%", width:"48%", height:"48%", transform:"translate(-50%,-26%)", borderRadius:"50%", background:"repeating-linear-gradient(180deg, transparent 0 6px, rgba(20,5,30,0.9) 6px 9px)" }),
+        D({ ...abs, left:"-22%", right:"-22%", bottom:0, height:"46%", transform:"perspective(90px) rotateX(62deg)", transformOrigin:"center bottom", background:"linear-gradient(180deg, rgba(255,90,170,0), rgba(120,40,160,0.25)), repeating-linear-gradient(90deg, rgba(120,255,220,0.5) 0 1px, transparent 1px 15px), repeating-linear-gradient(0deg, rgba(120,255,220,0.5) 0 1px, transparent 1px 13px)" })
+      ];
+    } else if (type === 1) {
+      const pl = pick([["#9bd0ff","#3a78c8","#173a72"],["#ffd0a0","#d8743a","#7a3416"],["#c9b6ff","#7a52c8","#3a2272"]]);
+      const stars = [];
+      for (let i = 0; i < 16; i++) stars.push(D({ ...abs, left:(r()*96+2).toFixed(1)+"%", top:(r()*88+2).toFixed(1)+"%", width:"1.6px", height:"1.6px", borderRadius:"50%", background:"#fff", opacity:(0.4+r()*0.6).toFixed(2) }));
+      L = [
+        D({ ...full, background:"radial-gradient(circle at 60% 26%, #1c2747 0%, #0a0e1c 70%)" }),
+        ...stars,
+        D({ ...abs, right:"14%", top:"16%", width:"42%", height:"42%", borderRadius:"50%", background:`radial-gradient(circle at 36% 32%, ${pl[0]}, ${pl[1]} 56%, ${pl[2]} 100%)`, boxShadow:"inset -6px -6px 12px rgba(0,0,0,0.5)" }),
+        D({ ...abs, right:"1%", top:"28%", width:"64%", height:"22%", border:"2px solid rgba(180,200,255,0.4)", borderRadius:"50%", transform:"rotate(-18deg)" })
+      ];
+    } else if (type === 2) {
+      L = [
+        D({ ...full, background:"#3a2a28" }),
+        D({ ...full, background:"repeating-linear-gradient(0deg, rgba(0,0,0,0.5) 0 2px, transparent 2px 20px), repeating-linear-gradient(90deg, rgba(0,0,0,0.5) 0 2px, transparent 2px 28px)", opacity:0.9 }),
+        D({ ...abs, left:"50%", bottom:0, width:"36%", height:"60%", transform:"translateX(-50%)", background:"#0a0608", borderRadius:"50% 50% 0 0" }),
+        D({ ...abs, left:"15%", top:"24%", width:"36%", height:"42%", background:"radial-gradient(circle, rgba(255,150,40,0.7), transparent 65%)" }),
+        D({ ...abs, right:"14%", top:"30%", width:"32%", height:"36%", background:"radial-gradient(circle, rgba(255,120,30,0.5), transparent 65%)" })
+      ];
+    } else if (type === 3) {
+      L = [
+        D({ ...full, background:"linear-gradient(180deg,#1a2b5c,#3f6bbf 55%,#bcd6ef 70%,#2b2f3a 70%)" }),
+        D({ ...abs, left:"50%", top:"30%", width:"30%", height:"30%", transform:"translate(-50%,-50%)", borderRadius:"50%", background:"radial-gradient(circle,#fff1b0,#ffb24d 70%, transparent)" }),
+        D({ ...abs, left:"50%", bottom:0, width:"82%", height:"40%", transform:"translateX(-50%)", clipPath:"polygon(38% 0, 62% 0, 100% 100%, 0 100%)", background:"linear-gradient(180deg,#3a3f48,#23272e)" }),
+        D({ ...abs, left:"50%", bottom:0, width:"4%", height:"40%", transform:"translateX(-50%)", background:"repeating-linear-gradient(180deg, #f4e27a 0 8px, transparent 8px 18px)" })
+      ];
+    } else if (type === 4) {
+      L = [
+        D({ ...full, background:"linear-gradient(180deg,#6cc6e8,#bfe9f5 70%,#4a8f3a 70%)" }),
+        D({ ...abs, left:"14%", top:"18%", width:"26%", height:"11%", background:"#fff", borderRadius:"20px", opacity:0.85 }),
+        D({ ...abs, left:0, right:0, bottom:0, height:"24%", background:"repeating-linear-gradient(90deg, rgba(0,0,0,0.25) 0 1px, transparent 1px 16px), #7a4a22" }),
+        D({ ...abs, left:"30%", top:"42%", width:"12%", height:"12%", borderRadius:"50%", background:"radial-gradient(circle,#ffe98a,#e0a52a)" }),
+        D({ ...abs, right:"24%", bottom:"24%", width:"14%", height:"18%", background:"#d83a3a", borderRadius:"3px" })
+      ];
+    } else if (type === 5) {
+      L = [
+        D({ ...full, background:"linear-gradient(180deg,#2a2350,#6b4a7a 60%,#caa07a)" }),
+        D({ ...abs, right:"18%", top:"16%", width:"22%", height:"22%", borderRadius:"50%", background:"radial-gradient(circle at 40% 38%, #fdf6e3, #d9c9a0)" }),
+        D({ ...abs, left:"-10%", bottom:0, width:"70%", height:"40%", borderRadius:"50% 50% 0 0", background:"#3a4d3a" }),
+        D({ ...abs, right:"-10%", bottom:0, width:"80%", height:"34%", borderRadius:"50% 50% 0 0", background:"#2c3b2e" }),
+        D({ ...abs, left:"20%", bottom:0, width:"60%", height:"26%", borderRadius:"50% 50% 0 0", background:"#202b22" })
+      ];
+    } else if (type === 6) {
+      const bc = pick(["#7a2bd0","#c8324a","#2b9f7a","#d06a1f"]);
+      const gl = pick(["#7bf0ff","#ffe14d","#ff6ad0"]);
+      L = [
+        D({ ...full, background:"radial-gradient(circle at 50% 40%, #2a0e22, #0a0410 70%)" }),
+        D({ ...abs, left:"50%", top:"54%", width:"72%", height:"72%", transform:"translate(-50%,-50%)", borderRadius:"46% 46% 40% 40%", background:bc }),
+        D({ ...abs, left:"29%", top:"40%", width:"15%", height:"17%", borderRadius:"50%", background:"#fff", boxShadow:`0 0 8px ${gl}` }),
+        D({ ...abs, right:"29%", top:"40%", width:"15%", height:"17%", borderRadius:"50%", background:"#fff", boxShadow:`0 0 8px ${gl}` }),
+        D({ ...abs, left:"33%", top:"46%", width:"6%", height:"8%", borderRadius:"50%", background:"#111" }),
+        D({ ...abs, right:"33%", top:"46%", width:"6%", height:"8%", borderRadius:"50%", background:"#111" }),
+        D({ ...abs, left:"50%", top:"67%", width:"34%", height:"8%", transform:"translateX(-50%)", background:"#1a0a14", borderRadius:"0 0 8px 8px" })
+      ];
+    } else {
+      L = [
+        D({ ...full, background:"repeating-linear-gradient(90deg, #ff3b6b 0 12.5%, #ff9f1c 0 25%, #ffe600 0 37.5%, #2ecc71 0 50%, #2aa9ff 0 62.5%, #6a5cff 0 75%, #c64bff 0 87.5%, #ff3b6b 0 100%)" }),
+        D({ ...abs, left:0, right:0, top:"40%", height:"6%", background:"rgba(0,0,0,0.6)" }),
+        D({ ...abs, left:0, right:0, top:"62%", height:"3%", background:"rgba(255,255,255,0.5)" })
+      ];
+    }
+    return D({ ...full }, L);
+  }
+
+  ensure(seed) {
+    this._cache = this._cache || {};
+    if (!this._cache[seed]) this._cache[seed] = this.make(seed);
+    return this._cache[seed];
+  }
+
+  make(seed) {
+    const r = this.rng(seed * 7 + 13);
+    const N = 25;
+    const cx = 575, cy = 410, RX = 548, RY = 384;
+    const raw = [];
+    for (let i = 0; i < N; i++) {
+      const ang = i * 2.399963229728653;
+      const rad = Math.sqrt((i + 0.62) / N);
+      let px = cx + Math.cos(ang) * rad * RX + (r() - 0.5) * 34;
+      let py = cy + Math.sin(ang) * rad * RY + (r() - 0.5) * 28;
+      const w = Math.round(140 + r() * 80);
+      const h = Math.round(w * 0.861);
+      const rot = ((r() - 0.5) * 8).toFixed(2);
+      const pal = this.PALS[i % this.PALS.length];
+      const sceneType = Math.floor(r() * 8);
+      const sceneSeed = seed * 131 + i * 17 + 5;
+      const sceneEl = this.scene(sceneType, sceneSeed);
+      raw.push({
+        id: i, title: this.NAMES[i], year: this.YEARS[i % this.YEARS.length],
+        x: Math.round(px - w / 2), y: Math.round(py - h / 2), w, h,
+        baseScale: (w / 460).toFixed(4), ringRadius: (14 * (w / 460) + 5).toFixed(1), rot, pal, sceneEl, sceneType, sceneSeed, wearUrl: this.wear((i % 6) + 1),
+        drift: "drift" + (i % 6), dur: (9 + (i % 5) * 1.6).toFixed(1), delay: (-(i * 0.73)).toFixed(2)
+      });
+    }
+    const order = raw.slice().sort((a, b) => a.y - b.y);
+    order.forEach((c, idx) => { c.baseZ = idx + 1; });
+    const titles = raw.map(c => ({ id: c.id, title: c.title })).sort((a, b) => a.title.localeCompare(b.title));
+    return { cards: raw, titles };
+  }
+
+  renderVals() {
+    const base = this.ensure(this.state.seed);
+    const active = this.state.active;
+    const setCard = (id) => () => this.setState({ active: { type: "card", id } });
+    const onLeave = () => this.setState({ active: null });
+
+    const cards = base.cards.map(c => {
+      const hot = !!active && ((active.type === "card" && active.id === c.id) || (active.type === "year" && active.value === c.year));
+      const dim = !!active && !hot;
+      return Object.assign({}, c, {
+        filter: hot ? "brightness(1.16) saturate(1.16) contrast(1.05)" : dim ? "brightness(0.26) saturate(0.45)" : "brightness(0.82) saturate(0.9)",
+        scale: hot ? 1.5 : 1,
+        lift: hot ? -12 : 0,
+        z: hot ? 700 : c.baseZ,
+        frameOp: hot ? 1 : 0,
+        onEnter: setCard(c.id),
+        onClick: () => this.onCardClick(c.id)
+      });
+    });
+
+    const years = this.YEARS.map(y => {
+      const a = !!active && active.type === "year" && active.value === y;
+      return { year: y, col: a ? "#f3f1ec" : "#6f6c64", dx: a ? 4 : 0, onEnter: () => this.setState({ active: { type: "year", value: y } }) };
+    });
+
+    const titles = base.titles.map(t => {
+      const a = !!active && active.type === "card" && active.id === t.id;
+      return { id: t.id, title: t.title, col: a ? "#f3f1ec" : "#8a877f", dx: a ? -7 : 0, onEnter: setCard(t.id), onClick: () => this.onCardClick(t.id) };
+    });
+
+    const inserted = this.state.inserted, closing = this.state.closing;
+    const ins = inserted != null ? base.cards.find(c => c.id === inserted) : null;
+    const insScreen = ins ? this.scene(ins.sceneType, ins.sceneSeed + 777) : null;
+    return {
+      cards, years, titles, onLeave,
+      stageScale: this.state.scale,
+      cscale: this.state.cscale,
+      showConsole: inserted != null,
+      ins: ins || {},
+      insScreen,
+      ovAnim: closing ? "ovFadeOut 360ms ease forwards" : "ovFade 300ms ease forwards",
+      consoleAnim: closing ? "consoleUp 420ms cubic-bezier(.5,0,.75,.4) forwards" : "consoleDrop 800ms cubic-bezier(.16,.84,.3,1) forwards",
+      cartAnim: closing ? "none" : "cartDrop 560ms cubic-bezier(.34,1.12,.4,1) 880ms both",
+      screenAnim: closing ? "none" : "screenOn 800ms ease 1380ms both",
+      onClose: this.onClose,
+      stop: this.stop,
+      onRandom: () => this.setState(s => ({ seed: s.seed + 1, active: null })),
+      onNew: () => this.setState({ active: { type: "year", value: 2026 } })
+    };
+  }
+}
+</script>
+</body>
+</html>
