@@ -1,31 +1,51 @@
 <!DOCTYPE html>
-<html>
-<head>
+<html><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="./engine.js"></script>
+
 </head>
 <body>
+<!-- BOOT SCREEN — static HTML, visible before JS runs -->
+<style>
+  @keyframes bootBlink{0%,48%{opacity:1}49%,100%{opacity:0.05}}
+  #boot-cursor{animation:bootBlink .8s steps(1) infinite}
+</style>
+<div id="boot-screen" style="position:fixed;inset:0;z-index:10000;background:#000;display:flex;align-items:center;justify-content:center;">
+  <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,0) 0 2px,rgba(0,0,0,0.28) 3px 4px);pointer-events:none;"></div>
+  <div style="position:absolute;inset:0;background:radial-gradient(55% 45% at 50% 50%,rgba(60,255,130,0.05),transparent 72%);pointer-events:none;"></div>
+  <div style="display:flex;align-items:center;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:16px;letter-spacing:0.13em;color:#9bffbe;text-shadow:0 0 18px rgba(100,255,160,0.8),0 0 5px rgba(100,255,160,0.5);">
+    <span id="boot-typed"></span><span id="boot-cursor" style="display:inline-block;width:9px;height:16px;background:#9bffbe;margin-left:1px;vertical-align:middle;box-shadow:0 0 10px rgba(100,255,160,0.95);"></span>
+  </div>
+  <div style="position:absolute;left:28px;top:24px;width:18px;height:18px;border-left:1px solid rgba(155,255,190,0.25);border-top:1px solid rgba(155,255,190,0.25);"></div>
+  <div style="position:absolute;right:28px;top:24px;width:18px;height:18px;border-right:1px solid rgba(155,255,190,0.25);border-top:1px solid rgba(155,255,190,0.25);"></div>
+  <div style="position:absolute;left:28px;bottom:24px;width:18px;height:18px;border-left:1px solid rgba(155,255,190,0.25);border-bottom:1px solid rgba(155,255,190,0.25);"></div>
+  <div style="position:absolute;right:28px;bottom:24px;width:18px;height:18px;border-right:1px solid rgba(155,255,190,0.25);border-bottom:1px solid rgba(155,255,190,0.25);"></div>
+</div>
 <x-dc>
 <helmet>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   html,body{margin:0;padding:0;background:#0a0a0c;}
   *{box-sizing:border-box;}
-  @keyframes drift0{0%,100%{transform:translate(0,0)}50%{transform:translate(7px,-9px)}}
-  @keyframes drift1{0%,100%{transform:translate(0,0)}50%{transform:translate(-8px,-6px)}}
-  @keyframes drift2{0%,100%{transform:translate(0,0)}50%{transform:translate(5px,10px)}}
-  @keyframes drift3{0%,100%{transform:translate(0,0)}50%{transform:translate(-6px,8px)}}
-  @keyframes drift4{0%,100%{transform:translate(0,0)}50%{transform:translate(9px,4px)}}
-  @keyframes drift5{0%,100%{transform:translate(0,0)}50%{transform:translate(-5px,-10px)}}
+  @keyframes drift0{0%{transform:translate(0,0) scale(1)}25%{transform:translate(10px,-13px) scale(1.015)}50%{transform:translate(14px,-6px) scale(1.022)}75%{transform:translate(5px,-16px) scale(1.012)}100%{transform:translate(0,0) scale(1)}}
+  @keyframes drift1{0%{transform:translate(0,0) scale(1)}25%{transform:translate(-12px,-8px) scale(1.018)}50%{transform:translate(-16px,4px) scale(1.025)}75%{transform:translate(-7px,14px) scale(1.01)}100%{transform:translate(0,0) scale(1)}}
+  @keyframes drift2{0%{transform:translate(0,0) scale(1)}25%{transform:translate(8px,12px) scale(1.02)}50%{transform:translate(15px,7px) scale(1.028)}75%{transform:translate(11px,-9px) scale(1.014)}100%{transform:translate(0,0) scale(1)}}
+  @keyframes drift3{0%{transform:translate(0,0) scale(1)}25%{transform:translate(-9px,11px) scale(1.016)}50%{transform:translate(-14px,-5px) scale(1.022)}75%{transform:translate(-4px,-14px) scale(1.01)}100%{transform:translate(0,0) scale(1)}}
+  @keyframes drift4{0%{transform:translate(0,0) scale(1)}25%{transform:translate(13px,6px) scale(1.019)}50%{transform:translate(7px,15px) scale(1.026)}75%{transform:translate(-6px,10px) scale(1.013)}100%{transform:translate(0,0) scale(1)}}
+  @keyframes drift5{0%{transform:translate(0,0) scale(1)}25%{transform:translate(-11px,-10px) scale(1.017)}50%{transform:translate(-5px,13px) scale(1.024)}75%{transform:translate(9px,8px) scale(1.015)}100%{transform:translate(0,0) scale(1)}}
   @keyframes ovFade{from{opacity:0}to{opacity:1}}
   @keyframes ovFadeOut{from{opacity:1}to{opacity:0}}
   @keyframes consoleDrop{0%{transform:translateY(-128%);opacity:0}55%{opacity:1}100%{transform:translateY(0);opacity:1}}
   @keyframes consoleUp{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-128%);opacity:0}}
-  @keyframes cartDrop{0%{transform:translateY(-122px);opacity:0}24%{opacity:1}80%{transform:translateY(7px)}100%{transform:translateY(0);opacity:1}}
+  @keyframes cartDrop{0%{transform:translateY(-188px) scale(0.98);opacity:0}18%{opacity:1}72%{transform:translateY(14px) scale(1)}88%{transform:translateY(-4px) scale(1)}100%{transform:translateY(0) scale(1);opacity:1}}
   @keyframes screenOn{0%{opacity:0;filter:brightness(0) saturate(0.4)}35%{opacity:1;filter:brightness(1.7) saturate(1.1)}100%{opacity:1;filter:brightness(1) saturate(1)}}
+  @keyframes blink{0%,48%{opacity:1}49%,100%{opacity:0.05}}
+  @keyframes loadFadeOut{0%{opacity:1}100%{opacity:0}}
+  @keyframes loadFadeIn{0%{opacity:0}100%{opacity:1}}
+  @keyframes gridroll{0%{background-position:0 0}100%{background-position:0 32px}}
 </style>
 </helmet>
 <div style="position:fixed; inset:0; overflow:hidden; background:radial-gradient(125% 95% at 50% 16%, #1a1a1f 0%, #0d0d10 56%, #060608 100%); font-family:'Space Grotesk', ui-sans-serif, system-ui, sans-serif; color:#e8e6e1; user-select:none">
@@ -37,11 +57,11 @@
   <div style="position:absolute; left:50%; top:50%; width:1600px; height:1000px; transform:translate(-50%,-50%) scale({{ stageScale }}); transform-origin:center center">
 
   <!-- ===================== CLUSTER ===================== -->
-  <div style="position:absolute; left:50%; top:49.5%; width:1150px; height:840px; transform:translate(-50%,-50%)">
+  <div style="position:absolute; left:50%; top:49.5%; width:1300px; height:920px; transform:translate(-50%,-50%)">
     <sc-for list="{{ cards }}" as="c" hint-placeholder-count="25">
-      <div style="position:absolute; left:{{ c.x }}px; top:{{ c.y }}px; width:{{ c.w }}px; height:{{ c.h }}px; z-index:{{ c.z }}; animation:{{ c.drift }} {{ c.dur }}s ease-in-out infinite; animation-delay:{{ c.delay }}s">
+      <div style="position:absolute; left:{{ c.x }}px; top:{{ c.y }}px; width:{{ c.w }}px; height:{{ c.h }}px; z-index:{{ c.z }}; animation:{{ c.drift }} {{ c.dur }}s ease-in-out infinite; animation-delay:{{ c.delay }}s; will-change:transform; animation-play-state:{{ c.driftPlay }}">
 
-        <div onMouseEnter="{{ c.onEnter }}" onMouseLeave="{{ onLeave }}" onClick="{{ c.onClick }}" style="position:absolute; inset:0; cursor:pointer; transform-origin:center center; transform:rotate({{ c.rot }}deg) translateY({{ c.lift }}px) scale({{ c.scale }}); filter:{{ c.filter }}; transition:transform .42s cubic-bezier(.2,.85,.25,1), filter .35s ease; will-change:transform">
+        <div onmouseenter="{{ c.onEnter }}" onmouseleave="{{ onLeave }}" onclick="{{ c.onClick }}" style="position:absolute; inset:0; cursor:pointer; transform-origin:center center; transform:rotate({{ c.rot }}deg) translateY({{ c.lift }}px) scale({{ c.scale }}); filter:{{ c.filter }}; opacity:{{ c.opacity }}; transition:transform .3s cubic-bezier(.2,.85,.25,1), opacity .22s ease, filter .22s ease; will-change:transform, opacity">
 
           <!-- highlight ring / glow -->
           <div style="position:absolute; inset:-5px; border-radius:{{ c.ringRadius }}px; box-shadow:0 0 0 1.5px rgba(196,255,216,0.6), 0 0 30px 7px rgba(86,255,160,0.3), 0 38px 66px rgba(0,0,0,0.62); opacity:{{ c.frameOp }}; transition:opacity .35s ease; pointer-events:none"></div>
@@ -134,22 +154,22 @@
   </div>
 
   <!-- ===================== LEFT: YEARS ===================== -->
-  <div onMouseLeave="{{ onLeave }}" style="position:absolute; left:42px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:8px; z-index:900">
+  <div onmouseleave="{{ onLeave }}" style="position:absolute; left:42px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:8px; z-index:900">
     <sc-for list="{{ years }}" as="y" hint-placeholder-count="18">
-      <div onMouseEnter="{{ y.onEnter }}" style="font-family:ui-monospace, 'SF Mono', Menlo, monospace; font-size:14px; letter-spacing:0.04em; color:{{ y.col }}; cursor:pointer; transition:color .2s ease, transform .2s ease; transform:translateX({{ y.dx }}px)">{{ y.year }}</div>
+      <div onmouseenter="{{ y.onEnter }}" style="font-family:ui-monospace, 'SF Mono', Menlo, monospace; font-size:14px; letter-spacing:0.04em; color:{{ y.col }}; cursor:pointer; transition:color .2s ease, transform .2s ease; transform:translateX({{ y.dx }}px)">{{ y.year }}</div>
     </sc-for>
   </div>
 
   <!-- ===================== RIGHT: TITLES ===================== -->
-  <div onMouseLeave="{{ onLeave }}" style="position:absolute; right:42px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; align-items:flex-end; gap:3px; z-index:900">
-    <div onClick="{{ onRandom }}" style="font-size:14px; font-weight:700; color:#f3f1ec; cursor:pointer; margin-bottom:4px; letter-spacing:0.02em">Random</div>
+  <div onmouseleave="{{ onLeave }}" style="position:absolute; right:42px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; align-items:flex-end; gap:3px; z-index:900">
+    <div onclick="{{ onRandom }}" style="font-size:14px; font-weight:700; color:#f3f1ec; cursor:pointer; margin-bottom:4px; letter-spacing:0.02em">Random</div>
     <sc-for list="{{ titles }}" as="t" hint-placeholder-count="25">
-      <div onMouseEnter="{{ t.onEnter }}" onClick="{{ t.onClick }}" style="font-size:13px; line-height:1.32; white-space:nowrap; color:{{ t.col }}; cursor:pointer; text-align:right; transition:color .2s ease, transform .2s ease; transform:translateX({{ t.dx }}px)">{{ t.title }}</div>
+      <div onmouseenter="{{ t.onEnter }}" onclick="{{ t.onClick }}" style="font-size:13px; line-height:1.32; white-space:nowrap; color:{{ t.col }}; cursor:pointer; text-align:right; transition:color .2s ease, transform .2s ease; transform:translateX({{ t.dx }}px)">{{ t.title }}</div>
     </sc-for>
   </div>
 
   <!-- ===================== TOP-LEFT PILL ===================== -->
-  <div onMouseEnter="{{ onNew }}" onMouseLeave="{{ onLeave }}" style="position:absolute; left:32px; top:28px; padding:9px 17px; border-radius:20px; background:rgba(18,20,24,0.55); border:1px solid rgba(255,255,255,0.13); color:#d6d3cb; font-size:13px; font-weight:500; cursor:pointer; backdrop-filter:blur(6px); z-index:950">New releases</div>
+  <div onmouseenter="{{ onNew }}" onmouseleave="{{ onLeave }}" style="position:absolute; left:32px; top:28px; padding:9px 17px; border-radius:20px; background:rgba(18,20,24,0.55); border:1px solid rgba(255,255,255,0.13); color:#d6d3cb; font-size:13px; font-weight:500; cursor:pointer; backdrop-filter:blur(6px); z-index:950">New releases</div>
 
   <!-- ===================== TOP-RIGHT TITLE BLOCK ===================== -->
   <div style="position:absolute; right:34px; top:24px; text-align:right; z-index:950">
@@ -178,9 +198,9 @@
 
   <!-- ===================== INSERT-CARTRIDGE OVERLAY ===================== -->
   <sc-if value="{{ showConsole }}" hint-placeholder-val="{{ false }}">
-    <div onClick="{{ onClose }}" style="position:fixed; inset:0; z-index:5000; display:flex; align-items:center; justify-content:center; background:rgba(4,5,7,0.8); backdrop-filter:blur(8px); animation:{{ ovAnim }}">
+    <div onclick="{{ onClose }}" onmousemove="{{ onConsoleMove }}" onmouseleave="{{ onDpadLeave }}" style="position:fixed; inset:0; z-index:5000; display:flex; align-items:center; justify-content:center; background:rgba(4,5,7,0.8); backdrop-filter:blur(8px); animation:{{ ovAnim }}">
 
-      <div onClick="{{ stop }}" style="position:relative; width:760px; height:1010px; transform:scale({{ cscale }}); transform-origin:center center; cursor:default">
+      <div onclick="{{ stop }}" style="position:relative; width:760px; height:1010px; transform:scale({{ cscale }}); transform-origin:center center; cursor:default">
 
         <!-- whole console drops in -->
         <div style="position:absolute; inset:0; animation:{{ consoleAnim }}">
@@ -203,11 +223,25 @@
                   <!-- CRT GLASS -->
                   <div style="position:absolute; inset:14px; border-radius:12px; overflow:hidden; background:radial-gradient(130% 110% at 50% 42%, #0d1813 0%, #07110c 55%, #030705 100%); box-shadow:inset 0 0 46px rgba(0,0,0,0.92), inset 0 9px 20px rgba(0,0,0,0.95), inset 0 0 0 2px rgba(0,0,0,0.9)">
                     <!-- game art powers on -->
-                    <div style="position:absolute; inset:0; animation:{{ screenAnim }}">
-                      <div style="position:absolute; inset:0">{{ insScreen }}</div>
-                      <div style="position:absolute; inset:0; background:radial-gradient(120% 100% at 50% 42%, rgba(70,255,150,0.12), transparent 60%); mix-blend-mode:screen"></div>
-                      <div style="position:absolute; left:22px; bottom:18px; font-family:ui-monospace, Menlo, monospace; font-size:23px; color:#9bffbe; text-shadow:0 0 8px rgba(120,255,170,0.85)">&#9654; {{ ins.title }}</div>
+                    <div style="position:absolute; inset:0; opacity:{{ screenOpacity }}; filter:{{ screenFilter }}; transition:{{ screenTransition }}">
+                      <!-- deep green CRT base -->
+                      <div style="position:absolute; inset:0; background:radial-gradient(125% 95% at 50% 47%, #08331b 0%, #04190d 56%, #020a05 100%)"></div>
+                      <!-- horizon glow sun -->
+                      <div style="position:absolute; left:50%; top:47%; width:260px; height:120px; transform:translate(-50%,-86%); border-radius:50%; background:radial-gradient(ellipse at 50% 70%, rgba(150,255,200,0.5), rgba(80,235,160,0.14) 55%, transparent 72%)"></div>
+                      <!-- retro green floor grid (the "table") -->
+                      <div style="position:absolute; left:-48%; right:-48%; bottom:-6%; height:58%; transform:perspective(300px) rotateX(62deg); transform-origin:center top; background:repeating-linear-gradient(90deg, transparent 0 46px, rgba(112,255,178,0.78) 46px 48px), repeating-linear-gradient(0deg, transparent 0 30px, rgba(112,255,178,0.62) 30px 32px); background-position:0 0; animation:gridroll 1.5s linear infinite; -webkit-mask-image:linear-gradient(180deg, #000 3%, rgba(0,0,0,0.55) 62%, transparent 95%); mask-image:linear-gradient(180deg, #000 3%, rgba(0,0,0,0.55) 62%, transparent 95%)"></div>
+                      <!-- horizon line -->
+                      <div style="position:absolute; left:0; right:0; top:47%; height:2px; background:#9effc8; box-shadow:0 0 20px 5px rgba(120,255,185,0.95)"></div>
+                      <!-- green screen tint -->
+                      <div style="position:absolute; inset:0; background:radial-gradient(120% 100% at 50% 42%, rgba(70,255,150,0.1), transparent 62%); mix-blend-mode:screen"></div>
+                      <!-- title -->
+                      <div style="position:absolute; left:0; right:0; top:11%; text-align:center; font-family:'Helvetica Neue',Arial,sans-serif; font-weight:800; font-size:33px; letter-spacing:4px; color:#aeffcf; text-shadow:0 0 16px rgba(115,255,185,0.9), 0 2px 0 rgba(0,55,28,0.6)">{{ ins.title }}</div>
+                      <!-- press key to start (blinking) -->
+                      <div style="position:absolute; left:0; right:0; bottom:17%; text-align:center; font-family:ui-monospace, Menlo, monospace; font-size:21px; letter-spacing:3px; color:#7dffb0; text-shadow:0 0 12px rgba(115,255,185,0.95); animation:blink 1.05s steps(1) infinite">PRESS KEY TO START</div>
+                      <!-- LOADED -->
                       <div style="position:absolute; right:22px; top:16px; font-family:ui-monospace, Menlo, monospace; font-size:13px; letter-spacing:2px; color:#9bffbe; text-shadow:0 0 6px rgba(120,255,170,0.7)">LOADED</div>
+                      <!-- 1 player -->
+                      <div style="position:absolute; left:22px; bottom:18px; font-family:ui-monospace, Menlo, monospace; font-size:13px; letter-spacing:1px; color:rgba(155,255,190,0.72); text-shadow:0 0 6px rgba(120,255,170,0.5)">▶ 1 PLAYER</div>
                     </div>
                     <!-- scanlines + glass -->
                     <div style="position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.28) 3px, rgba(0,0,0,0.28) 4px); mix-blend-mode:multiply"></div>
@@ -230,23 +264,52 @@
               <div style="position:absolute; left:646px; top:478px; width:15px; height:15px; border-radius:50%; background:radial-gradient(circle at 38% 32%, #5a5a60, #2a2a2e 68%, #141416); box-shadow:inset 0 1px 1px rgba(255,255,255,0.3)"></div>
 
               <!-- CONTROL TRAY -->
-              <div style="position:absolute; left:36px; top:520px; width:648px; height:138px; border-radius:18px; overflow:hidden; background:linear-gradient(168deg,#3e3e42 0%,#262629 46%,#141416 100%); box-shadow:0 16px 30px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.18), inset 0 -4px 12px rgba(0,0,0,0.7)">
+              <div style="position:absolute; left:36px; top:520px; width:648px; height:138px; border-radius:18px; overflow:hidden; background:linear-gradient(168deg,#3e3e42 0%,#262629 46%,#141416 100%); box-shadow:0 20px 36px rgba(0,0,0,0.64), 0 6px 13px rgba(0,0,0,0.5), inset 0 2px 2px rgba(255,255,255,0.2), inset 0 -6px 15px rgba(0,0,0,0.8)">
                 <div style="position:absolute; inset:0; clip-path:polygon(45% 0, 100% 0, 100% 100%, 37% 100%); background:linear-gradient(158deg,#56565c 0%,#3e3e44 56%,#28282c 100%)"></div>
                 <div style="position:absolute; left:289px; top:-8px; width:3px; height:156px; transform:rotate(-19deg); background:linear-gradient(180deg, rgba(255,255,255,0.3), rgba(255,255,255,0.06))"></div>
+                <!-- matte plastic grain -->
+                <div style="position:absolute; inset:0; background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22220%22%20height=%22220%22%3E%3Cfilter%20id=%22n%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.9%22%20numOctaves=%222%22%20stitchTiles=%22stitch%22%2F%3E%3C%2Ffilter%3E%3Crect%20width=%22220%22%20height=%22220%22%20filter=%22url%28%23n%29%22%2F%3E%3C%2Fsvg%3E); background-size:200px; opacity:0.42; mix-blend-mode:overlay; filter:grayscale(1) contrast(1.05); pointer-events:none"></div>
+                <!-- fine molded speckle -->
+                <div style="position:absolute; inset:0; background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22120%22%20height=%22120%22%3E%3Cfilter%20id=%22m%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%221.7%22%20numOctaves=%221%22%20stitchTiles=%22stitch%22%2F%3E%3C%2Ffilter%3E%3Crect%20width=%22120%22%20height=%22120%22%20filter=%22url%28%23m%29%22%2F%3E%3C%2Fsvg%3E); background-size:120px; opacity:0.16; mix-blend-mode:multiply; pointer-events:none"></div>
+                <!-- soft top light -->
+                <div style="position:absolute; inset:0; background:radial-gradient(135% 95% at 30% -22%, rgba(255,255,255,0.12), transparent 52%); pointer-events:none"></div>
+                <!-- inner bevel ring -->
+                <div style="position:absolute; inset:2px; border-radius:16px; box-shadow:inset 0 2px 2px rgba(255,255,255,0.18), inset 0 -6px 13px rgba(0,0,0,0.82), inset 0 0 0 1px rgba(255,255,255,0.05); pointer-events:none"></div>
+                <!-- recessed wells (molded depressions for each control) -->
+                <div style="position:absolute; left:11px; top:6px; width:160px; height:126px; border-radius:23px; background:radial-gradient(125% 120% at 50% 28%, rgba(0,0,0,0.16), rgba(0,0,0,0.44)); box-shadow:inset 0 4px 7px rgba(0,0,0,0.72), inset 0 -2px 2px rgba(255,255,255,0.08), 0 1px 0 rgba(255,255,255,0.09); pointer-events:none"></div>
+                <div style="position:absolute; left:281px; top:20px; width:100px; height:100px; border-radius:50%; background:radial-gradient(circle at 50% 34%, rgba(0,0,0,0.14), rgba(0,0,0,0.46)); box-shadow:inset 0 4px 8px rgba(0,0,0,0.74), 0 1px 0 rgba(255,255,255,0.09); pointer-events:none"></div>
+                <div style="position:absolute; left:427px; top:33px; width:66px; height:66px; border-radius:50%; background:radial-gradient(circle at 50% 34%, rgba(0,0,0,0.1), rgba(0,0,0,0.42)); box-shadow:inset 0 4px 7px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.08); pointer-events:none"></div>
+                <div style="position:absolute; left:515px; top:33px; width:66px; height:66px; border-radius:50%; background:radial-gradient(circle at 50% 34%, rgba(0,0,0,0.1), rgba(0,0,0,0.42)); box-shadow:inset 0 4px 7px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.08); pointer-events:none"></div>
 
                 <!-- D-PAD -->
-                <div style="position:absolute; left:20px; top:14px; width:140px; height:110px; border-radius:18px; background:linear-gradient(160deg,#34343a,#1d1d20 60%,#121214); box-shadow:0 4px 8px rgba(0,0,0,0.55), inset 0 2px 2px rgba(255,255,255,0.16), inset 0 -3px 6px rgba(0,0,0,0.75)">
-                  <div style="position:absolute; left:24px; top:9px; width:92px; height:92px">
-                    <div style="position:absolute; left:31px; top:0; width:30px; height:92px; border-radius:7px; background:linear-gradient(180deg,#43434a 0%,#26262a 48%,#0e0e10 100%); box-shadow:inset 0 2px 2px rgba(255,255,255,0.24), inset 0 -3px 4px rgba(0,0,0,0.75)"></div>
-                    <div style="position:absolute; left:0; top:31px; width:92px; height:30px; border-radius:7px; background:linear-gradient(90deg,#3b3b42 0%,#26262a 50%,#141416 100%); box-shadow:inset 0 2px 2px rgba(255,255,255,0.18), inset 0 -3px 4px rgba(0,0,0,0.75)"></div>
-                    <div style="position:absolute; left:30px; top:30px; width:32px; height:32px; border-radius:50%; background:radial-gradient(circle at 42% 36%, #38383e, #0a0a0c 78%); box-shadow:inset 0 2px 3px rgba(0,0,0,0.75)"></div>
+                <div ref="{{ dpadRef }}" style="position:absolute; left:20px; top:14px; width:140px; height:110px; border-radius:18px; background:linear-gradient(160deg,#3a3a40,#1d1d20 58%,#0d0d0f 100%); box-shadow:0 7px 13px rgba(0,0,0,0.62), inset 0 2px 2px rgba(255,255,255,0.2), inset 0 -5px 9px rgba(0,0,0,0.84), inset 0 0 0 1px rgba(255,255,255,0.05); perspective:340px">
+                  <div style="position:absolute; inset:6px; border-radius:14px; box-shadow:inset 0 2px 2px rgba(255,255,255,0.14), inset 0 -3px 6px rgba(0,0,0,0.72); pointer-events:none"></div>
+                  <div style="position:absolute; left:24px; top:9px; width:92px; height:92px; transform:{{ dpadTransform }}; transition:transform .13s ease-out">
+                    <!-- vertical bar -->
+                    <div style="position:absolute; left:31px; top:0; width:30px; height:92px; border-radius:8px; background:linear-gradient(180deg,#47474e 0%,#27272b 48%,#0d0d0f 100%); box-shadow:inset 0 3px 2px rgba(255,255,255,0.3), inset 0 -4px 6px rgba(0,0,0,0.82), 0 2px 5px rgba(0,0,0,0.55)"></div>
+                    <!-- horizontal bar -->
+                    <div style="position:absolute; left:0; top:31px; width:92px; height:30px; border-radius:8px; background:linear-gradient(90deg,#3f3f46 0%,#27272b 50%,#131315 100%); box-shadow:inset 0 3px 2px rgba(255,255,255,0.22), inset 0 -4px 6px rgba(0,0,0,0.82), 0 2px 5px rgba(0,0,0,0.55)"></div>
+                    <!-- center -->
+                    <div style="position:absolute; left:30px; top:30px; width:32px; height:32px; border-radius:50%; background:radial-gradient(circle at 42% 36%, #3c3c42, #0a0a0c 78%); box-shadow:inset 0 2px 3px rgba(0,0,0,0.82), inset 0 -1px 1px rgba(255,255,255,0.12)"></div>
+                    <!-- direction press glows -->
+                    <div style="position:absolute; left:30px; top:-3px; width:32px; height:28px; border-radius:8px; background:radial-gradient(ellipse at 50% 38%, rgba(150,255,190,0.9), transparent 70%); opacity:{{ dpadUp }}; transition:opacity .12s ease; pointer-events:none"></div>
+                    <div style="position:absolute; left:30px; bottom:-3px; width:32px; height:28px; border-radius:8px; background:radial-gradient(ellipse at 50% 62%, rgba(150,255,190,0.9), transparent 70%); opacity:{{ dpadDown }}; transition:opacity .12s ease; pointer-events:none"></div>
+                    <div style="position:absolute; left:-3px; top:30px; width:28px; height:32px; border-radius:8px; background:radial-gradient(ellipse at 38% 50%, rgba(150,255,190,0.9), transparent 70%); opacity:{{ dpadLeft }}; transition:opacity .12s ease; pointer-events:none"></div>
+                    <div style="position:absolute; right:-3px; top:30px; width:28px; height:32px; border-radius:8px; background:radial-gradient(ellipse at 62% 50%, rgba(150,255,190,0.9), transparent 70%); opacity:{{ dpadRight }}; transition:opacity .12s ease; pointer-events:none"></div>
+                    <!-- arrow glyphs -->
+                    <div style="position:absolute; left:37px; top:11px; width:0; height:0; border-style:solid; border-width:0 9px 12px 9px; border-color:transparent transparent rgba(11,11,13,0.9) transparent; filter:drop-shadow(0 1.5px 0 rgba(255,255,255,0.17))"></div>
+                    <div style="position:absolute; left:37px; top:69px; width:0; height:0; border-style:solid; border-width:12px 9px 0 9px; border-color:rgba(11,11,13,0.9) transparent transparent transparent; filter:drop-shadow(0 -1.5px 0 rgba(255,255,255,0.17))"></div>
+                    <div style="position:absolute; left:11px; top:37px; width:0; height:0; border-style:solid; border-width:9px 12px 9px 0; border-color:transparent rgba(11,11,13,0.9) transparent transparent; filter:drop-shadow(1.5px 0 0 rgba(255,255,255,0.17))"></div>
+                    <div style="position:absolute; left:69px; top:37px; width:0; height:0; border-style:solid; border-width:9px 0 9px 12px; border-color:transparent transparent transparent rgba(11,11,13,0.9); filter:drop-shadow(-1.5px 0 0 rgba(255,255,255,0.17))"></div>
                   </div>
                 </div>
 
                 <!-- RED button -->
                 <div style="position:absolute; left:290px; top:29px; width:82px; height:82px; border-radius:50%; background:radial-gradient(circle at 50% 40%, #46464c, #1c1c20); box-shadow:inset 0 3px 5px rgba(0,0,0,0.7), inset 0 -2px 2px rgba(255,255,255,0.16)"></div>
-                <div style="position:absolute; left:299px; top:38px; width:64px; height:64px; border-radius:50%; background:radial-gradient(circle at 38% 30%, #ff9484, #ee4631 40%, #bd1a0b 72%, #6f0f04); box-shadow:inset 0 3px 4px rgba(255,255,255,0.55), inset 0 -6px 9px rgba(0,0,0,0.45), 0 3px 6px rgba(0,0,0,0.5)">
+                <div style="position:absolute; left:299px; top:38px; width:64px; height:64px; border-radius:50%; cursor:pointer; background:radial-gradient(circle at 38% 30%, #ff9484, #ee4631 40%, #bd1a0b 72%, #6f0f04); box-shadow:inset 0 3px 4px rgba(255,255,255,0.55), inset 0 -6px 9px rgba(0,0,0,0.45), 0 3px 6px rgba(0,0,0,0.5); transition:transform .18s cubic-bezier(.34,1.45,.5,1), box-shadow .18s ease" style-hover="transform:scale(1.12); box-shadow:inset 0 3px 4px rgba(255,255,255,0.6), inset 0 -6px 9px rgba(0,0,0,0.4), 0 4px 10px rgba(0,0,0,0.5), 0 0 24px 6px rgba(255,223,92,0.92)" style-active="transform:scale(0.95); box-shadow:inset 0 4px 7px rgba(0,0,0,0.45), 0 0 32px 10px rgba(255,223,92,1)">
                   <div style="position:absolute; left:16px; top:11px; width:20px; height:13px; border-radius:50%; background:radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.7), transparent 70%); transform:rotate(-18deg)"></div>
+                  <!-- play glyph -->
+                  <div style="position:absolute; left:50%; top:50%; width:0; height:0; transform:translate(-38%,-50%); border-style:solid; border-width:12px 0 12px 19px; border-color:transparent transparent transparent rgba(255,255,255,0.95); filter:drop-shadow(0 1px 1px rgba(0,0,0,0.45))"></div>
                 </div>
                 <div style="position:absolute; left:392px; top:66px; width:8px; height:8px; border-radius:50%; background:#e6f06a; box-shadow:0 0 6px rgba(220,255,90,0.9)"></div>
 
@@ -266,14 +329,33 @@
             </div>
           </div>
 
-          <!-- ===== CARTRIDGE BAY (back wall) ===== -->
-          <div style="position:absolute; left:178px; top:290px; width:404px; height:54px; border-radius:10px 10px 0 0; background:linear-gradient(180deg,#1a1a1d,#0a0a0c); box-shadow:inset 0 6px 12px rgba(0,0,0,0.85), 0 2px 4px rgba(0,0,0,0.5)">
-            <div style="position:absolute; left:24px; right:24px; top:8px; height:18px; border-radius:4px; background:#050506; box-shadow:inset 0 3px 6px rgba(0,0,0,0.95)"></div>
+          <!-- ===== SLOT DECK (molded into console top, behind cartridge) ===== -->
+          <div style="position:absolute; left:138px; top:262px; width:484px; height:72px; border-radius:18px 18px 8px 8px; background:linear-gradient(160deg,#33333a 0%,#212126 44%,#111114 100%); box-shadow:0 12px 24px rgba(0,0,0,0.6), inset 0 2px 2px rgba(255,255,255,0.14), inset 0 -6px 11px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.05)">
+            <!-- crown highlight -->
+            <div style="position:absolute; left:16px; right:16px; top:0; height:2px; border-radius:2px; background:rgba(255,255,255,0.2)"></div>
+            <!-- recessed mouth = circuit-board edge-connector receptacle -->
+            <div style="position:absolute; left:42px; right:42px; top:18px; height:38px; border-radius:8px; overflow:hidden; background:linear-gradient(180deg,#040405 0%,#0a0a0e 60%,#060608 100%); box-shadow:inset 0 7px 13px rgba(0,0,0,0.95), inset 0 2px 4px rgba(0,0,0,0.92)">
+              <!-- dark throat lip -->
+              <div style="position:absolute; left:0; right:0; top:0; height:7px; background:linear-gradient(180deg, rgba(0,0,0,0.92), transparent)"></div>
+              <!-- green PCB connector body -->
+              <div style="position:absolute; left:10px; right:10px; bottom:4px; height:25px; border-radius:3px; background:linear-gradient(180deg,#1a6244 0%,#0d4029 55%,#072a1b 100%); box-shadow:inset 0 2px 3px rgba(0,0,0,0.5), inset 0 -2px 3px rgba(0,0,0,0.7), 0 -2px 5px rgba(0,0,0,0.6)">
+                <!-- gold contact fingers -->
+                <div style="position:absolute; left:9px; right:9px; top:5px; bottom:5px; border-radius:1px; background:repeating-linear-gradient(90deg, #8a6622 0px, #f4e29b 4px, #cda044 9px, #15392a 9px, #15392a 13px)"></div>
+                <!-- contact-tip highlight -->
+                <div style="position:absolute; left:9px; right:9px; top:5px; height:2px; background:rgba(255,246,206,0.75)"></div>
+                <!-- solder row -->
+                <div style="position:absolute; left:9px; right:9px; bottom:4px; height:1.5px; background:repeating-linear-gradient(90deg, rgba(255,235,170,0.5) 0px, rgba(255,235,170,0.5) 4px, transparent 4px, transparent 13px)"></div>
+              </div>
+            </div>
+            <!-- side rails flanking the slot -->
+            <div style="position:absolute; left:20px; top:22px; width:14px; height:30px; border-radius:4px; background:linear-gradient(180deg,#3c3c43,#1c1c20); box-shadow:inset 0 1px 1px rgba(255,255,255,0.18), inset 0 -2px 3px rgba(0,0,0,0.6)"></div>
+            <div style="position:absolute; right:20px; top:22px; width:14px; height:30px; border-radius:4px; background:linear-gradient(180deg,#3c3c43,#1c1c20); box-shadow:inset 0 1px 1px rgba(255,255,255,0.18), inset 0 -2px 3px rgba(0,0,0,0.6)"></div>
           </div>
-          <div style="position:absolute; left:230px; top:304px; width:300px; height:30px; background:radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.6), transparent 70%); filter:blur(6px)"></div>
+          <!-- shadow the cartridge casts down into the mouth -->
+          <div style="position:absolute; left:206px; top:298px; width:348px; height:24px; background:radial-gradient(ellipse at 50% 0%, rgba(0,0,0,0.72), transparent 72%); filter:blur(5px)"></div>
 
           <!-- ===== CARTRIDGE (plugs in) ===== -->
-          <div style="position:absolute; left:190px; top:38px; width:380px; height:300px; animation:{{ cartAnim }}">
+          <div style="position:absolute; left:190px; top:14px; width:380px; height:300px; transform:{{ cartTransform }}; opacity:{{ cartOpacity }}; transition:{{ cartTransition }}; will-change:transform; z-index:2">
             <div style="position:absolute; inset:0; border-radius:16px 16px 4px 4px; overflow:hidden; background:linear-gradient(150deg,{{ ins.pal.bgA }} 0%,{{ ins.pal.bgB }} 46%,{{ ins.pal.bgC }} 100%); box-shadow:inset 0 1px 1px {{ ins.pal.lip }}, inset -3px -4px 10px {{ ins.pal.sh }}, -22px 10px 38px rgba(0,0,0,0.5), 0 6px 14px rgba(0,0,0,0.4)">
               <div style="position:absolute; inset:0; background:radial-gradient(40% 26% at 20% 64%, {{ ins.pal.mLo }}, transparent 60%), radial-gradient(34% 22% at 82% 26%, {{ ins.pal.mHi }}, transparent 55%), radial-gradient(48% 38% at 60% 98%, {{ ins.pal.mLo }}, transparent 66%)"></div>
               <!-- top grip ridges -->
@@ -307,28 +389,33 @@
             </div>
           </div>
 
-          <!-- ===== BAY FRONT LIP (covers seam) ===== -->
-          <div style="position:absolute; left:176px; top:304px; width:408px; height:30px; border-radius:0 0 9px 9px; background:linear-gradient(180deg,#3a3a40 0%,#1e1e22 55%,#101012 100%); box-shadow:0 6px 12px rgba(0,0,0,0.55), inset 0 2px 1px rgba(255,255,255,0.16), inset 0 -3px 5px rgba(0,0,0,0.7)">
-            <div style="position:absolute; left:0; right:0; top:0; height:2px; background:rgba(255,255,255,0.22)"></div>
-            <div style="position:absolute; left:18px; top:11px; width:13px; height:13px; border-radius:50%; background:radial-gradient(circle at 38% 32%, #54545a, #232327 68%, #121214); box-shadow:inset 0 1px 1px rgba(255,255,255,0.25)"></div>
-            <div style="position:absolute; right:18px; top:11px; width:13px; height:13px; border-radius:50%; background:radial-gradient(circle at 38% 32%, #54545a, #232327 68%, #121214); box-shadow:inset 0 1px 1px rgba(255,255,255,0.25)"></div>
+          <!-- ===== DECK FRONT LIP (cartridge bottom tucks behind this -> reads as inserted) ===== -->
+          <div style="position:absolute; left:138px; top:304px; width:484px; height:30px; border-radius:0 0 16px 16px; background:linear-gradient(180deg,#2d2d33 0%,#19191e 52%,#0c0c0f 100%); box-shadow:0 9px 17px rgba(0,0,0,0.6), inset 0 2px 1px rgba(255,255,255,0.15), inset 0 -3px 6px rgba(0,0,0,0.72); z-index:3">
+            <div style="position:absolute; left:0; right:0; top:0; height:2px; background:rgba(255,255,255,0.2)"></div>
+            <!-- molded seam line under the slot -->
+            <div style="position:absolute; left:46px; right:46px; top:7px; height:2px; border-radius:2px; background:rgba(0,0,0,0.55); box-shadow:0 1px 0 rgba(255,255,255,0.07)"></div>
+            <!-- corner screws -->
+            <div style="position:absolute; left:22px; top:8px; width:14px; height:14px; border-radius:50%; background:radial-gradient(circle at 38% 32%, #56565c, #242428 68%, #121214); box-shadow:inset 0 1px 1px rgba(255,255,255,0.25), 0 1px 2px rgba(0,0,0,0.5)"><div style="position:absolute; left:6px; top:2.5px; width:2px; height:9px; background:rgba(0,0,0,0.62)"></div><div style="position:absolute; left:2.5px; top:6px; width:9px; height:2px; background:rgba(0,0,0,0.62)"></div></div>
+            <div style="position:absolute; right:22px; top:8px; width:14px; height:14px; border-radius:50%; background:radial-gradient(circle at 38% 32%, #56565c, #242428 68%, #121214); box-shadow:inset 0 1px 1px rgba(255,255,255,0.25), 0 1px 2px rgba(0,0,0,0.5)"><div style="position:absolute; left:6px; top:2.5px; width:2px; height:9px; background:rgba(0,0,0,0.62)"></div><div style="position:absolute; left:2.5px; top:6px; width:9px; height:2px; background:rgba(0,0,0,0.62)"></div></div>
           </div>
 
         </div>
 
         <!-- close hint -->
-        <div onClick="{{ onClose }}" style="position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); font-family:ui-monospace, Menlo, monospace; font-size:13px; letter-spacing:1px; color:rgba(232,230,225,0.55); cursor:pointer">EJECT · click anywhere or press ESC</div>
+        <div onclick="{{ onClose }}" style="position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); font-family:ui-monospace, Menlo, monospace; font-size:13px; letter-spacing:1px; color:rgba(232,230,225,0.55); cursor:pointer">EJECT · click anywhere or press ESC</div>
       </div>
     </div>
   </sc-if>
 
+
+
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script>
+<script type="text/x-dc" data-dc-script="">
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { active: null, seed: 1, scale: 1, cscale: 1, inserted: null, closing: false };
+    this.state = { active: null, seed: 1, scale: 1, cscale: 1, inserted: null, closing: false, seated: false, dpadX: 0, dpadY: 0, dpadDir: null };
     this.fit = () => {
       const s = Math.min(window.innerWidth / 1600, window.innerHeight / 1000);
       const cs = Math.min((window.innerWidth * 0.94) / 760, (window.innerHeight * 0.92) / 1040);
@@ -337,16 +424,45 @@ class Component extends DCLogic {
     this.onCardClick = (id) => {
       if (this.state.inserted != null) return;
       try { if (!this.ac) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) this.ac = new AC(); } if (this.ac && this.ac.state === "suspended") this.ac.resume(); } catch (e) {}
-      this.setState({ inserted: id, closing: false });
-      clearTimeout(this._snd); this._snd = setTimeout(() => this.playInsert(), 1380);
+      this.setState({ inserted: id, closing: false, seated: false });
+      // drop the cartridge into the bay after the console has landed
+      clearTimeout(this._seat); this._seat = setTimeout(() => { if (this.state.inserted === id) this.setState({ seated: true }); }, 820);
+      clearTimeout(this._snd); this._snd = setTimeout(() => this.playInsert(), 1340);
     };
     this.onClose = () => {
       if (this.state.inserted == null || this.state.closing) return;
-      clearTimeout(this._snd);
-      this.setState({ closing: true });
-      clearTimeout(this._closeT); this._closeT = setTimeout(() => this.setState({ inserted: null, closing: false }), 440);
+      clearTimeout(this._snd); clearTimeout(this._seat);
+      this.setState({ closing: true, seated: false });
+      clearTimeout(this._closeT); this._closeT = setTimeout(() => this.setState({ inserted: null, closing: false, seated: false }), 440);
     };
     this.onKey = (e) => { if (e.key === "Escape") this.onClose(); };
+    this.onDpadMove = (e) => {
+      const r = e.currentTarget.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width - 0.5;
+      const py = (e.clientY - r.top) / r.height - 0.5;
+      const ax = Math.max(-1, Math.min(1, py * 2)) * 11;
+      const ay = Math.max(-1, Math.min(1, -px * 2)) * 11;
+      const dir = Math.abs(px) > Math.abs(py) ? (px > 0 ? "right" : "left") : (py > 0 ? "down" : "up");
+      this.setState({ dpadX: +ax.toFixed(2), dpadY: +ay.toFixed(2), dpadDir: dir });
+    };
+    this.onDpadLeave = () => this.setState({ dpadX: 0, dpadY: 0, dpadDir: null });
+    this.dpadRef = React.createRef();
+    this.onConsoleMove = (e) => {
+      const el = this.dpadRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const dx = e.clientX - (r.left + r.width / 2);
+      const dy = e.clientY - (r.top + r.height / 2);
+      if (Math.hypot(dx, dy) < 6) { this.setState({ dpadX: 0, dpadY: 0, dpadDir: null }); return; }
+      // snap the cursor angle to one of 8 directions (idx 0=E,1=SE,2=S,3=SW,4=W,5=NW,6=N,7=NE)
+      let idx = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
+      if (idx < 0) idx += 8;
+      const dirs = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+      const u = dirs[idx], len = Math.hypot(u[0], u[1]) || 1, M = 12;
+      const ax = (u[1] / len) * M;   // down depress -> +rotateX
+      const ay = -(u[0] / len) * M;  // right depress -> -rotateY
+      this.setState({ dpadX: +ax.toFixed(2), dpadY: +ay.toFixed(2), dpadDir: idx });
+    };
     this.stop = (e) => { if (e) e.stopPropagation(); };
     this.YEARS = [2006,2007,2008,2009,2010,2011,2012,2013,2015,2016,2017,2019,2021,2022,2023,2024,2025,2026];
     this.NAMES = ["NEON DRIFT","CRYPT OF AZEL","STAR HAULER","PIXEL KNIGHT","MEGA RALLY","VOID RUNNER","SLIME KINGDOM","GHOST CIRCUIT","IRON COMET","LASER MONKS","DUNE PILOT","BYTE BRAWL","HEX WITCH","TURBO GECKO","MOON DICE","GLITCH GARDEN","ZEPHYR ACE","ROGUE TOASTER","CANDY VOID","STATIC SAINTS","ORBIT FOX","PUNK FROGS","DELTA DIVERS","NOVA NOMAD","CHROME PONY","GRAVITY JAM","ASH & EMBER","SOLAR SHARK","MAGNET MAZE","BLITZ BAKERY","ECHO VALLEY","KAIJU CAFE","VHS PHANTOM"];
@@ -359,7 +475,35 @@ class Component extends DCLogic {
     this.PALS = [matteBlack, smoke, slate, olive, retroGrey, matteBlack, bone, smoke];
   }
 
-  componentDidMount() { window.addEventListener("resize", this.fit); window.addEventListener("keydown", this.onKey); this.fit(); }
+  componentDidMount() {
+    window.addEventListener("resize", this.fit);
+    window.addEventListener("keydown", this.onKey);
+    this.fit();
+    // Boot screen typing (DOM-direct, shows before React hydrates)
+    const el = document.getElementById("boot-typed");
+    const screen = document.getElementById("boot-screen");
+    if (el && screen) {
+      const msg = "Hang in there, we will starting in...";
+      let ci = 0;
+      const type = () => {
+        if (ci <= msg.length) {
+          el.textContent = msg.slice(0, ci);
+          ci++;
+          setTimeout(type, 36 + Math.random() * 44);
+        } else {
+          Promise.all([
+            document.fonts ? document.fonts.ready : Promise.resolve(),
+            new Promise(function(r){ setTimeout(r, 700); })
+          ]).then(() => {
+            screen.style.transition = "opacity 0.9s ease";
+            screen.style.opacity = "0";
+            setTimeout(function(){ if (screen.parentNode) screen.parentNode.removeChild(screen); }, 950);
+          });
+        }
+      };
+      setTimeout(type, 200);
+    }
+  }
   componentWillUnmount() { window.removeEventListener("resize", this.fit); window.removeEventListener("keydown", this.onKey); clearTimeout(this._snd); clearTimeout(this._closeT); }
 
   playInsert() {
@@ -507,16 +651,62 @@ class Component extends DCLogic {
   make(seed) {
     const r = this.rng(seed * 7 + 13);
     const N = 25;
-    const cx = 575, cy = 410, RX = 548, RY = 384;
+    const cx = 650, cy = 460, RX = 476, RY = 366;
     const raw = [];
+    // 1) seed positions on a golden-angle spiral (store centers for relaxation)
+    const pts = [];
     for (let i = 0; i < N; i++) {
       const ang = i * 2.399963229728653;
       const rad = Math.sqrt((i + 0.62) / N);
-      let px = cx + Math.cos(ang) * rad * RX + (r() - 0.5) * 34;
-      let py = cy + Math.sin(ang) * rad * RY + (r() - 0.5) * 28;
-      const w = Math.round(140 + r() * 80);
+      const px = cx + Math.cos(ang) * rad * RX + (r() - 0.5) * 22;
+      const py = cy + Math.sin(ang) * rad * RY + (r() - 0.5) * 18;
+      const depthT = r();  // 0=far(small), 1=near(large)
+      const w = Math.round(110 + depthT * 100);
       const h = Math.round(w * 0.861);
-      const rot = ((r() - 0.5) * 8).toFixed(2);
+      pts.push({ px, py, w, h });
+    }
+    // 2) relaxation with a NEGATIVE gap -> cards settle into a loose overlapping pile
+    //    (push apart only when they overlap by MORE than -GAP, so a slight stack remains)
+    const GAP = 18;                 // small positive gap -> cards have breathing room
+    const BX = 1300, BY = 920;      // cluster bounds
+    for (let iter = 0; iter < 260; iter++) {
+      let moved = false;
+      for (let a = 0; a < N; a++) {
+        for (let b = a + 1; b < N; b++) {
+          const A = pts[a], B = pts[b];
+          let dx = B.px - A.px, dy = B.py - A.py;
+          const ox = (A.w + B.w) / 2 + GAP - Math.abs(dx); // x-overlap incl. gap
+          const oy = (A.h + B.h) / 2 + GAP - Math.abs(dy); // y-overlap incl. gap
+          if (ox > 0 && oy > 0) {
+            moved = true;
+            if (dx === 0 && dy === 0) { dx = (r() - 0.5); dy = (r() - 0.5); }
+            // separate along the axis of least penetration, split between the pair
+            if (ox < oy) {
+              const push = (ox / 2) * (dx < 0 ? -1 : 1);
+              A.px -= push; B.px += push;
+            } else {
+              const push = (oy / 2) * (dy < 0 ? -1 : 1);
+              A.py -= push; B.py += push;
+            }
+          }
+        }
+      }
+      // very gentle pull back toward center so the cluster stays cohesive
+      for (let a = 0; a < N; a++) {
+        pts[a].px += (cx - pts[a].px) * 0.004;
+        pts[a].py += (cy - pts[a].py) * 0.004;
+      }
+      if (!moved) break;
+    }
+    // 3) clamp inside bounds, then build card objects
+    for (let i = 0; i < N; i++) {
+      const p = pts[i];
+      p.px = Math.max(p.w / 2 + 4, Math.min(BX - p.w / 2 - 4, p.px));
+      p.py = Math.max(p.h / 2 + 4, Math.min(BY - p.h / 2 - 4, p.py));
+    }
+    for (let i = 0; i < N; i++) {
+      const { px, py, w, h } = pts[i];
+      const rot = 0;
       const pal = this.PALS[i % this.PALS.length];
       const sceneType = Math.floor(r() * 8);
       const sceneSeed = seed * 131 + i * 17 + 5;
@@ -525,10 +715,10 @@ class Component extends DCLogic {
         id: i, title: this.NAMES[i], year: this.YEARS[i % this.YEARS.length],
         x: Math.round(px - w / 2), y: Math.round(py - h / 2), w, h,
         baseScale: (w / 460).toFixed(4), ringRadius: (14 * (w / 460) + 5).toFixed(1), rot, pal, sceneEl, sceneType, sceneSeed, wearUrl: this.wear((i % 6) + 1),
-        drift: "drift" + (i % 6), dur: (9 + (i % 5) * 1.6).toFixed(1), delay: (-(i * 0.73)).toFixed(2)
+        drift: "drift" + (i % 6), dur: (7 + (i % 5) * 1.8).toFixed(1), delay: (-(i * 0.63)).toFixed(2)
       });
     }
-    const order = raw.slice().sort((a, b) => a.y - b.y);
+    const order = raw.slice().sort((a, b) => a.w - b.w);
     order.forEach((c, idx) => { c.baseZ = idx + 1; });
     const titles = raw.map(c => ({ id: c.id, title: c.title })).sort((a, b) => a.title.localeCompare(b.title));
     return { cards: raw, titles };
@@ -544,7 +734,9 @@ class Component extends DCLogic {
       const hot = !!active && ((active.type === "card" && active.id === c.id) || (active.type === "year" && active.value === c.year));
       const dim = !!active && !hot;
       return Object.assign({}, c, {
-        filter: hot ? "brightness(1.16) saturate(1.16) contrast(1.05)" : dim ? "brightness(0.26) saturate(0.45)" : "brightness(0.82) saturate(0.9)",
+        filter: hot ? "brightness(1.12) saturate(1.12)" : "none",
+        opacity: dim ? 0.18 : 1,
+        driftPlay: hot ? "paused" : "running",
         scale: hot ? 1.5 : 1,
         lift: hot ? -12 : 0,
         z: hot ? 700 : c.baseZ,
@@ -564,7 +756,7 @@ class Component extends DCLogic {
       return { id: t.id, title: t.title, col: a ? "#f3f1ec" : "#8a877f", dx: a ? -7 : 0, onEnter: setCard(t.id), onClick: () => this.onCardClick(t.id) };
     });
 
-    const inserted = this.state.inserted, closing = this.state.closing;
+    const inserted = this.state.inserted, closing = this.state.closing, seated = this.state.seated;
     const ins = inserted != null ? base.cards.find(c => c.id === inserted) : null;
     const insScreen = ins ? this.scene(ins.sceneType, ins.sceneSeed + 777) : null;
     return {
@@ -576,15 +768,31 @@ class Component extends DCLogic {
       insScreen,
       ovAnim: closing ? "ovFadeOut 360ms ease forwards" : "ovFade 300ms ease forwards",
       consoleAnim: closing ? "consoleUp 420ms cubic-bezier(.5,0,.75,.4) forwards" : "consoleDrop 800ms cubic-bezier(.16,.84,.3,1) forwards",
-      cartAnim: closing ? "none" : "cartDrop 560ms cubic-bezier(.34,1.12,.4,1) 880ms both",
-      screenAnim: closing ? "none" : "screenOn 800ms ease 1380ms both",
+      // cartridge drop — state-driven transition (stable across re-renders)
+      cartTransform: seated ? "translateY(0px) scale(1)" : "translateY(-188px) scale(0.98)",
+      cartOpacity: (seated || !closing) ? "1" : "0",
+      cartTransition: closing ? "transform 380ms cubic-bezier(.5,0,.75,.4), opacity 300ms ease" : "transform 700ms cubic-bezier(.34,1.16,.36,1.02), opacity 220ms ease",
+      // CRT power-on — state-driven transition
+      screenOpacity: seated ? "1" : "0",
+      screenFilter: seated ? "brightness(1) saturate(1)" : "brightness(0) saturate(0.4)",
+      screenTransition: "opacity 620ms ease 140ms, filter 760ms ease 140ms",
       onClose: this.onClose,
       stop: this.stop,
       onRandom: () => this.setState(s => ({ seed: s.seed + 1, active: null })),
-      onNew: () => this.setState({ active: { type: "year", value: 2026 } })
+      onNew: () => this.setState({ active: { type: "year", value: 2026 } }),
+      onDpadMove: this.onDpadMove,
+      onDpadLeave: this.onDpadLeave,
+      onConsoleMove: this.onConsoleMove,
+      dpadRef: this.dpadRef,
+      dpadTransform: "rotateX(" + this.state.dpadX + "deg) rotateY(" + this.state.dpadY + "deg)",
+      dpadUp: (this.state.dpadDir === 6 || this.state.dpadDir === 5 || this.state.dpadDir === 7) ? "1" : "0",
+      dpadDown: (this.state.dpadDir === 2 || this.state.dpadDir === 1 || this.state.dpadDir === 3) ? "1" : "0",
+      dpadLeft: (this.state.dpadDir === 4 || this.state.dpadDir === 5 || this.state.dpadDir === 3) ? "1" : "0",
+      dpadRight: (this.state.dpadDir === 0 || this.state.dpadDir === 7 || this.state.dpadDir === 1) ? "1" : "0"
     };
   }
 }
 </script>
-</body>
-</html>
+
+
+</body></html>
