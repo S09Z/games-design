@@ -78,4 +78,4 @@ cabal.project.local~
 */uploads/*.png
 
 .vscode/
-*/.claude/worktrees/
+*/**/.claude/worktrees/
