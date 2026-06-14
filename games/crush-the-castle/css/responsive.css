@@ -1,0 +1,133 @@
+/* Responsive styles */
+
+/* Show fire button on touch devices */
+@media (hover: none) and (pointer: coarse) {
+    #btn-fire {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Larger touch targets */
+    .btn {
+        min-height: 48px;
+    }
+
+    .level-btn {
+        min-height: 80px;
+    }
+}
+
+/* Small screens */
+@media (max-width: 600px) {
+    .panel {
+        padding: 20px 16px;
+    }
+
+    .game-title {
+        font-size: 2em;
+    }
+
+    .btn {
+        width: 180px;
+        padding: 10px 18px;
+        font-size: 1em;
+    }
+
+    #level-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    #level-select .panel {
+        min-width: unset;
+        width: 90vw;
+    }
+
+    .result-stars {
+        gap: 4px;
+    }
+
+    .star-big {
+        font-size: 2.5em;
+    }
+
+    #hud {
+        padding: 6px 10px;
+    }
+
+    #hud-level-name {
+        font-size: 0.8em;
+    }
+
+    #hud-score {
+        font-size: 0.9em;
+    }
+
+    .ammo-icon {
+        width: 12px;
+        height: 12px;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 400px) {
+    .game-title {
+        font-size: 1.6em;
+    }
+
+    #level-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .level-btn {
+        padding: 8px 4px;
+    }
+
+    .level-name {
+        font-size: 0.7em;
+    }
+}
+
+/* Tall / portrait screens - canvas will be letterboxed */
+@media (max-aspect-ratio: 16/10) {
+    #hud {
+        font-size: 0.9em;
+    }
+}
+
+/* Wide screens */
+@media (min-width: 1400px) {
+    .panel {
+        padding: 40px 60px;
+    }
+
+    .game-title {
+        font-size: 3.5em;
+    }
+}
+
+/* Landscape phones */
+@media (max-height: 500px) and (orientation: landscape) {
+    .panel {
+        padding: 15px 25px;
+    }
+
+    .game-title {
+        font-size: 1.8em;
+        margin-bottom: 5px;
+    }
+
+    .game-subtitle {
+        margin-bottom: 15px;
+    }
+
+    .btn {
+        margin: 6px auto;
+        padding: 8px 20px;
+    }
+
+    .divider {
+        margin: 8px auto;
+    }
+}

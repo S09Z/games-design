@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Crush the Castle</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+
+    <!-- Game Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- HUD (in-game overlay) -->
+    <div id="hud" style="display:none;">
+        <div id="hud-level-name">Level 1</div>
+        <div id="hud-ammo-container">
+            <div id="hud-ammo"></div>
+            <span id="hud-next-ammo"></span>
+        </div>
+        <div id="hud-score">Score: 0</div>
+    </div>
+
+    <!-- Fire button (mobile) -->
+    <button id="btn-fire" class="btn btn-small" style="display:none;">FIRE!</button>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="overlay" style="display:none;">
+        <div>LOADING...</div>
+        <div class="loading-bar">
+            <div class="loading-bar-fill"></div>
+        </div>
+    </div>
+
+    <!-- Main Menu -->
+    <div id="main-menu" class="overlay" style="display:flex;">
+        <div class="panel">
+            <h1 class="game-title">Crush the Castle</h1>
+            <p class="game-subtitle">Web Edition &mdash; A siege physics game</p>
+            <div class="divider"></div>
+            <button id="btn-play" class="btn">&#9876; Play</button>
+            <button id="btn-level-select" class="btn">&#9776; Level Select</button>
+            <button id="btn-mute" class="btn btn-secondary btn-small">&#128266; Sound</button>
+            <div class="divider"></div>
+            <p class="tip-text">Click &amp; drag on canvas to aim &bull; Release to fire</p>
+            <p class="tip-text">ESC = Pause &bull; Space = Fire &bull; F = FPS</p>
+        </div>
+    </div>
+
+    <!-- Level Select -->
+    <div id="level-select" class="overlay" style="display:none;">
+        <div class="panel">
+            <h2 class="level-select-title">&#9776; Select Level</h2>
+            <div id="level-grid">
+                <!-- Populated by JS -->
+            </div>
+            <button id="btn-back-main" class="btn btn-secondary btn-small">&#8592; Back</button>
+        </div>
+    </div>
+
+    <!-- Pause Menu -->
+    <div id="pause-menu" class="overlay" style="display:none;">
+        <div class="panel">
+            <h2 class="pause-title">&#9646;&#9646; Paused</h2>
+            <div class="divider"></div>
+            <button id="btn-resume" class="btn">&#9654; Resume</button>
+            <button id="btn-restart-pause" class="btn">&#8635; Restart</button>
+            <button id="btn-main-menu-pause" class="btn btn-secondary">&#8962; Main Menu</button>
+        </div>
+    </div>
+
+    <!-- Level Complete -->
+    <div id="level-complete" class="overlay" style="display:none;">
+        <div class="panel">
+            <h2 class="complete-title">&#9876; Victory!</h2>
+            <div class="result-stars"></div>
+            <p class="result-score">Score: 0</p>
+            <div class="divider"></div>
+            <div class="result-buttons">
+                <button id="btn-next-level" class="btn">Next Level &#9658;</button>
+                <button id="btn-restart-complete" class="btn btn-secondary btn-small">&#8635; Retry</button>
+                <button id="btn-main-menu-complete" class="btn btn-secondary btn-small">&#8962; Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="game-over" class="overlay" style="display:none;">
+        <div class="panel">
+            <h2 class="gameover-title">&#9760; Defeat!</h2>
+            <p style="margin-bottom:8px; color:#665533; font-style:italic;">The castle stands strong...</p>
+            <p class="result-score">Score: 0</p>
+            <div class="divider"></div>
+            <button id="btn-try-again" class="btn">&#8635; Try Again</button>
+            <button id="btn-main-menu-over" class="btn btn-secondary">&#8962; Main Menu</button>
+        </div>
+    </div>
+
+    <!-- Scripts - load in dependency order -->
+    <!-- Utils -->
+    <script src="js/utils/math.js"></script>
+    <script src="js/utils/pool.js"></script>
+    <script src="js/utils/debug.js"></script>
+
+    <!-- Physics -->
+    <script src="js/physics/body.js"></script>
+    <script src="js/physics/collision.js"></script>
+    <script src="js/physics/engine.js"></script>
+
+    <!-- Render -->
+    <script src="js/render/particle.js"></script>
+    <script src="js/render/camera.js"></script>
+    <script src="js/render/renderer.js"></script>
+
+    <!-- Input -->
+    <script src="js/input/controller.js"></script>
+
+    <!-- Audio -->
+    <script src="js/audio/audioManager.js"></script>
+
+    <!-- UI -->
+    <script src="js/ui/hud.js"></script>
+    <script src="js/ui/menu.js"></script>
+    <script src="js/ui/uiManager.js"></script>
+
+    <!-- Level -->
+    <script src="js/level/levelLoader.js"></script>
+    <script src="js/level/levelManager.js"></script>
+
+    <!-- Save -->
+    <script src="js/save/saveManager.js"></script>
+
+    <!-- Analytics -->
+    <script src="js/analytics/analytics.js"></script>
+
+    <!-- Game -->
+    <script src="js/game.js"></script>
+
+    <!-- Entry point -->
+    <script src="js/main.js"></script>
+
+</body>
+</html>
