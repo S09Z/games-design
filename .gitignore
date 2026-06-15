@@ -79,3 +79,6 @@ cabal.project.local~
 
 .vscode/
 */**/.claude/worktrees/
+*/.serena/
+*/.continue/
+*/.headroom/

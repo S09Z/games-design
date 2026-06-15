@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@400;700;800;900&family=Nunito:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #DED7C8; }
+</style>
+</helmet>
+
+<div style="font-family:'Nunito',sans-serif; background:#DED7C8; min-height:100vh; padding:0 0 90px;">
+
+  <!-- ===== COVER ===== -->
+  <div style="background:#2E2117; padding:54px 48px 48px; border-bottom:5px solid #E8533A;">
+    <div style="max-width:1120px; margin:0 auto; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:24px;">
+      <div>
+        <div style="display:inline-block; background:#E8533A; color:#fff; font-weight:800; font-size:12px; letter-spacing:2px; text-transform:uppercase; padding:6px 14px; border-radius:999px;">Design System · v1.0</div>
+        <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:58px; line-height:.9; color:#FBF3DD; margin-top:16px;">Crush <span style="color:#E8533A;">the Castle</span></div>
+        <p style="font-family:'Nunito'; font-weight:600; font-size:16px; color:#B6AE9F; margin-top:10px; max-width:560px;">Low-poly Besiege style · colorful medieval, faceted forms &amp; warm golden-hour light. Tokens, type, and components for the Phaser 3 build.</p>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <div style="text-align:center; background:#3a2a1c; border:2px solid #5B4A36; border-radius:12px; padding:12px 16px;"><div style="font-family:'Grenze Gotisch'; font-weight:900; font-size:26px; color:#E8533A;">Aa</div><div style="font-size:10px; color:#B6AE9F; font-weight:800; letter-spacing:1px; margin-top:2px;">GRENZE GOTISCH</div></div>
+        <div style="text-align:center; background:#3a2a1c; border:2px solid #5B4A36; border-radius:12px; padding:12px 16px;"><div style="font-family:'Nunito'; font-weight:900; font-size:26px; color:#FBF3DD;">Aa</div><div style="font-size:10px; color:#B6AE9F; font-weight:800; letter-spacing:1px; margin-top:2px;">NUNITO</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width:1120px; margin:0 auto; padding:0 48px;">
+
+    <!-- ===== COLORS ===== -->
+    <div style="margin-top:48px;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+        <span style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:30px; color:#2E2117;">Colors</span>
+        <div style="flex:1; height:3px; background:#C4BBA6; border-radius:2px;"></div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:14px;">
+        <!-- swatch template repeated -->
+        <div style="border:3px solid #2E2117; border-radius:14px; overflow:hidden; box-shadow:0 4px 0 #2E2117;"><div style="height:74px; background:#E8533A;"></div><div style="background:#FBF3DD; padding:8px 10px;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Ember</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">#E8533A</div><div style="font-size:10px; color:#8C8378; margin-top:1px;">primary / accent</div></div></div>
+        <div style="border:3px solid #2E2117; border-radius:14px; overflow:hidden; box-shadow:0 4px 0 #2E2117;"><div style="height:74px; background:#C13A24;"></div><div style="background:#FBF3DD; padding:8px 10px;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Ember Dark</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">#C13A24</div><div style="font-size:10px; color:#8C8378; margin-top:1px;">primary pressed</div></div></div>
+        <div style="border:3px solid #2E2117; border-radius:14px; overflow:hidden; box-shadow:0 4px 0 #2E2117;"><div style="height:74px; background:#F2A93B;"></div><div style="background:#FBF3DD; padding:8px 10px;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Gold</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">#F2A93B</div><div style="font-size:10px; color:#8C8378; margin-top:1px;">stars / highlight</div></div></div>
+        <div style="border:3px solid #2E2117; border-radius:14px; overflow:hidden; box-shadow:0 4px 0 #2E2117;"><div style="height:74px; background:#C9851E;"></div><div style="background:#FBF3DD; padding:8px 10px;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Gold Dark</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">#C9851E</div><div style="font-size:10px; color:#8C8378; margin-top:1px;">best / aged gold</div></div></div>
+        <div style="border:3px solid #2E2117; border-radius:14px; overflow:hidden; box-shadow:0 4px 0 #2E2117;"><div style="height:74px; background:#6E8B5A;"></div><div style="background:#FBF3DD; padding:8px 10px;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Forest</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">#6E8B5A</div><div style="font-size:10px; color:#8C8378; margin-top:1px;">success / toggle on</div></div></div>
+        <div style="border:3px solid #2E2117; border-radius:14px; overflow:hidden; box-shadow:0 4px 0 #2E2117;"><div style="height:74px; background:#506B40;"></div><div style="background:#FBF3DD; padding:8px 10px;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Forest Dark</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">#506B40</div><div style="font-size:10px; color:#8C8378; margin-top:1px;">success pressed</div></div></div>
+        <div style="border:3px solid #2E2117; border-radius:14px; overflow:hidden; box-shadow:0 4px 0 #2E2117;"><div style="height:74px; background:#2E2117;"></div><div style="background:#FBF3DD; padding:8px 10px;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Ink</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">#2E2117</div><div style="font-size:10px; color:#8C8378; margin-top:1px;">outlines / text</div></div></div>
+        <div style="border:3px solid #2E2117; border-radius:14px; overflow:hidden; box-shadow:0 4px 0 #2E2117;"><div style="height:74px; background:#5B4A36;"></div><div style="background:#FBF3DD; padding:8px 10px;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Ink Soft</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">#5B4A36</div><div style="font-size:10px; color:#8C8378; margin-top:1px;">secondary text</div></div></div>
+        <div style="border:3px solid #2E2117; border-radius:14px; overflow:hidden; box-shadow:0 4px 0 #2E2117;"><div style="height:74px; background:#8C8378;"></div><div style="background:#FBF3DD; padding:8px 10px;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Stone</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">#8C8378</div><div style="font-size:10px; color:#8C8378; margin-top:1px;">disabled / muted</div></div></div>
+        <div style="border:3px solid #2E2117; border-radius:14px; overflow:hidden; box-shadow:0 4px 0 #2E2117;"><div style="height:74px; background:#B6AE9F;"></div><div style="background:#FBF3DD; padding:8px 10px;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Stone Light</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">#B6AE9F</div><div style="font-size:10px; color:#8C8378; margin-top:1px;">locked / track</div></div></div>
+        <div style="border:3px solid #2E2117; border-radius:14px; overflow:hidden; box-shadow:0 4px 0 #2E2117;"><div style="height:74px; background:#EFE2C4;"></div><div style="background:#FBF3DD; padding:8px 10px;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Parchment</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">#EFE2C4</div><div style="font-size:10px; color:#8C8378; margin-top:1px;">base background</div></div></div>
+        <div style="border:3px solid #2E2117; border-radius:14px; overflow:hidden; box-shadow:0 4px 0 #2E2117;"><div style="height:74px; background:#FBF3DD;"></div><div style="background:#FBF3DD; padding:8px 10px; border-top:1px solid #EAD9B0;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Surface</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">#FBF3DD</div><div style="font-size:10px; color:#8C8378; margin-top:1px;">cards / panels</div></div></div>
+      </div>
+    </div>
+
+    <!-- ===== TYPOGRAPHY ===== -->
+    <div style="margin-top:48px;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+        <span style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:30px; color:#2E2117;">Typography</span>
+        <div style="flex:1; height:3px; background:#C4BBA6; border-radius:2px;"></div>
+      </div>
+      <div style="background:#FBF3DD; border:3px solid #2E2117; border-radius:18px; box-shadow:0 6px 0 #2E2117; padding:28px 30px; display:flex; flex-direction:column; gap:20px;">
+        <div style="display:flex; align-items:baseline; gap:20px; border-bottom:2px dashed #E4DCC8; padding-bottom:18px;">
+          <div style="width:160px; flex-shrink:0;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Display / Title</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">Grenze Gotisch 900 · 64px</div></div>
+          <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:54px; color:#2E2117; line-height:1;">Crush the Castle</div>
+        </div>
+        <div style="display:flex; align-items:baseline; gap:20px; border-bottom:2px dashed #E4DCC8; padding-bottom:18px;">
+          <div style="width:160px; flex-shrink:0;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Heading 1</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">Grenze Gotisch 800 · 40px</div></div>
+          <div style="font-family:'Grenze Gotisch',serif; font-weight:800; font-size:40px; color:#2E2117; line-height:1;">Choose Thy Battle</div>
+        </div>
+        <div style="display:flex; align-items:baseline; gap:20px; border-bottom:2px dashed #E4DCC8; padding-bottom:18px;">
+          <div style="width:160px; flex-shrink:0;"><div style="font-weight:900; font-size:13px; color:#2E2117;">HUD Numerals</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">Grenze Gotisch 900 · 30px</div></div>
+          <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:30px; color:#E8533A; line-height:1;">12,450 · 68% · 42°</div>
+        </div>
+        <div style="display:flex; align-items:baseline; gap:20px; border-bottom:2px dashed #E4DCC8; padding-bottom:18px;">
+          <div style="width:160px; flex-shrink:0;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Button Label</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">Nunito 900 · 20px</div></div>
+          <div style="font-family:'Nunito'; font-weight:900; font-size:20px; color:#2E2117; letter-spacing:.5px;">PLAY · RESUME · NEXT</div>
+        </div>
+        <div style="display:flex; align-items:baseline; gap:20px; border-bottom:2px dashed #E4DCC8; padding-bottom:18px;">
+          <div style="width:160px; flex-shrink:0;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Body</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">Nunito 600 · 16px</div></div>
+          <div style="font-family:'Nunito'; font-weight:600; font-size:16px; color:#5B4A36; line-height:1.5;">The castle still stands. Load the catapult and aim for the weak points to bring it down.</div>
+        </div>
+        <div style="display:flex; align-items:baseline; gap:20px;">
+          <div style="width:160px; flex-shrink:0;"><div style="font-weight:900; font-size:13px; color:#2E2117;">Label / Caption</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8378;">Nunito 800 · 12px · +1.5 tracking</div></div>
+          <div style="font-family:'Nunito'; font-weight:800; font-size:12px; color:#8C8378; letter-spacing:1.5px; text-transform:uppercase;">Score · Ammo · Power · Aim</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TOKENS ROW: SPACING / RADIUS / DEPTH ===== -->
+    <div style="margin-top:48px;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+        <span style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:30px; color:#2E2117;">Spacing · Radius · Depth</span>
+        <div style="flex:1; height:3px; background:#C4BBA6; border-radius:2px;"></div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px;">
+
+        <!-- spacing -->
+        <div style="background:#FBF3DD; border:3px solid #2E2117; border-radius:18px; box-shadow:0 6px 0 #2E2117; padding:22px;">
+          <div style="font-weight:900; font-size:15px; color:#2E2117; margin-bottom:16px;">Spacing · 4px base</div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; align-items:center; gap:12px;"><div style="height:14px; width:4px; background:#E8533A; border-radius:2px;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#5B4A36;">1 · 4px</span></div>
+            <div style="display:flex; align-items:center; gap:12px;"><div style="height:14px; width:8px; background:#E8533A; border-radius:2px;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#5B4A36;">2 · 8px</span></div>
+            <div style="display:flex; align-items:center; gap:12px;"><div style="height:14px; width:12px; background:#E8533A; border-radius:2px;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#5B4A36;">3 · 12px</span></div>
+            <div style="display:flex; align-items:center; gap:12px;"><div style="height:14px; width:16px; background:#E8533A; border-radius:2px;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#5B4A36;">4 · 16px</span></div>
+            <div style="display:flex; align-items:center; gap:12px;"><div style="height:14px; width:24px; background:#E8533A; border-radius:2px;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#5B4A36;">6 · 24px</span></div>
+            <div style="display:flex; align-items:center; gap:12px;"><div style="height:14px; width:32px; background:#E8533A; border-radius:2px;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#5B4A36;">8 · 32px</span></div>
+            <div style="display:flex; align-items:center; gap:12px;"><div style="height:14px; width:48px; background:#E8533A; border-radius:2px;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#5B4A36;">12 · 48px</span></div>
+            <div style="display:flex; align-items:center; gap:12px;"><div style="height:14px; width:64px; background:#E8533A; border-radius:2px;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#5B4A36;">16 · 64px</span></div>
+          </div>
+        </div>
+
+        <!-- radius -->
+        <div style="background:#FBF3DD; border:3px solid #2E2117; border-radius:18px; box-shadow:0 6px 0 #2E2117; padding:22px;">
+          <div style="font-weight:900; font-size:15px; color:#2E2117; margin-bottom:16px;">Border Radius</div>
+          <div style="display:flex; flex-direction:column; gap:13px;">
+            <div style="display:flex; align-items:center; gap:12px;"><div style="width:46px; height:34px; background:#EAD9B0; border:3px solid #2E2117; border-radius:8px;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#5B4A36;">sm · 8px <span style="color:#8C8378;">chips, ticks</span></span></div>
+            <div style="display:flex; align-items:center; gap:12px;"><div style="width:46px; height:34px; background:#EAD9B0; border:3px solid #2E2117; border-radius:14px;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#5B4A36;">md · 14px <span style="color:#8C8378;">buttons</span></span></div>
+            <div style="display:flex; align-items:center; gap:12px;"><div style="width:46px; height:34px; background:#EAD9B0; border:3px solid #2E2117; border-radius:20px;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#5B4A36;">lg · 20px <span style="color:#8C8378;">cards</span></span></div>
+            <div style="display:flex; align-items:center; gap:12px;"><div style="width:46px; height:34px; background:#EAD9B0; border:3px solid #2E2117; border-radius:24px;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#5B4A36;">xl · 24px <span style="color:#8C8378;">modals</span></span></div>
+            <div style="display:flex; align-items:center; gap:12px;"><div style="width:46px; height:34px; background:#EAD9B0; border:3px solid #2E2117; border-radius:999px;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#5B4A36;">pill · 999 <span style="color:#8C8378;">meters, tags</span></span></div>
+          </div>
+        </div>
+
+        <!-- depth -->
+        <div style="background:#FBF3DD; border:3px solid #2E2117; border-radius:18px; box-shadow:0 6px 0 #2E2117; padding:22px;">
+          <div style="font-weight:900; font-size:15px; color:#2E2117; margin-bottom:16px;">Depth · ink offset</div>
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            <div style="display:flex; align-items:center; gap:14px;"><div style="width:46px; height:30px; background:#EFE2C4; border:3px solid #2E2117; border-radius:10px; box-shadow:0 3px 0 #2E2117;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#5B4A36;">ink-sm · 0 3px 0</span></div>
+            <div style="display:flex; align-items:center; gap:14px;"><div style="width:46px; height:30px; background:#EFE2C4; border:3px solid #2E2117; border-radius:10px; box-shadow:0 5px 0 #2E2117;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#5B4A36;">ink-md · 0 5px 0</span></div>
+            <div style="display:flex; align-items:center; gap:14px;"><div style="width:46px; height:30px; background:#EFE2C4; border:3px solid #2E2117; border-radius:10px; box-shadow:0 6px 0 #2E2117;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#5B4A36;">ink-lg · 0 6px 0</span></div>
+            <div style="display:flex; align-items:center; gap:14px;"><div style="width:46px; height:30px; background:#EFE2C4; border:3px solid #2E2117; border-radius:10px; box-shadow:0 8px 0 #2E2117, 0 18px 26px rgba(0,0,0,.28);"></div><span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#5B4A36;">panel · +soft drop</span></div>
+            <div style="display:flex; align-items:center; gap:14px;"><div style="width:46px; height:30px; background:rgba(46,33,23,.55); border-radius:10px;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#5B4A36;">scrim · ink @ 55%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== BUTTONS ===== -->
+    <div style="margin-top:48px;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+        <span style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:30px; color:#2E2117;">Buttons</span>
+        <span style="font-family:'Nunito'; font-weight:700; font-size:13px; color:#8C8378;">min height 56px · touch target ≥ 44px</span>
+        <div style="flex:1; height:3px; background:#C4BBA6; border-radius:2px;"></div>
+      </div>
+      <div style="background:#FBF3DD; border:3px solid #2E2117; border-radius:18px; box-shadow:0 6px 0 #2E2117; padding:26px 30px;">
+        <!-- header row -->
+        <div style="display:grid; grid-template-columns:96px repeat(4,1fr); gap:18px; align-items:center; margin-bottom:18px;">
+          <div></div>
+          <div style="text-align:center; font-family:'Nunito'; font-weight:800; font-size:11px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Default</div>
+          <div style="text-align:center; font-family:'Nunito'; font-weight:800; font-size:11px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Hover</div>
+          <div style="text-align:center; font-family:'Nunito'; font-weight:800; font-size:11px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Pressed</div>
+          <div style="text-align:center; font-family:'Nunito'; font-weight:800; font-size:11px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Disabled</div>
+        </div>
+        <!-- primary row -->
+        <div style="display:grid; grid-template-columns:96px repeat(4,1fr); gap:18px; align-items:center; margin-bottom:26px;">
+          <div style="font-weight:900; font-size:14px; color:#2E2117;">Primary</div>
+          <div style="display:flex; justify-content:center; padding-bottom:8px;"><button style="width:100%; font-family:'Nunito'; font-weight:900; font-size:18px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:14px; border:3.5px solid #2E2117; border-radius:14px; background:#E8533A; box-shadow:0 6px 0 #2E2117;">PLAY</button></div>
+          <div style="display:flex; justify-content:center; padding-bottom:9px;"><button style="width:100%; font-family:'Nunito'; font-weight:900; font-size:18px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:14px; border:3.5px solid #2E2117; border-radius:14px; background:#F26B4E; box-shadow:0 7px 0 #2E2117; transform:translateY(-1px);">PLAY</button></div>
+          <div style="display:flex; justify-content:center; padding-top:4px; padding-bottom:4px;"><button style="width:100%; font-family:'Nunito'; font-weight:900; font-size:18px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:14px; border:3.5px solid #2E2117; border-radius:14px; background:#C13A24; box-shadow:0 2px 0 #2E2117; transform:translateY(4px);">PLAY</button></div>
+          <div style="display:flex; justify-content:center; padding-bottom:8px;"><button style="width:100%; font-family:'Nunito'; font-weight:900; font-size:18px; color:#8C8378; padding:14px; border:3.5px solid #8C8378; border-radius:14px; background:#D8CFBC; box-shadow:none; cursor:not-allowed;">PLAY</button></div>
+        </div>
+        <!-- secondary row -->
+        <div style="display:grid; grid-template-columns:96px repeat(4,1fr); gap:18px; align-items:center;">
+          <div style="font-weight:900; font-size:14px; color:#2E2117;">Secondary</div>
+          <div style="display:flex; justify-content:center; padding-bottom:8px;"><button style="width:100%; font-family:'Nunito'; font-weight:900; font-size:18px; color:#2E2117; padding:14px; border:3.5px solid #2E2117; border-radius:14px; background:#EAD9B0; box-shadow:0 6px 0 #2E2117;">Settings</button></div>
+          <div style="display:flex; justify-content:center; padding-bottom:9px;"><button style="width:100%; font-family:'Nunito'; font-weight:900; font-size:18px; color:#2E2117; padding:14px; border:3.5px solid #2E2117; border-radius:14px; background:#F4E8C8; box-shadow:0 7px 0 #2E2117; transform:translateY(-1px);">Settings</button></div>
+          <div style="display:flex; justify-content:center; padding-top:4px; padding-bottom:4px;"><button style="width:100%; font-family:'Nunito'; font-weight:900; font-size:18px; color:#2E2117; padding:14px; border:3.5px solid #2E2117; border-radius:14px; background:#DAC79C; box-shadow:0 2px 0 #2E2117; transform:translateY(4px);">Settings</button></div>
+          <div style="display:flex; justify-content:center; padding-bottom:8px;"><button style="width:100%; font-family:'Nunito'; font-weight:900; font-size:18px; color:#A99F8C; padding:14px; border:3.5px solid #B6AE9F; border-radius:14px; background:#E4DCC8; box-shadow:none; cursor:not-allowed;">Settings</button></div>
+        </div>
+
+        <div style="height:2px; background:#E4DCC8; border-radius:2px; margin:26px 0;"></div>
+
+        <!-- icon buttons -->
+        <div style="display:grid; grid-template-columns:96px repeat(4,1fr); gap:18px; align-items:center;">
+          <div style="font-weight:900; font-size:14px; color:#2E2117;">Icon</div>
+          <div style="display:flex; justify-content:center; padding-bottom:8px;"><button style="width:56px; height:56px; border:3.5px solid #2E2117; border-radius:14px; background:#FBF3DD; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="#2E2117"><rect x="6" y="5" width="4.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="4.5" height="14" rx="1.5"/></svg></button></div>
+          <div style="display:flex; justify-content:center; padding-bottom:9px;"><button style="width:56px; height:56px; border:3.5px solid #2E2117; border-radius:14px; background:#FFF8E6; box-shadow:0 6px 0 #2E2117; transform:translateY(-1px); display:flex; align-items:center; justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="#2E2117"><rect x="6" y="5" width="4.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="4.5" height="14" rx="1.5"/></svg></button></div>
+          <div style="display:flex; justify-content:center; padding-top:4px; padding-bottom:4px;"><button style="width:56px; height:56px; border:3.5px solid #2E2117; border-radius:14px; background:#EAD9B0; box-shadow:0 2px 0 #2E2117; transform:translateY(3px); display:flex; align-items:center; justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="#2E2117"><rect x="6" y="5" width="4.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="4.5" height="14" rx="1.5"/></svg></button></div>
+          <div style="display:flex; justify-content:center; padding-bottom:8px;"><button style="width:56px; height:56px; border:3.5px solid #B6AE9F; border-radius:14px; background:#E4DCC8; box-shadow:none; cursor:not-allowed; display:flex; align-items:center; justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="#B6AE9F"><rect x="6" y="5" width="4.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="4.5" height="14" rx="1.5"/></svg></button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SLIDERS + STARS + DIALOG ===== -->
+    <div style="margin-top:48px;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+        <span style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:30px; color:#2E2117;">Meters · Stars · Dialog</span>
+        <div style="flex:1; height:3px; background:#C4BBA6; border-radius:2px;"></div>
+      </div>
+      <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:18px; align-items:start;">
+
+        <!-- power meter / slider -->
+        <div style="background:#FBF3DD; border:3px solid #2E2117; border-radius:18px; box-shadow:0 6px 0 #2E2117; padding:24px 26px;">
+          <div style="font-weight:900; font-size:15px; color:#2E2117; margin-bottom:18px;">Power Meter / Slider</div>
+          <div style="display:flex; flex-direction:column; gap:20px;">
+            <div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:7px;"><span style="font-family:'Nunito'; font-weight:800; font-size:11px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Low</span><span style="font-family:'Grenze Gotisch'; font-weight:900; font-size:16px; color:#C9851E;">25%</span></div>
+              <div style="position:relative; height:20px; border-radius:999px; background:#E8DDC2; border:3px solid #2E2117;"><div style="position:absolute; left:0; top:0; bottom:0; width:25%; border-radius:999px 0 0 999px; background:#F2A93B;"></div><div style="position:absolute; left:23%; top:50%; transform:translate(-50%,-50%); width:30px; height:30px; border-radius:50%; background:#F2A93B; border:3.5px solid #2E2117; box-shadow:0 3px 0 #2E2117;"></div></div>
+            </div>
+            <div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:7px;"><span style="font-family:'Nunito'; font-weight:800; font-size:11px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Mid</span><span style="font-family:'Grenze Gotisch'; font-weight:900; font-size:16px; color:#E8533A;">60%</span></div>
+              <div style="position:relative; height:20px; border-radius:999px; background:#E8DDC2; border:3px solid #2E2117;"><div style="position:absolute; left:0; top:0; bottom:0; width:60%; border-radius:999px 0 0 999px; background:linear-gradient(90deg,#F2A93B,#E8533A);"></div><div style="position:absolute; left:58%; top:50%; transform:translate(-50%,-50%); width:30px; height:30px; border-radius:50%; background:#E8533A; border:3.5px solid #2E2117; box-shadow:0 3px 0 #2E2117;"></div></div>
+            </div>
+            <div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:7px;"><span style="font-family:'Nunito'; font-weight:800; font-size:11px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Max</span><span style="font-family:'Grenze Gotisch'; font-weight:900; font-size:16px; color:#C13A24;">95%</span></div>
+              <div style="position:relative; height:20px; border-radius:999px; background:#E8DDC2; border:3px solid #2E2117;"><div style="position:absolute; left:0; top:0; bottom:0; width:95%; border-radius:999px; background:linear-gradient(90deg,#F2A93B,#E8533A 70%,#C13A24);"></div><div style="position:absolute; left:92%; top:50%; transform:translate(-50%,-50%); width:30px; height:30px; border-radius:50%; background:#C13A24; border:3.5px solid #2E2117; box-shadow:0 3px 0 #2E2117;"></div></div>
+            </div>
+            <!-- progress (level) -->
+            <div style="border-top:2px dashed #E4DCC8; padding-top:18px;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:7px;"><span style="font-family:'Nunito'; font-weight:800; font-size:11px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Campaign Progress</span><span style="font-family:'Nunito'; font-weight:900; font-size:13px; color:#6E8B5A;">3 / 5</span></div>
+              <div style="position:relative; height:16px; border-radius:999px; background:#E8DDC2; border:3px solid #2E2117;"><div style="position:absolute; left:0; top:0; bottom:0; width:60%; border-radius:999px 0 0 999px; background:#6E8B5A;"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- stars + dialog -->
+        <div style="display:flex; flex-direction:column; gap:18px;">
+          <div style="background:#FBF3DD; border:3px solid #2E2117; border-radius:18px; box-shadow:0 6px 0 #2E2117; padding:24px 26px;">
+            <div style="font-weight:900; font-size:15px; color:#2E2117; margin-bottom:16px;">Star Rating</div>
+            <div style="display:flex; flex-direction:column; gap:13px;">
+              <div style="display:flex; align-items:center; gap:14px;"><div style="display:flex; gap:5px;"><span style="font-size:26px; color:#E4DCC8; -webkit-text-stroke:2px #2E2117;">★</span><span style="font-size:26px; color:#E4DCC8; -webkit-text-stroke:2px #2E2117;">★</span><span style="font-size:26px; color:#E4DCC8; -webkit-text-stroke:2px #2E2117;">★</span></div><span style="font-family:'Nunito'; font-weight:700; font-size:12px; color:#8C8378;">0 · empty / locked</span></div>
+              <div style="display:flex; align-items:center; gap:14px;"><div style="display:flex; gap:5px;"><span style="font-size:26px; color:#F2A93B; -webkit-text-stroke:2px #2E2117;">★</span><span style="font-size:26px; color:#E4DCC8; -webkit-text-stroke:2px #2E2117;">★</span><span style="font-size:26px; color:#E4DCC8; -webkit-text-stroke:2px #2E2117;">★</span></div><span style="font-family:'Nunito'; font-weight:700; font-size:12px; color:#8C8378;">1 · bronze</span></div>
+              <div style="display:flex; align-items:center; gap:14px;"><div style="display:flex; gap:5px;"><span style="font-size:26px; color:#F2A93B; -webkit-text-stroke:2px #2E2117;">★</span><span style="font-size:26px; color:#F2A93B; -webkit-text-stroke:2px #2E2117;">★</span><span style="font-size:26px; color:#E4DCC8; -webkit-text-stroke:2px #2E2117;">★</span></div><span style="font-family:'Nunito'; font-weight:700; font-size:12px; color:#8C8378;">2 · silver</span></div>
+              <div style="display:flex; align-items:center; gap:14px;"><div style="display:flex; gap:5px;"><span style="font-size:26px; color:#F2A93B; -webkit-text-stroke:2px #2E2117;">★</span><span style="font-size:26px; color:#F2A93B; -webkit-text-stroke:2px #2E2117;">★</span><span style="font-size:26px; color:#F2A93B; -webkit-text-stroke:2px #2E2117;">★</span></div><span style="font-family:'Nunito'; font-weight:700; font-size:12px; color:#8C8378;">3 · perfect</span></div>
+            </div>
+          </div>
+          <div style="background:#FBF3DD; border:3px solid #2E2117; border-radius:18px; box-shadow:0 6px 0 #2E2117; padding:24px 26px;">
+            <div style="font-weight:900; font-size:15px; color:#2E2117; margin-bottom:14px;">Dialog Anatomy</div>
+            <div style="position:relative; background:#EFE2C4; border:3px solid #2E2117; border-radius:18px; box-shadow:0 6px 0 #2E2117; padding:30px 18px 18px; margin-top:14px;">
+              <div style="position:absolute; top:-18px; left:50%; transform:translateX(-50%); background:#2E2117; color:#FBF3DD; font-family:'Grenze Gotisch'; font-weight:900; font-size:18px; padding:5px 22px; border-radius:10px; border:2.5px solid #F2A93B;">Title</div>
+              <p style="font-family:'Nunito'; font-weight:700; font-size:13px; color:#5B4A36; text-align:center; margin-bottom:14px;">Ribbon title · body copy · action row</p>
+              <div style="display:flex; gap:10px;"><button style="flex:1; font-family:'Nunito'; font-weight:900; font-size:14px; color:#2E2117; padding:9px; border:3px solid #2E2117; border-radius:11px; background:#EAD9B0; box-shadow:0 4px 0 #2E2117;">Cancel</button><button style="flex:1; font-family:'Nunito'; font-weight:900; font-size:14px; color:#fff; padding:9px; border:3px solid #2E2117; border-radius:11px; background:#E8533A; box-shadow:0 4px 0 #2E2117;">OK</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== RESPONSIVE ===== -->
+    <div style="margin-top:48px;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+        <span style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:30px; color:#2E2117;">Responsive</span>
+        <div style="flex:1; height:3px; background:#C4BBA6; border-radius:2px;"></div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:stretch;">
+        <!-- desktop -->
+        <div style="background:#FBF3DD; border:3px solid #2E2117; border-radius:18px; box-shadow:0 6px 0 #2E2117; padding:24px 26px;">
+          <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:16px;"><span style="font-weight:900; font-size:16px; color:#2E2117;">Desktop</span><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#8C8378;">1920 × 1080</span></div>
+          <div style="aspect-ratio:16/9; border:3px solid #2E2117; border-radius:10px; background:#EFE2C4; position:relative; overflow:hidden;">
+            <div style="position:absolute; left:8px; top:8px; width:78px; height:18px; background:#E8533A; border-radius:5px;"></div>
+            <div style="position:absolute; right:8px; top:8px; width:30px; height:30px; background:#FBF3DD; border:2px solid #2E2117; border-radius:6px;"></div>
+            <div style="position:absolute; left:8px; bottom:8px; width:60px; height:22px; background:#FBF3DD; border:2px solid #2E2117; border-radius:6px;"></div>
+            <div style="position:absolute; left:50%; bottom:8px; transform:translateX(-50%); width:160px; height:22px; background:#FBF3DD; border:2px solid #2E2117; border-radius:6px;"></div>
+          </div>
+          <ul style="font-family:'Nunito'; font-weight:600; font-size:13.5px; color:#5B4A36; line-height:1.55; margin-top:16px; padding-left:18px;">
+            <li>HUD pinned to <b>screen corners</b>; play-field scales to fit (FIT scale mode).</li>
+            <li>Power meter centred along the bottom safe-area.</li>
+            <li>Generous spacing scale (24–64px) for breathing room.</li>
+          </ul>
+        </div>
+        <!-- tablet -->
+        <div style="background:#FBF3DD; border:3px solid #2E2117; border-radius:18px; box-shadow:0 6px 0 #2E2117; padding:24px 26px;">
+          <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:16px;"><span style="font-weight:900; font-size:16px; color:#2E2117;">Tablet</span><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#8C8378;">1024 × 768</span></div>
+          <div style="aspect-ratio:4/3; border:3px solid #2E2117; border-radius:10px; background:#EFE2C4; position:relative; overflow:hidden; max-width:62%;">
+            <div style="position:absolute; left:7px; top:7px; width:60px; height:16px; background:#E8533A; border-radius:5px;"></div>
+            <div style="position:absolute; right:7px; top:7px; width:34px; height:34px; background:#FBF3DD; border:2px solid #2E2117; border-radius:6px;"></div>
+            <div style="position:absolute; left:7px; bottom:7px; width:50px; height:26px; background:#FBF3DD; border:2px solid #2E2117; border-radius:6px;"></div>
+            <div style="position:absolute; right:7px; bottom:7px; width:120px; height:26px; background:#FBF3DD; border:2px solid #2E2117; border-radius:6px;"></div>
+          </div>
+          <ul style="font-family:'Nunito'; font-weight:600; font-size:13.5px; color:#5B4A36; line-height:1.55; margin-top:16px; padding-left:18px;">
+            <li>Controls grow to <b>≥ 64px</b> hit targets; meter docks bottom-right by the thumb.</li>
+            <li>Title/heading sizes step down ~15%; corner padding tightens to 16px.</li>
+            <li>Touch targets never below <b>44 × 44px</b> — see swatch right.</li>
+          </ul>
+        </div>
+      </div>
+      <!-- touch target note -->
+      <div style="margin-top:18px; background:#2E2117; border-radius:16px; padding:20px 26px; display:flex; align-items:center; gap:22px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:44px; height:44px; border:2px dashed #F2A93B; border-radius:8px; display:flex; align-items:center; justify-content:center;"><div style="width:30px; height:30px; background:#E8533A; border:2px solid #FBF3DD; border-radius:6px;"></div></div>
+          <span style="font-family:'Nunito'; font-weight:800; font-size:13px; color:#FBF3DD;">Min touch target<br><span style="color:#B6AE9F; font-weight:700;">44 × 44px (visual ≥ 30px + padding)</span></span>
+        </div>
+        <div style="width:2px; align-self:stretch; background:#5B4A36;"></div>
+        <div style="font-family:'Nunito'; font-weight:600; font-size:13.5px; color:#B6AE9F; line-height:1.5; flex:1; min-width:280px;">Use Phaser <b style="color:#FBF3DD;">Scale.FIT</b> with a 1920×1080 design resolution and <b style="color:#FBF3DD;">CENTER_BOTH</b>. Anchor HUD elements to camera viewport corners, not world coordinates, so they hold position across aspect ratios.</div>
+      </div>
+    </div>
+
+    <!-- ===== DEV TOKENS ===== -->
+    <div style="margin-top:48px;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+        <span style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:30px; color:#2E2117;">Developer Tokens</span>
+        <span style="font-family:'Nunito'; font-weight:700; font-size:13px; color:#8C8378;">drop into your Phaser theme config</span>
+        <div style="flex:1; height:3px; background:#C4BBA6; border-radius:2px;"></div>
+      </div>
+      <div style="background:#241809; border:3px solid #2E2117; border-radius:18px; box-shadow:0 6px 0 #2E2117; padding:24px 28px; overflow-x:auto;">
+        <pre style="font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.7; color:#EAD9B0; margin:0;"><span style="color:#8C8378;">// theme.js — Crush the Castle (Low-poly Besiege)</span>
+<span style="color:#F2A93B;">export const COLOR</span> = {
+  ember: <span style="color:#E8533A;">'#E8533A'</span>, emberDark: <span style="color:#E8533A;">'#C13A24'</span>,
+  gold: <span style="color:#F2A93B;">'#F2A93B'</span>,  goldDark: <span style="color:#F2A93B;">'#C9851E'</span>,
+  forest: <span style="color:#6E8B5A;">'#6E8B5A'</span>, forestDark: <span style="color:#6E8B5A;">'#506B40'</span>,
+  ink: <span style="color:#B6AE9F;">'#2E2117'</span>,   inkSoft: <span style="color:#B6AE9F;">'#5B4A36'</span>,
+  stone: <span style="color:#B6AE9F;">'#8C8378'</span>, stoneLight: <span style="color:#B6AE9F;">'#B6AE9F'</span>,
+  parchment: <span style="color:#EAD9B0;">'#EFE2C4'</span>, surface: <span style="color:#EAD9B0;">'#FBF3DD'</span>, parchmentDeep: <span style="color:#EAD9B0;">'#EAD9B0'</span>,
+  sky: <span style="color:#AFD3DE;">'#AFD3DE'</span>,
+};
+<span style="color:#F2A93B;">export const FONT</span>  = { display: <span style="color:#EAD9B0;">'"Grenze Gotisch"'</span>, ui: <span style="color:#EAD9B0;">'"Nunito"'</span> };
+<span style="color:#F2A93B;">export const SPACE</span> = [<span style="color:#EAD9B0;">0,4,8,12,16,24,32,48,64</span>];          <span style="color:#8C8378;">// index = step</span>
+<span style="color:#F2A93B;">export const RADIUS</span>= { sm:<span style="color:#EAD9B0;">8</span>, md:<span style="color:#EAD9B0;">14</span>, lg:<span style="color:#EAD9B0;">20</span>, xl:<span style="color:#EAD9B0;">24</span>, pill:<span style="color:#EAD9B0;">999</span> };
+<span style="color:#F2A93B;">export const INK</span>   = { width:<span style="color:#EAD9B0;">3.5</span>, color:COLOR.ink };       <span style="color:#8C8378;">// outline on every shape</span>
+<span style="color:#F2A93B;">export const DEPTH</span> = { sm:<span style="color:#EAD9B0;">3</span>, md:<span style="color:#EAD9B0;">5</span>, lg:<span style="color:#EAD9B0;">6</span> };          <span style="color:#8C8378;">// hard offset shadow (px, ink, y-only)</span>
+<span style="color:#8C8378;">// press feedback: shift sprite +4px y, shrink shadow to 2px</span></pre>
+      </div>
+    </div>
+
+    <div style="margin-top:40px; text-align:center; font-family:'Nunito'; font-weight:700; font-size:13px; color:#8C8378;">Crush the Castle · Low-poly Besiege · pair with <b style="color:#5B4A36;">Game Screens.dc.html</b> for layout reference</div>
+
+    <!-- COMPONENTS_ANCHOR -->
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
