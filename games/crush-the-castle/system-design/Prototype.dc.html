@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@400;700;800;900&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<style>* { box-sizing: border-box; margin: 0; padding: 0; } body { background: #DED7C8; }
+input[type=range].ct{ -webkit-appearance:none; appearance:none; height:8px; border-radius:999px; background:#E8DDC2; border:2px solid #2E2117; outline:none; }
+input[type=range].ct::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:20px; height:20px; border-radius:50%; background:#E8533A; border:2.5px solid #2E2117; cursor:pointer; box-shadow:0 2px 0 #2E2117; }
+input[type=range].ct::-moz-range-thumb{ width:20px; height:20px; border-radius:50%; background:#E8533A; border:2.5px solid #2E2117; cursor:pointer; }
+</style>
+</helmet>
+
+<div style="font-family:'Nunito',sans-serif; background:#DED7C8; min-height:100vh; padding:36px 24px 60px;">
+  <div style="max-width:980px; margin:0 auto;">
+    <div style="display:flex; align-items:baseline; gap:12px; margin-bottom:14px; flex-wrap:wrap;">
+      <span style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:34px; color:#2E2117; line-height:1;">Crush the Castle</span>
+      <span style="display:inline-block; background:#E8533A; color:#fff; font-weight:800; font-size:12px; letter-spacing:1.5px; text-transform:uppercase; padding:5px 12px; border-radius:999px;">Trebuchet Physics</span>
+    </div>
+
+    <div style="position:relative; width:100%; aspect-ratio:16/9; border:4px solid #2E2117; border-radius:22px; overflow:hidden; box-shadow:0 10px 0 #2E2117, 0 26px 40px rgba(0,0,0,.28); touch-action:none; user-select:none;">
+      <canvas ref="{{ canvasRef }}" width="960" height="540" style="position:absolute; inset:0; width:100%; height:100%; display:block; cursor:grab;"></canvas>
+
+      <div style="position:absolute; left:2.2%; top:4.5%; display:flex; flex-direction:column; gap:8px; pointer-events:none;">
+        <div style="display:flex; align-items:center; gap:8px; background:#2E2117; padding:5px 13px 5px 7px; border-radius:999px; align-self:flex-start;">
+          <span style="display:inline-flex; width:24px; height:24px; align-items:center; justify-content:center; background:#F2A93B; border-radius:50%;"><svg width="14" height="14" viewBox="0 0 24 24" fill="#2E2117"><path d="M5 8 L9 11 L12 5 L15 11 L19 8 L17 18 H7 Z"/></svg></span>
+          <span style="font-weight:900; font-size:13px; letter-spacing:1px; color:#FBF3DD;">LEVEL 1</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:9px; background:#FBF3DD; border:3px solid #2E2117; border-radius:12px; box-shadow:0 4px 0 #2E2117; padding:6px 14px;">
+          <span style="font-weight:800; font-size:10px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Score</span>
+          <span style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:26px; line-height:.9; color:#2E2117;">{{ score }}</span>
+        </div>
+      </div>
+
+      <div style="position:absolute; left:50%; top:4.5%; transform:translateX(-50%); display:flex; align-items:center; gap:8px; background:#FBF3DD; border:3px solid #2E2117; border-radius:999px; box-shadow:0 4px 0 #2E2117; padding:5px 14px; pointer-events:none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#E8533A" stroke="#2E2117" stroke-width="1.6"><circle cx="12" cy="12" r="9"/></svg>
+        <span style="font-family:'Nunito'; font-weight:900; font-size:14px; color:#2E2117;">{{ enemiesLeft }} left</span>
+      </div>
+
+      <div style="position:absolute; right:2.2%; top:4.5%; display:flex; gap:9px;">
+        <button onClick="{{ onTogglePause }}" style="width:46px; height:46px; border:3px solid #2E2117; border-radius:12px; background:#FBF3DD; box-shadow:0 4px 0 #2E2117; cursor:pointer; display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="#2E2117"><rect x="6" y="5" width="4.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="4.5" height="14" rx="1.5"/></svg></button>
+        <button onClick="{{ onRestart }}" style="width:46px; height:46px; border:3px solid #2E2117; border-radius:12px; background:#FBF3DD; box-shadow:0 4px 0 #2E2117; cursor:pointer; display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11 a8 8 0 1 0 -2 5"/><path d="M20 5 V11 H14"/></svg></button>
+      </div>
+
+      <div style="position:absolute; left:2.2%; bottom:4.5%; display:flex; align-items:center; gap:9px; background:#FBF3DD; border:3px solid #2E2117; border-radius:12px; box-shadow:0 4px 0 #2E2117; padding:7px 14px; pointer-events:none;">
+        <span style="font-weight:800; font-size:10px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Ammo</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#8C8378" stroke="#2E2117" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+        <span style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:22px; color:#2E2117;">×{{ ammo }}</span>
+      </div>
+
+      <!-- CONTROL PANEL -->
+      <div style="position:absolute; left:50%; bottom:4.2%; transform:translateX(-50%); display:flex; align-items:stretch; gap:12px; background:#FBF3DD; border:3px solid #2E2117; border-radius:16px; box-shadow:0 5px 0 #2E2117; padding:11px 13px;">
+        <div style="display:flex; flex-direction:column; gap:9px;">
+          <div style="display:flex; align-items:center; gap:9px;">
+            <span style="width:64px; font-weight:800; font-size:9.5px; letter-spacing:1px; color:#8C8378; text-transform:uppercase;">Direction</span>
+            <input class="ct" type="range" min="8" max="62" value="{{ aimDeg }}" onInput="{{ onAimChange }}" style="width:128px;">
+            <span style="width:38px; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:18px; color:#2E2117; text-align:right;">{{ aimDeg }}°</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:9px;">
+            <span style="width:64px; font-weight:800; font-size:9.5px; letter-spacing:1px; color:#8C8378; text-transform:uppercase;">Power</span>
+            <input class="ct" type="range" min="20" max="100" value="{{ power }}" onInput="{{ onPowerChange }}" style="width:128px;">
+            <span style="width:38px; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:18px; color:#E8533A; text-align:right;">{{ power }}%</span>
+          </div>
+        </div>
+        <button onClick="{{ onFire }}" style="font-family:'Nunito'; font-weight:900; font-size:17px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:0 20px; border:3px solid #2E2117; border-radius:13px; cursor:pointer; background:#E8533A; box-shadow:0 5px 0 #2E2117; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; letter-spacing:.5px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M7 5 L19 12 L7 19 Z"/></svg>
+          FIRE
+        </button>
+      </div>
+
+      <div ref="{{ hintRef }}" style="position:absolute; left:50%; top:22%; transform:translateX(-50%); background:rgba(46,33,23,.82); color:#FBF3DD; font-family:'Nunito'; font-weight:800; font-size:14px; padding:9px 18px; border-radius:999px; pointer-events:none; white-space:nowrap;">Set direction &amp; power, then press FIRE — or drag from the trebuchet</div>
+
+      <sc-if value="{{ paused }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute; inset:0; background:rgba(58,42,28,.34); display:flex; align-items:center; justify-content:center;">
+          <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:42px; color:#FBF3DD; background:#2E2117; border:3px solid #F2A93B; padding:10px 40px; border-radius:16px; box-shadow:0 5px 0 rgba(0,0,0,.4);">Paused</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showModal }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute; inset:0; background:rgba(58,42,28,.32); display:flex; align-items:center; justify-content:center;">
+          <div style="position:relative; width:48%; min-width:300px; background:#FBF3DD; border:4px solid #2E2117; border-radius:22px; box-shadow:0 8px 0 #2E2117, 0 26px 44px rgba(0,0,0,.45); padding:48px 30px 26px; text-align:center;">
+            <div style="position:absolute; top:-26px; left:50%; transform:translateX(-50%); background:{{ modalAccent }}; color:#fff; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:30px; letter-spacing:1px; padding:7px 36px; border-radius:13px; border:3.5px solid #2E2117; box-shadow:0 5px 0 #2E2117; white-space:nowrap; text-shadow:0 2px 0 rgba(0,0,0,.3);">{{ modalTitle }}</div>
+            <p style="font-family:'Nunito'; font-weight:700; font-size:15px; color:#5B4A36; margin-bottom:8px;">{{ modalMsg }}</p>
+            <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:38px; color:#2E2117; margin-bottom:20px;">{{ score }}</div>
+            <button onClick="{{ onRestart }}" style="font-family:'Nunito'; font-weight:900; font-size:19px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:13px 30px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#E8533A; box-shadow:0 5px 0 #2E2117; display:inline-flex; align-items:center; gap:9px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11 a8 8 0 1 0 -2 5"/><path d="M20 5 V11 H14"/></svg> Play Again</button>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <p style="font-family:'Nunito'; font-weight:600; font-size:14px; color:#5B4A36; margin-top:16px; line-height:1.5;"><b style="color:#2E2117;">How to play:</b> Set the <b>Direction</b> (launch angle in degrees) and <b>Power</b> with the sliders, then press <b>FIRE</b> — or drag backward from the trebuchet. The counterweight drops, the arm whips over, and the sling hurls the boulder. Topple every guard and the golden king before you run out of ammo.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 980, &quot;height&quot;: 660}}">
+class Component extends DCLogic {
+  state = {score:0,ammo:5,enemiesLeft:0,aimDeg:32,power:66,paused:false,showModal:false,modalTitle:'',modalMsg:'',modalAccent:'#E8533A'};
+
+  constructor(props){
+    super(props);
+    this.canvasRef=React.createRef();
+    this.hintRef=React.createRef();
+    this.W=960; this.H=540; this.GY=468;
+    // Trebuchet — sling loads lower-LEFT (behind), arm whips upper-RIGHT toward castle
+    this.PV={x:230,y:250};
+    this.AL=180; this.AS=80; this.SL=76;
+    this.A_LOAD=2.3; this.A_REST=5.8;   // loaded: lower-left; CLOCKWISE over-the-top → upper-right
+    this.SF=72; this.RELEASE_P=0.982;
+    const er=Math.pow(this.RELEASE_P,5);   // quintic: heavy drag at start, explosive finish
+    this.releaseAngle=this.A_LOAD+(this.A_REST-this.A_LOAD)*er;
+    this.RELEASE_FRAME=Math.round(this.SF*this.RELEASE_P);
+    this.relTip={x:this.PV.x+this.AL*Math.cos(this.releaseAngle), y:this.PV.y+this.AL*Math.sin(this.releaseAngle)};
+    this.trebAngle=this.A_LOAD; this.swingF=0; this.swinging=false;
+    // Physics tuning
+    this.VMAX=15;
+    this.PG=0.60;  // preview gravity — higher to match elevated release point
+    // Drag
+    this.dragging=false; this.dragStart=null; this.maxPull=150;
+    // Physics state
+    this.boulder=null; this.enemies=[]; this.dynBodies=[];
+    this.stillF=0; this.flyF=0; this.gameState='aiming';
+    this.particles=[]; this.shake=0;
+  }
+
+  componentDidMount(){let t=0;const w=()=>{if(window.Matter&&this.canvasRef.current)this.init();else if(t++<120)setTimeout(w,50);};w();}
+  componentWillUnmount(){this.teardown();}
+
+  teardown(){
+    try{
+      if(this.render)this.M.Render.stop(this.render);
+      if(this.runner)this.M.Runner.stop(this.runner);
+      if(this.engine)this.M.Engine.clear(this.engine);
+      const c=this.canvasRef.current;
+      if(c&&this._dn){c.removeEventListener('pointerdown',this._dn);c.removeEventListener('pointermove',this._mv);window.removeEventListener('pointerup',this._up);}
+    }catch(e){}
+  }
+
+  init(){
+    const M=window.Matter; this.M=M;
+    this.engine=M.Engine.create({enableSleeping:true});
+    this.engine.gravity.y=1;
+    this.world=this.engine.world;
+    this.render=M.Render.create({canvas:this.canvasRef.current,engine:this.engine,options:{width:this.W,height:this.H,wireframes:false,background:'transparent',pixelRatio:1}});
+    M.Render.run(this.render);
+    this.runner=M.Runner.create();
+    M.Runner.run(this.runner,this.engine);
+    M.Events.on(this.render,'afterRender',()=>{
+      const ctx=this.render.context;
+      ctx.globalCompositeOperation='source-over'; // always reset before drawing
+      try{this.drawForeground(ctx);}catch(e){console.error('drawForeground error',e);}
+      ctx.globalCompositeOperation='destination-over';
+      try{this.drawBackground(ctx);}catch(e){console.error('drawBackground error',e);}
+      ctx.globalCompositeOperation='source-over';
+      this.shake=Math.max(0,this.shake*.78-.08);
+    });
+    M.Events.on(this.engine,'afterUpdate',()=>this.tick());
+    M.Events.on(this.engine,'collisionStart',ev=>{
+      for(const p of ev.pairs){
+        const rv=Math.hypot(p.bodyA.velocity.x-p.bodyB.velocity.x,p.bodyA.velocity.y-p.bodyB.velocity.y);
+        if(rv>5&&this.boulder&&(p.bodyA===this.boulder||p.bodyB===this.boulder)){
+          this.shake=Math.max(this.shake,12);
+          const sp=(p.collision.supports&&p.collision.supports[0])||this.boulder.position;
+          this.spawnImpact(sp.x,sp.y,18);
+        }
+        if(rv>3)[p.bodyA,p.bodyB].forEach(b=>{if(!b.isStatic)b.cl=Math.min(3,(b.cl||0)+1);});
+      }
+    });
+    this.setupInput();
+    this.buildLevel();
+  }
+
+  buildLevel(){
+    const M=this.M; M.Composite.clear(this.world,false);
+    this.enemies=[];this.dynBodies=[];this.boulder=null;
+    this.stillF=0;this.flyF=0;this.gameState='aiming';
+    this.trebAngle=this.A_LOAD;this.swinging=false;this.swingF=0;
+    this.dragging=false;this.dragStart=null;this.particles=[];
+    const add=b=>{M.Composite.add(this.world,b);if(!b.isStatic)this.dynBodies.push(b);return b;};
+    add(M.Bodies.rectangle(this.W/2,this.GY+38,this.W+400,76,{isStatic:true,friction:.9,render:{visible:false}}));
+    add(M.Bodies.rectangle(-30,this.H/2,60,this.H*2,{isStatic:true,render:{visible:false}}));
+    add(M.Bodies.rectangle(this.W+30,this.H/2,60,this.H*2,{isStatic:true,render:{visible:false}}));
+    this.buildCastle(add);
+    this.setState({score:0,ammo:5,enemiesLeft:this.enemies.length,paused:false,showModal:false});
+    if(this.hintRef.current)this.hintRef.current.style.display='';
+  }
+
+  buildCastle(add){
+    const M=this.M,gy=this.GY,bW=42,bH=28;
+    const SR=(d=false)=>({fillStyle:d?'#9A9182':'#B7AE9A',strokeStyle:'#7A7060',lineWidth:1.5});
+    const WR=()=>({fillStyle:'#8A5A30',strokeStyle:'#5C3A1F',lineWidth:1.5});
+    const mk=(x,y,w=bW,h=bH,r={})=>add(M.Bodies.rectangle(x,y,w,h,{friction:.55,restitution:.1,render:SR(),...r}));
+    const mkE=(x,y,k)=>{
+      const b=k==='king'?M.Bodies.rectangle(x,y,26,28,{friction:.4,restitution:.2,render:{fillStyle:'#F2A93B',strokeStyle:'#C9851E',lineWidth:2}}):M.Bodies.circle(x,y,13,{friction:.4,restitution:.25,render:{fillStyle:'#E8533A',strokeStyle:'#A8341E',lineWidth:2}});
+      b.gk=k;b.sx=x;b.sy=y;b.dead=false;add(b);this.enemies.push(b);
+    };
+    for(let r=0;r<4;r++){const y=gy-bH/2-r*bH;mk(680-bW/2,y);mk(680+bW/2,y);}
+    add(M.Bodies.rectangle(680,gy-4*bH-9,bW*2+6,18,{friction:.55,render:WR()}));
+    mkE(680,gy-4*bH-30,'guard');
+    for(let r=0;r<7;r++){const y=gy-bH/2-r*bH;mk(792-bW/2,y,bW,bH,{render:SR(true)});mk(792+bW/2,y,bW,bH,{render:SR(true)});}
+    add(M.Bodies.rectangle(792,gy-7*bH-10,bW*2+12,20,{friction:.55,render:WR()}));
+    mkE(792-12,gy-7*bH-34,'guard');mkE(792+12,gy-7*bH-34,'king');mkE(792,gy-14,'guard');
+    for(let r=0;r<4;r++){const y=gy-bH/2-r*bH;mk(904-bW/2,y);mk(904+bW/2,y);}
+    add(M.Bodies.rectangle(904,gy-4*bH-9,bW*2+6,18,{friction:.55,render:WR()}));
+    mkE(904,gy-4*bH-30,'guard');
+    [728,750].forEach(x=>{for(let r=0;r<2;r++)mk(x,gy-bH/2-r*bH,bW-6,bH);});
+    [840,862].forEach(x=>{for(let r=0;r<2;r++)mk(x,gy-bH/2-r*bH,bW-6,bH);});
+    add(M.Bodies.circle(644,gy-14,13,{friction:.5,render:{fillStyle:'#9A6840',strokeStyle:'#6B4427',lineWidth:2}}));
+    add(M.Bodies.circle(946,gy-14,13,{friction:.5,render:{fillStyle:'#9A6840',strokeStyle:'#6B4427',lineWidth:2}}));
+  }
+
+  setupInput(){
+    const c=this.canvasRef.current;
+    const tL=e=>{const r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*(this.W/r.width),y:(e.clientY-r.top)*(this.H/r.height)};};
+    this._dn=e=>{
+      if(this.gameState!=='aiming'||this.state.paused||this.state.showModal)return;
+      const p=tL(e);
+      if(Math.hypot(p.x-this.PV.x,p.y-this.PV.y)>260)return;
+      this.dragging=true;this.dragStart={...p};c.style.cursor='grabbing';
+    };
+    this._mv=e=>{if(this.dragging)this.dragAim(tL(e));};
+    this._up=()=>{if(this.dragging){this.dragging=false;if(this.canvasRef.current)this.canvasRef.current.style.cursor='grab';this.fire();}};
+    c.addEventListener('pointerdown',this._dn);c.addEventListener('pointermove',this._mv);window.addEventListener('pointerup',this._up);
+  }
+
+  dragAim(p){
+    // pull-back vector reversed = launch direction
+    const dx=this.dragStart.x-p.x, dy=this.dragStart.y-p.y, d=Math.hypot(dx,dy);
+    if(d<8)return;
+    let deg=Math.atan2(-dy,Math.abs(dx)||0.001)*180/Math.PI; // up = positive
+    deg=Math.max(8,Math.min(62,Math.round(deg)));
+    const pw=Math.max(20,Math.min(100,Math.round(d/this.maxPull*100)));
+    this.setState({aimDeg:deg,power:pw});
+  }
+
+  aimVel(){const r=this.state.aimDeg*Math.PI/180,v=(this.state.power/100)*this.VMAX;return{x:Math.cos(r)*v,y:-Math.sin(r)*v};}
+  spawnPos(){const r=this.state.aimDeg*Math.PI/180;return{x:this.relTip.x+this.SL*Math.cos(r),y:this.relTip.y-this.SL*Math.sin(r)};}
+
+  fire(){
+    if(this.gameState!=='aiming'||this.state.paused||this.state.showModal||this.swinging)return;
+    this.swinging=true;this.swingF=0;this.gameState='swinging';
+    if(this.hintRef.current)this.hintRef.current.style.display='none';
+  }
+
+  tick(){
+    if(!this.M)return;
+    if(this.swinging){
+      this.swingF++;
+      const p=Math.min(this.swingF/this.SF,1),e=p*p*p*p*p; // quintic ease-in = heavy counterweight drag, violent whip
+      this.trebAngle=this.A_LOAD+(this.A_REST-this.A_LOAD)*e;
+      if(this.swingF===this.RELEASE_FRAME&&!this.boulder){
+        const M=this.M,sp=this.spawnPos(),v=this.aimVel();
+        const b=M.Bodies.circle(sp.x,sp.y,16,{density:.026,friction:.4,restitution:.2,render:{fillStyle:'#8C8378',strokeStyle:'#6E675B',lineWidth:2},label:'boulder'});
+        M.Composite.add(this.world,b);this.dynBodies.push(b);this.boulder=b;
+        M.Body.setVelocity(b,v);
+        this.spawnImpact(sp.x,sp.y,5);
+      }
+      if(this.swingF>=this.SF){this.swinging=false;this.gameState='flying';this.stillF=0;this.flyF=0;}
+    }
+    if(this.gameState==='flying'){
+      this.flyF++;
+      for(const e of this.enemies){
+        if(e.dead)continue;
+        if(Math.hypot(e.position.x-e.sx,e.position.y-e.sy)>82||e.position.y>530||e.position.x<-20||e.position.x>this.W+20){
+          e.dead=true;this.setState(s=>({score:s.score+1000,enemiesLeft:Math.max(0,s.enemiesLeft-1)}));this.spawnImpact(e.position.x,e.position.y,9);
+        }
+      }
+      if(this.boulder&&(this.boulder.position.y>this.H+80||Math.abs(this.boulder.position.x-this.W/2)>this.W)){
+        this.M.Composite.remove(this.world,this.boulder);this.dynBodies=this.dynBodies.filter(b=>b!==this.boulder);this.boulder=null;
+      }
+      let mx=0;for(const b of this.dynBodies){const s=Math.hypot(b.velocity.x,b.velocity.y);if(s>mx)mx=s;}
+      if(mx<1.5)this.stillF++;else this.stillF=0;
+      if(this.stillF>26||this.flyF>300)this.endTurn();
+    }
+    for(const p of this.particles){p.x+=p.vx;p.y+=p.vy;p.vy+=.18;p.vx*=.95;p.life--;}
+    this.particles=this.particles.filter(p=>p.life>0);
+  }
+
+  spawnImpact(x,y,n=18){
+    for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=Math.random()*5.5+1.5,col=['#C8A875','#9A9182','#E8D4A0','#D4965A','#B0A898'][i%5];
+      this.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-2.5,life:Math.floor(Math.random()*20+12),maxLife:32,r:Math.random()*5+2,col});}
+    for(let i=0;i<6;i++){const a=Math.random()*Math.PI*2,s=Math.random()*1.5+.5;
+      this.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1,life:Math.floor(Math.random()*30+20),maxLife:50,r:Math.random()*12+6,col:'rgba(180,165,145,'});}
+  }
+
+  endTurn(){
+    const alive=this.enemies.filter(e=>!e.dead).length,na=this.state.ammo-1;
+    this.setState({ammo:na});
+    if(this.boulder){this.M.Composite.remove(this.world,this.boulder);this.dynBodies=this.dynBodies.filter(b=>b!==this.boulder);this.boulder=null;}
+    if(alive<=0){this.gameState='won';this.setState(s=>({score:s.score+na*300,showModal:true,modalTitle:'Victory!',modalAccent:'#E8533A',modalMsg:'Castle captured! Ammo bonus earned.'}));}
+    else if(na<=0){this.gameState='lost';this.setState({showModal:true,modalTitle:'Defeat',modalAccent:'#5B4A36',modalMsg:`Out of ammo — ${alive} still standing.`});}
+    else{this.gameState='aiming';this.trebAngle=this.A_LOAD;if(this.hintRef.current)this.hintRef.current.style.display='none';}
+  }
+
+  // ---- DRAW ----
+  drawBackground(ctx){
+    const W=this.W,H=this.H;
+    const sky=ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'#9CC2D2');sky.addColorStop(.45,'#C9DDCF');sky.addColorStop(.72,'#EFDEB4');sky.addColorStop(1,'#F7D89A');
+    ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+    const sun=ctx.createRadialGradient(820,110,8,820,110,190);
+    sun.addColorStop(0,'rgba(255,247,221,.92)');sun.addColorStop(.4,'rgba(252,233,180,.46)');sun.addColorStop(1,'rgba(248,215,154,0)');
+    ctx.fillStyle=sun;ctx.fillRect(560,0,400,370);
+    ctx.beginPath();ctx.arc(820,110,40,0,Math.PI*2);ctx.fillStyle='#FFF4CE';ctx.fill();
+    ctx.fillStyle='#AEC6B2';
+    ctx.beginPath();ctx.moveTo(0,392);ctx.lineTo(200,352);ctx.lineTo(430,388);ctx.lineTo(660,350);ctx.lineTo(880,390);ctx.lineTo(960,366);ctx.lineTo(960,460);ctx.lineTo(0,460);ctx.fill();
+    ctx.fillStyle='#86A06C';
+    ctx.beginPath();ctx.moveTo(0,420);ctx.lineTo(260,386);ctx.lineTo(500,416);ctx.lineTo(720,388);ctx.lineTo(960,418);ctx.lineTo(960,this.GY);ctx.lineTo(0,this.GY);ctx.fill();
+    const gr=ctx.createLinearGradient(0,this.GY,0,H);
+    gr.addColorStop(0,'#82A268');gr.addColorStop(1,'#5E7E47');
+    ctx.fillStyle=gr;ctx.fillRect(0,this.GY,W,H-this.GY);
+    ctx.strokeStyle='#4C6A38';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,this.GY);ctx.lineTo(W,this.GY);ctx.stroke();
+  }
+
+  drawTrebuchet(ctx){
+    const px=this.PV.x,py=this.PV.y,gy=this.GY,ang=this.trebAngle;
+    // Long arm tip = sling end.  Loaded: lower-LEFT (behind trebuchet).  After fire: upper-RIGHT.
+    const lx=px+this.AL*Math.cos(ang),ly=py+this.AL*Math.sin(ang);
+    // Short arm tip = counterweight side.  Loaded: upper-RIGHT.  After fire: lower-LEFT.
+    const sx=px-this.AS*Math.cos(ang),sy=py-this.AS*Math.sin(ang);
+
+    // Ground shadow
+    ctx.save();ctx.globalAlpha=.14;ctx.fillStyle='#3F3020';
+    ctx.beginPath();ctx.ellipse(px+26,gy,136,14,0,0,Math.PI*2);ctx.fill();ctx.restore();
+
+    const plank=(x1,y1,x2,y2,w,col,alpha=1)=>{
+      const len=Math.hypot(x2-x1,y2-y1);if(len<1)return;
+      ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=col;ctx.lineWidth=w;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+      ctx.strokeStyle='rgba(46,26,10,.22)';ctx.lineWidth=1.8;
+      const nx=-(y2-y1)/len*w*.36,ny=(x2-x1)/len*w*.36;
+      for(let i=1;i<=4;i++){const t=i/5,mx=x1+(x2-x1)*t,my=y1+(y2-y1)*t;ctx.beginPath();ctx.moveTo(mx-nx,my-ny);ctx.lineTo(mx+nx,my+ny);ctx.stroke();}
+      ctx.restore();
+    };
+
+    // Ground sill — extends well right toward castle
+    ctx.strokeStyle='#7A5230';ctx.lineWidth=18;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(102,gy-3);ctx.lineTo(374,gy-3);ctx.stroke();
+
+    // Rear A-frame (slimmer)
+    plank(140,gy,px-8,py+18,10,'#6B4427',.70);
+    plank(px+10,py+18,254,gy,10,'#6B4427',.70);
+    // Front A-frame (heavier load-bearing)
+    plank(110,gy,px-4,py+12,15,'#8A5A30');
+    plank(px+6,py+12,318,gy,15,'#8A5A30');
+    // Aggressive forward brace toward castle — directional cue
+    plank(px+8,py+18,374,gy-2,12,'#7A5230');
+
+    // Cross braces lower
+    ctx.strokeStyle='#6B4427';ctx.lineWidth=9;ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(128,gy-76);ctx.lineTo(298,gy-94);
+    ctx.moveTo(128,gy-94);ctx.lineTo(298,gy-76);
+    ctx.stroke();
+    // Cross braces upper
+    ctx.lineWidth=7;
+    ctx.beginPath();
+    ctx.moveTo(130,gy-152);ctx.lineTo(280,gy-168);
+    ctx.moveTo(130,gy-168);ctx.lineTo(280,gy-152);
+    ctx.stroke();
+
+    // Axle housing
+    ctx.strokeStyle='#9A6840';ctx.lineWidth=22;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(px-28,py+10);ctx.lineTo(px+28,py+10);ctx.stroke();
+    ctx.strokeStyle='#7A5030';ctx.lineWidth=8;
+    ctx.beginPath();ctx.moveTo(px-28,py+10);ctx.lineTo(px+28,py+10);ctx.stroke();
+    ctx.fillStyle='#3A3A40';
+    for(const ox of[-20,0,20]){ctx.beginPath();ctx.arc(px+ox,py+10,3.5,0,Math.PI*2);ctx.fill();}
+
+    // Counterweight: chain + heavy box from short arm tip
+    ctx.strokeStyle='#3A3A40';ctx.lineWidth=4;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx,sy+24);ctx.stroke();
+    ctx.strokeStyle='#6C6C74';ctx.lineWidth=2.5;
+    for(let i=4;i<24;i+=7){ctx.beginPath();ctx.ellipse(sx,sy+i,3.5,4.5,0,0,Math.PI*2);ctx.stroke();}
+    ctx.save();ctx.translate(sx,sy+46);
+    ctx.fillStyle='#5C3F26';ctx.fillRect(-23,-28,46,58);
+    ctx.fillStyle='#3A3A40';for(const yb of[-28,-15,-2,11,24]){ctx.fillRect(-23,yb,46,5);}
+    ctx.fillRect(-3,-28,6,58);
+    ctx.fillStyle='#7A7A84';for(const [bx,by] of[[-16,-24],[15,-24],[-16,25],[15,25]]){ctx.beginPath();ctx.arc(bx,by,2.8,0,Math.PI*2);ctx.fill();}
+    ctx.strokeStyle='#3A3A40';ctx.lineWidth=1.5;ctx.strokeRect(-23,-28,46,58);
+    ctx.restore();
+
+    // Throwing arm (short-arm tip → long-arm tip)
+    ctx.strokeStyle='#A87848';ctx.lineWidth=16;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(lx,ly);ctx.stroke();
+    const cd=Math.cos(ang),sd=Math.sin(ang),tot=this.AL+this.AS;
+    ctx.strokeStyle='rgba(60,32,10,.26)';ctx.lineWidth=2.5;
+    for(let i=1;i<=9;i++){const t=(i/10)*tot-this.AS;ctx.beginPath();ctx.moveTo(px+t*cd-sd*7,py+t*sd+cd*7);ctx.lineTo(px+t*cd+sd*7,py+t*sd-cd*7);ctx.stroke();}
+    ctx.strokeStyle='#3A3A40';ctx.lineWidth=8;ctx.lineCap='round';
+    for(const t of[-this.AS+12,55,this.AL-20]){const ax=px+t*cd,ay=py+t*sd;ctx.beginPath();ctx.moveTo(ax-sd*9,ay+cd*9);ctx.lineTo(ax+sd*9,ay-cd*9);ctx.stroke();}
+    // Pivot pin
+    ctx.fillStyle='#2E2E36';ctx.beginPath();ctx.arc(px,py,11,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#8A8A96';ctx.beginPath();ctx.arc(px,py,5.5,0,Math.PI*2);ctx.fill();
+
+    // ---- Sling + boulder — rope physics ----
+    if(this.gameState!=='flying'){
+      let boulderX,boulderY;
+      if(this.gameState==='aiming'||!this.swinging){
+        // Loaded: sling hangs straight down — boulder rests near ground on left side
+        boulderX=lx; boulderY=ly+this.SL;
+      } else {
+        // Rope physics: gravity-dominant at slow start → centrifugal trailing as arm whips
+        // Arm rotates CW in screen coords (angle decreases A_LOAD→A_REST).
+        // Arm-tip velocity direction = (sin(ang), -cos(ang))·|ω|
+        // Sling trails OPPOSITE → (-sin(ang), cos(ang))
+        const swingP=Math.min(this.swingF/this.SF,1);
+        const angVelNorm=5*Math.pow(swingP,4);   // derivative of quintic ease [0..5]
+        const cf_t=Math.min(1,angVelNorm*0.26);  // 0=gravity, 1=full centrifugal
+        // Clockwise rotation (angle increases) → arm tip moves in (-sin, cos) direction
+        // Sling trails OPPOSITE → centrifugal direction = (sin, -cos)
+        const dx_=Math.sin(ang)*cf_t;
+        const dy_=(1-cf_t)-Math.cos(ang)*cf_t;
+        const dl=Math.hypot(dx_,dy_)||1;
+        boulderX=lx+this.SL*dx_/dl;
+        boulderY=ly+this.SL*dy_/dl;
+        // Snap to aim direction in last 8 frames before release — the "whip"
+        const ftr=this.RELEASE_FRAME-this.swingF;
+        if(ftr<=8&&ftr>=0){
+          const snap=1-ftr/8;
+          const ar=this.state.aimDeg*Math.PI/180;
+          boulderX=boulderX*(1-snap)+(lx+this.SL*Math.cos(ar))*snap;
+          boulderY=boulderY*(1-snap)+(ly-this.SL*Math.sin(ar))*snap;
+        }
+      }
+      // Sling rope (dashed)
+      ctx.strokeStyle='#8A5A30';ctx.lineWidth=3.5;ctx.setLineDash([5,4]);
+      ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(boulderX,boulderY);ctx.stroke();
+      ctx.setLineDash([]);
+      // Boulder visual (until Matter.js physics takes over at release)
+      if(!this.boulder){
+        const bg=ctx.createRadialGradient(boulderX-5,boulderY-5,2,boulderX,boulderY,16);
+        bg.addColorStop(0,'#AAAAA0');bg.addColorStop(.55,'#8C8378');bg.addColorStop(1,'#6A6258');
+        ctx.beginPath();ctx.arc(boulderX,boulderY,16,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
+        ctx.strokeStyle='#5A5248';ctx.lineWidth=2;ctx.stroke();
+        ctx.fillStyle='rgba(80,70,60,.5)';
+        ctx.beginPath();ctx.arc(boulderX-5,boulderY-4,4,0,Math.PI*2);ctx.fill();
+      }
+    }
+  }
+
+  drawForeground(ctx){
+    const sx=(Math.random()-.5)*this.shake,sy=(Math.random()-.5)*this.shake;
+    if(this.shake>.5){ctx.save();ctx.translate(sx,sy);}
+    this.drawTrebuchet(ctx);
+
+    // Trajectory preview (always while aiming)
+    if(this.gameState==='aiming'){
+      const o=this.spawnPos(),v=this.aimVel();
+      ctx.fillStyle='rgba(46,33,23,.4)';
+      for(let i=1;i<=30;i++){const t=i*2.6,x=o.x+v.x*t,y=o.y+v.y*t+.5*this.PG*t*t;if(y>this.GY||x>this.W)break;const r=4-i*.1;ctx.beginPath();ctx.arc(x,y,Math.max(.9,r),0,Math.PI*2);ctx.fill();}
+      // launch point marker
+      ctx.strokeStyle='rgba(232,83,58,.8)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(o.x,o.y,6,0,Math.PI*2);ctx.stroke();
+    }
+
+    for(const e of this.enemies){
+      if(e.dead)continue;
+      ctx.save();ctx.translate(e.position.x,e.position.y);ctx.rotate(e.angle);
+      if(e.gk==='guard'){
+        ctx.fillStyle='#FBF3DD';ctx.beginPath();ctx.arc(-4,-2,3.5,0,Math.PI*2);ctx.arc(4,-2,3.5,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#2E2117';ctx.beginPath();ctx.arc(-4,-2,1.8,0,Math.PI*2);ctx.arc(4,-2,1.8,0,Math.PI*2);ctx.fill();
+      }else{
+        ctx.fillStyle='#FBF3DD';ctx.beginPath();ctx.arc(-5,-2,4,0,Math.PI*2);ctx.arc(5,-2,4,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#2E2117';ctx.beginPath();ctx.arc(-5,-2,2,0,Math.PI*2);ctx.arc(5,-2,2,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#F2A93B';ctx.strokeStyle='#2E2117';ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.moveTo(-12,-15);ctx.lineTo(-12,-7);ctx.lineTo(-6,-11);ctx.lineTo(0,-7);ctx.lineTo(6,-11);ctx.lineTo(12,-7);ctx.lineTo(12,-15);ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.fillStyle='#E8533A';for(const cx of[-12,0,12]){ctx.beginPath();ctx.arc(cx,-15,2.5,0,Math.PI*2);ctx.fill();}
+      }
+      ctx.restore();
+      if(e.cl>0)this.drawCrack(ctx,e);
+    }
+    for(const b of this.dynBodies)if((b.cl||0)>0&&b!==this.boulder)this.drawCrack(ctx,b);
+    for(const p of this.particles){
+      const al=Math.max(0,p.life/p.maxLife);
+      if(p.col.startsWith('rgba')){ctx.fillStyle=p.col+al+')';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();}
+      else{ctx.globalAlpha=al;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
+    }
+    if(this.shake>.5)ctx.restore();
+  }
+
+  drawCrack(ctx,body){
+    if(!body.cl||body.cl<1)return;
+    ctx.save();ctx.translate(body.position.x,body.position.y);ctx.rotate(body.angle);
+    ctx.strokeStyle='rgba(46,33,23,.72)';ctx.lineWidth=1.6;ctx.lineCap='round';
+    if(body.cl>=1){ctx.beginPath();ctx.moveTo(-5,-9);ctx.lineTo(2,0);ctx.lineTo(-3,10);ctx.stroke();}
+    if(body.cl>=2){ctx.beginPath();ctx.moveTo(8,-6);ctx.lineTo(1,4);ctx.lineTo(6,13);ctx.stroke();}
+    if(body.cl>=3){ctx.strokeStyle='rgba(46,33,23,.9)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-11,4);ctx.lineTo(0,-1);ctx.lineTo(12,5);ctx.stroke();}
+    ctx.restore();
+  }
+
+  onAimChange=e=>this.setState({aimDeg:+e.target.value});
+  onPowerChange=e=>this.setState({power:+e.target.value});
+  onFire=()=>this.fire();
+  onRestart=()=>{if(this.M)this.buildLevel();};
+  onTogglePause=()=>{
+    if(!this.runner)return;
+    const np=!this.state.paused;this.setState({paused:np});
+    if(np)this.M.Runner.stop(this.runner);else this.M.Runner.run(this.runner,this.engine);
+  };
+
+  renderVals(){
+    return{canvasRef:this.canvasRef,hintRef:this.hintRef,score:this.state.score.toLocaleString(),ammo:this.state.ammo,enemiesLeft:this.state.enemiesLeft,aimDeg:this.state.aimDeg,power:this.state.power,paused:this.state.paused,showModal:this.state.showModal,modalTitle:this.state.modalTitle,modalMsg:this.state.modalMsg,modalAccent:this.state.modalAccent,onAimChange:this.onAimChange,onPowerChange:this.onPowerChange,onFire:this.onFire,onRestart:this.onRestart,onTogglePause:this.onTogglePause};
+  }
+}
+</script>
+</body>
+</html>
