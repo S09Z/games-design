@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@400;700;800;900&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #c9c3b8; }
+</style>
+</helmet>
+
+<div style="font-family:'Nunito',sans-serif; background:#c9c3b8; min-height:100vh; padding:56px 40px 80px;">
+  <div style="max-width:1080px; margin:0 auto;">
+
+    <!-- page header -->
+    <div style="margin-bottom:44px;">
+      <div style="display:inline-block; background:#2E2117; color:#F2E4C8; font-weight:800; font-size:13px; letter-spacing:2px; text-transform:uppercase; padding:7px 16px; border-radius:999px;">Crush the Castle · Storybook Parchment</div>
+      <h1 style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:44px; color:#2E2117; margin-top:16px; line-height:1;">Core Screens</h1>
+      <p style="font-size:17px; color:#5b5347; margin-top:8px;">Five game screens at 16:9 (1000×562 reference). Pen-drawn, inked, medieval.</p>
+    </div>
+
+    <!-- ========== 1 · MAIN MENU ========== -->
+    <div data-screen-label="Main Menu" style="margin-bottom:56px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:14px;">
+        <span style="font-family:'Grenze Gotisch',serif; font-weight:800; font-size:24px; color:#2E2117;">01</span>
+        <span style="font-weight:800; font-size:18px; color:#2E2117;">Main Menu</span>
+        <span style="font-size:14px; color:#6b6356;">· Play · How to Play · Settings</span>
+      </div>
+
+      <div style="position:relative; width:100%; aspect-ratio:1000/562; border:4px solid #2E2117; border-radius:22px; overflow:hidden; box-shadow:0 10px 0 #2E2117, 0 26px 40px rgba(0,0,0,.28);">
+        <dc-import name="Battle Scene" hint-size="100%,100%" style="position:absolute; inset:0; width:100%; height:100%;"></dc-import>
+        <!-- legibility wash -->
+        <div style="position:absolute; inset:0; background:radial-gradient(120% 95% at 50% 38%, rgba(247,238,214,.0) 55%, rgba(46,33,23,.12) 100%);"></div>
+
+        <!-- title -->
+        <div style="position:absolute; top:5%; left:0; right:0; text-align:center;">
+          <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:62px; line-height:.86; color:#2E2117; text-shadow:0 2px 0 #FBF3DD;">Crush<br><span style="color:#E8533A; -webkit-text-stroke:2.5px #2E2117; paint-order:stroke fill;">the Castle</span></div>
+        </div>
+
+        <!-- button stack panel -->
+        <div style="position:absolute; left:50%; bottom:7%; transform:translateX(-50%); width:42%; display:flex; flex-direction:column; gap:13px;">
+          <button style="font-family:'Nunito'; font-weight:900; font-size:24px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:16px; border:3.5px solid #2E2117; border-radius:16px; cursor:pointer; background:#E8533A; box-shadow:0 6px 0 #2E2117; letter-spacing:1px; display:flex; align-items:center; justify-content:center; gap:10px;"><span style="font-size:20px;">▶</span> PLAY</button>
+          <div style="display:flex; gap:13px;">
+            <button style="flex:1; font-family:'Nunito'; font-weight:900; font-size:16px; color:#2E2117; padding:13px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117;">How to Play</button>
+            <button style="flex:1; font-family:'Nunito'; font-weight:900; font-size:16px; color:#2E2117; padding:13px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117;">Settings</button>
+          </div>
+        </div>
+
+        <!-- corner icon buttons -->
+        <div style="position:absolute; right:3%; top:5%; display:flex; gap:10px;">
+          <button style="width:52px; height:52px; border:3.5px solid #2E2117; border-radius:14px; background:#FBF3DD; box-shadow:0 5px 0 #2E2117; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 9 H8 L13 5 V19 L8 15 H4 Z" fill="#E8533A"/><path d="M16.5 8.5 a5 5 0 0 1 0 7"/><path d="M19 6 a8.5 8.5 0 0 1 0 12"/></svg>
+          </button>
+          <button style="width:52px; height:52px; border:3.5px solid #2E2117; border-radius:14px; background:#FBF3DD; box-shadow:0 5px 0 #2E2117; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M7 4 H17 V9 a5 5 0 0 1 -10 0 Z" fill="#F2A93B"/><path d="M7 5 H4 V7 a3 3 0 0 0 3 3" /><path d="M17 5 H20 V7 a3 3 0 0 1 -3 3"/><path d="M12 14 V17 M9 20 H15 M10 20 a2 2 0 0 1 4 0" fill="#F2A93B"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 2 · LEVEL SELECT ========== -->
+    <div data-screen-label="Level Select" style="margin-bottom:56px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:14px;">
+        <span style="font-family:'Grenze Gotisch',serif; font-weight:800; font-size:24px; color:#2E2117;">02</span>
+        <span style="font-weight:800; font-size:18px; color:#2E2117;">Level Select</span>
+        <span style="font-size:14px; color:#6b6356;">· 5 levels · star ratings · locked state</span>
+      </div>
+
+      <div style="position:relative; width:100%; aspect-ratio:1000/562; border:4px solid #2E2117; border-radius:22px; overflow:hidden; box-shadow:0 10px 0 #2E2117, 0 26px 40px rgba(0,0,0,.28); background:#EFE2C4; background-image:radial-gradient(circle at 18% 22%, rgba(120,90,50,.10) 0, transparent 38%), radial-gradient(circle at 82% 78%, rgba(120,90,50,.10) 0, transparent 42%), radial-gradient(circle at 60% 12%, rgba(120,90,50,.07) 0, transparent 40%);">
+
+        <!-- decorative map props -->
+        <svg viewBox="0 0 1000 562" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%; opacity:.5;">
+          <g stroke="#2E2117" stroke-width="3" stroke-linejoin="round" fill="#9DBE74">
+            <path d="M150 430 q30 -34 60 0 Z"/><path d="M560 130 q26 -30 52 0 Z"/>
+          </g>
+          <g stroke="#2E2117" stroke-width="3" stroke-linejoin="round">
+            <path d="M905 440 l16 -26 l16 26 Z" fill="#6E8B5A"/><line x1="921" y1="440" x2="921" y2="460" stroke="#6B4A2E" stroke-width="5"/>
+            <path d="M70 150 l14 -22 l14 22 Z" fill="#6E8B5A"/><line x1="84" y1="150" x2="84" y2="168" stroke="#6B4A2E" stroke-width="5"/>
+          </g>
+        </svg>
+
+        <!-- trail -->
+        <svg viewBox="0 0 1000 562" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%;">
+          <path d="M90 332 Q180 210 270 200 Q360 270 450 340 Q545 255 640 188 Q735 248 830 318" fill="none" stroke="#2E2117" stroke-width="5" stroke-dasharray="3 18" stroke-linecap="round" opacity=".55"/>
+        </svg>
+
+        <!-- header -->
+        <button style="position:absolute; left:3%; top:6%; width:52px; height:52px; border:3.5px solid #2E2117; border-radius:14px; background:#FBF3DD; box-shadow:0 5px 0 #2E2117; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 L8 12 L15 19"/></svg>
+        </button>
+        <div style="position:absolute; top:6%; left:0; right:0; text-align:center;">
+          <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:40px; color:#2E2117; line-height:1;">Choose Thy Battle</div>
+        </div>
+
+        <!-- L1 completed -->
+        <div style="position:absolute; left:9%; top:59%; transform:translate(-50%,-50%); text-align:center;">
+          <div style="width:104px; height:104px; border-radius:50%; border:4px solid #2E2117; background:#FBF3DD; box-shadow:0 6px 0 #2E2117; display:flex; align-items:center; justify-content:center; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:44px; color:#E8533A;">1</div>
+          <div style="display:inline-flex; gap:3px; margin-top:14px; background:#2E2117; padding:5px 9px; border-radius:999px;"><span style="color:#F2A93B; font-size:17px;">★</span><span style="color:#F2A93B; font-size:17px;">★</span><span style="color:#F2A93B; font-size:17px;">★</span></div>
+        </div>
+
+        <!-- L2 -->
+        <div style="position:absolute; left:27%; top:35.5%; transform:translate(-50%,-50%); text-align:center;">
+          <div style="width:104px; height:104px; border-radius:50%; border:4px solid #2E2117; background:#FBF3DD; box-shadow:0 6px 0 #2E2117; display:flex; align-items:center; justify-content:center; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:44px; color:#E8533A;">2</div>
+          <div style="display:inline-flex; gap:3px; margin-top:14px; background:#2E2117; padding:5px 9px; border-radius:999px;"><span style="color:#F2A93B; font-size:17px;">★</span><span style="color:#F2A93B; font-size:17px;">★</span><span style="color:#6b6356; font-size:17px;">★</span></div>
+        </div>
+
+        <!-- L3 -->
+        <div style="position:absolute; left:45%; top:60.5%; transform:translate(-50%,-50%); text-align:center;">
+          <div style="width:104px; height:104px; border-radius:50%; border:4px solid #2E2117; background:#FBF3DD; box-shadow:0 6px 0 #2E2117; display:flex; align-items:center; justify-content:center; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:44px; color:#E8533A;">3</div>
+          <div style="display:inline-flex; gap:3px; margin-top:14px; background:#2E2117; padding:5px 9px; border-radius:999px;"><span style="color:#F2A93B; font-size:17px;">★</span><span style="color:#F2A93B; font-size:17px;">★</span><span style="color:#F2A93B; font-size:17px;">★</span></div>
+        </div>
+
+        <!-- L4 current -->
+        <div style="position:absolute; left:64%; top:32%; transform:translate(-50%,-50%); text-align:center;">
+          <div style="position:relative; width:128px; height:128px; border-radius:50%; border:4px solid #2E2117; background:#E8533A; box-shadow:0 7px 0 #2E2117, 0 0 0 8px rgba(242,169,59,.45); display:flex; align-items:center; justify-content:center; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:54px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3);">4
+            <div style="position:absolute; bottom:-14px; left:50%; transform:translateX(-50%); background:#2E2117; color:#FBF3DD; font-family:'Nunito'; font-weight:900; font-size:12px; letter-spacing:1px; padding:5px 12px; border-radius:999px; white-space:nowrap;">PLAY ▶</div>
+          </div>
+        </div>
+
+        <!-- L5 locked -->
+        <div style="position:absolute; left:83%; top:56.5%; transform:translate(-50%,-50%); text-align:center;">
+          <div style="width:104px; height:104px; border-radius:50%; border:4px solid #2E2117; background:#B6AE9F; box-shadow:0 6px 0 #2E2117; display:flex; align-items:center; justify-content:center;">
+            <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.4" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" fill="#8C8378"/><path d="M8 11 V8 a4 4 0 0 1 8 0 V11"/><circle cx="12" cy="15" r="1.4" fill="#2E2117"/></svg>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ========== 3 · IN-GAME HUD ========== -->
+    <div data-screen-label="In-game HUD" style="margin-bottom:56px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:14px;">
+        <span style="font-family:'Grenze Gotisch',serif; font-weight:800; font-size:24px; color:#2E2117;">03</span>
+        <span style="font-weight:800; font-size:18px; color:#2E2117;">In-game HUD</span>
+        <span style="font-size:14px; color:#6b6356;">· score · ammo · pause · aim &amp; power</span>
+      </div>
+
+      <div style="position:relative; width:100%; aspect-ratio:1000/562; border:4px solid #2E2117; border-radius:22px; overflow:hidden; box-shadow:0 10px 0 #2E2117, 0 26px 40px rgba(0,0,0,.28);">
+        <dc-import name="Battle Scene" hint-size="100%,100%" style="position:absolute; inset:0; width:100%; height:100%;"></dc-import>
+
+        <!-- top-left: level + score -->
+        <div style="position:absolute; left:2.4%; top:5%; display:flex; flex-direction:column; gap:9px;">
+          <div style="display:flex; align-items:center; gap:8px; background:#2E2117; padding:6px 14px 6px 8px; border-radius:999px; align-self:flex-start;">
+            <span style="display:inline-flex; width:26px; height:26px; align-items:center; justify-content:center; background:#F2A93B; border-radius:50%;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#2E2117"><path d="M5 8 L9 11 L12 5 L15 11 L19 8 L17 18 H7 Z"/></svg>
+            </span>
+            <span style="font-family:'Nunito'; font-weight:900; font-size:14px; letter-spacing:1px; color:#FBF3DD;">LEVEL 4</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; background:#FBF3DD; border:3.5px solid #2E2117; border-radius:14px; box-shadow:0 5px 0 #2E2117; padding:8px 16px;">
+            <span style="font-family:'Nunito'; font-weight:800; font-size:11px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Score</span>
+            <span style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:30px; line-height:.9; color:#2E2117;">12,450</span>
+          </div>
+        </div>
+
+        <!-- top-right: pause -->
+        <button style="position:absolute; right:2.4%; top:5%; width:56px; height:56px; border:3.5px solid #2E2117; border-radius:14px; background:#FBF3DD; box-shadow:0 5px 0 #2E2117; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#2E2117"><rect x="6" y="5" width="4.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="4.5" height="14" rx="1.5"/></svg>
+        </button>
+
+        <!-- bottom-left: ammo -->
+        <div style="position:absolute; left:2.4%; bottom:5%; display:flex; align-items:center; gap:10px; background:#FBF3DD; border:3.5px solid #2E2117; border-radius:14px; box-shadow:0 5px 0 #2E2117; padding:9px 15px;">
+          <span style="font-family:'Nunito'; font-weight:800; font-size:11px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Ammo</span>
+          <div style="display:flex; gap:7px; align-items:center;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#8C8378" stroke="#2E2117" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="9" r="1.6" fill="#6E675B" stroke="none"/><circle cx="14" cy="14" r="1.3" fill="#6E675B" stroke="none"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#8C8378" stroke="#2E2117" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="9" r="1.6" fill="#6E675B" stroke="none"/><circle cx="14" cy="14" r="1.3" fill="#6E675B" stroke="none"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B6AE9F" stroke-width="2" stroke-dasharray="3 3"><circle cx="12" cy="12" r="9"/></svg>
+          </div>
+          <span style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:24px; color:#2E2117; margin-left:2px;">×2</span>
+        </div>
+
+        <!-- bottom-center: power + aim -->
+        <div style="position:absolute; left:50%; bottom:5%; transform:translateX(-50%); display:flex; align-items:flex-end; gap:14px;">
+          <!-- power meter -->
+          <div style="background:#FBF3DD; border:3.5px solid #2E2117; border-radius:16px; box-shadow:0 5px 0 #2E2117; padding:11px 16px 13px; width:330px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span style="font-family:'Nunito'; font-weight:800; font-size:11px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Power</span>
+              <span style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:20px; color:#E8533A; line-height:1;">68%</span>
+            </div>
+            <div style="position:relative; height:20px; border-radius:999px; background:#E8DDC2; border:3px solid #2E2117;">
+              <div style="position:absolute; left:0; top:0; bottom:0; width:66%; border-radius:999px 0 0 999px; background:linear-gradient(90deg,#F2A93B,#E8533A);"></div>
+              <div style="position:absolute; left:62%; top:50%; transform:translate(-50%,-50%); width:30px; height:30px; border-radius:50%; background:#E8533A; border:3.5px solid #2E2117; box-shadow:0 3px 0 #2E2117;"></div>
+            </div>
+          </div>
+          <!-- aim angle -->
+          <div style="background:#2E2117; border-radius:14px; padding:10px 14px; text-align:center;">
+            <div style="font-family:'Nunito'; font-weight:800; font-size:10px; letter-spacing:1.5px; color:#B6AE9F; text-transform:uppercase; margin-bottom:3px;">Aim</div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F2A93B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 L19 5 M19 5 H12 M19 5 V12"/></svg>
+              <span style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:22px; color:#FBF3DD; line-height:1;">42°</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ========== 4 · PAUSE MENU ========== -->
+    <div data-screen-label="Pause Menu" style="margin-bottom:56px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:14px;">
+        <span style="font-family:'Grenze Gotisch',serif; font-weight:800; font-size:24px; color:#2E2117;">04</span>
+        <span style="font-weight:800; font-size:18px; color:#2E2117;">Pause Menu</span>
+        <span style="font-size:14px; color:#6b6356;">· modal over dimmed game · Resume · Restart · Quit</span>
+      </div>
+
+      <div style="position:relative; width:100%; aspect-ratio:1000/562; border:4px solid #2E2117; border-radius:22px; overflow:hidden; box-shadow:0 10px 0 #2E2117, 0 26px 40px rgba(0,0,0,.28);">
+        <dc-import name="Battle Scene" hint-size="100%,100%" style="position:absolute; inset:0; width:100%; height:100%;"></dc-import>
+        <div style="position:absolute; inset:0; background:rgba(58,42,28,.30);"></div>
+
+        <!-- modal -->
+        <div style="position:absolute; left:50%; top:53%; transform:translate(-50%,-50%); width:42%; background:#FBF3DD; border:4px solid #2E2117; border-radius:24px; box-shadow:0 8px 0 #2E2117, 0 30px 50px rgba(0,0,0,.45); padding:46px 32px 30px;">
+          <!-- ribbon -->
+          <div style="position:absolute; top:-26px; left:50%; transform:translateX(-50%); background:#2E2117; color:#FBF3DD; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:30px; letter-spacing:1px; padding:8px 34px; border-radius:14px; border:3px solid #F2A93B; box-shadow:0 5px 0 rgba(0,0,0,.35); white-space:nowrap;">Paused</div>
+
+          <div style="display:flex; flex-direction:column; gap:13px;">
+            <button style="font-family:'Nunito'; font-weight:900; font-size:21px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:14px; border:3.5px solid #2E2117; border-radius:15px; cursor:pointer; background:#E8533A; box-shadow:0 6px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:10px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M7 5 L19 12 L7 19 Z"/></svg> RESUME
+            </button>
+            <button style="font-family:'Nunito'; font-weight:900; font-size:18px; color:#2E2117; padding:13px; border:3.5px solid #2E2117; border-radius:15px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:10px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11 a8 8 0 1 0 -2 5"/><path d="M20 5 V11 H14"/></svg> Restart
+            </button>
+            <button style="font-family:'Nunito'; font-weight:900; font-size:18px; color:#2E2117; padding:13px; border:3.5px solid #2E2117; border-radius:15px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:10px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4 H6 a2 2 0 0 0 -2 2 V18 a2 2 0 0 0 2 2 H14"/><path d="M17 8 L21 12 L17 16 M21 12 H10"/></svg> Quit to Menu
+            </button>
+
+            <!-- toggles -->
+            <div style="display:flex; gap:11px; margin-top:6px;">
+              <div style="flex:1; display:flex; align-items:center; justify-content:space-between; background:#EFE2C4; border:3px solid #2E2117; border-radius:12px; padding:8px 12px;">
+                <span style="font-family:'Nunito'; font-weight:800; font-size:13px; color:#2E2117;">Music</span>
+                <div style="width:44px; height:24px; border-radius:999px; background:#6E8B5A; border:2.5px solid #2E2117; position:relative;"><div style="position:absolute; right:1px; top:50%; transform:translateY(-50%); width:18px; height:18px; border-radius:50%; background:#FBF3DD; border:2px solid #2E2117;"></div></div>
+              </div>
+              <div style="flex:1; display:flex; align-items:center; justify-content:space-between; background:#EFE2C4; border:3px solid #2E2117; border-radius:12px; padding:8px 12px;">
+                <span style="font-family:'Nunito'; font-weight:800; font-size:13px; color:#2E2117;">Sound</span>
+                <div style="width:44px; height:24px; border-radius:999px; background:#6E8B5A; border:2.5px solid #2E2117; position:relative;"><div style="position:absolute; right:1px; top:50%; transform:translateY(-50%); width:18px; height:18px; border-radius:50%; background:#FBF3DD; border:2px solid #2E2117;"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 5 · LEVEL COMPLETE ========== -->
+    <div data-screen-label="Level Complete" style="margin-bottom:56px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:14px;">
+        <span style="font-family:'Grenze Gotisch',serif; font-weight:800; font-size:24px; color:#2E2117;">05</span>
+        <span style="font-weight:800; font-size:18px; color:#2E2117;">Level Complete</span>
+        <span style="font-size:14px; color:#6b6356;">· stars earned · score · Retry / Next</span>
+      </div>
+
+      <div style="position:relative; width:100%; aspect-ratio:1000/562; border:4px solid #2E2117; border-radius:22px; overflow:hidden; box-shadow:0 10px 0 #2E2117, 0 26px 40px rgba(0,0,0,.28);">
+        <dc-import name="Battle Scene" hint-size="100%,100%" style="position:absolute; inset:0; width:100%; height:100%;"></dc-import>
+        <div style="position:absolute; inset:0; background:rgba(58,42,28,.26);"></div>
+
+        <!-- modal -->
+        <div style="position:absolute; left:50%; top:54%; transform:translate(-50%,-50%); width:50%; background:#FBF3DD; border:4px solid #2E2117; border-radius:24px; box-shadow:0 8px 0 #2E2117, 0 30px 50px rgba(0,0,0,.45); padding:54px 36px 30px; text-align:center;">
+          <div style="position:absolute; top:-28px; left:50%; transform:translateX(-50%); background:#E8533A; color:#fff; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:34px; letter-spacing:1px; padding:8px 40px; border-radius:14px; border:3.5px solid #2E2117; box-shadow:0 5px 0 #2E2117; white-space:nowrap; text-shadow:0 2px 0 rgba(0,0,0,.3);">Victory!</div>
+
+          <!-- stars -->
+          <div style="display:flex; justify-content:center; align-items:flex-end; gap:10px; margin-bottom:18px;">
+            <span style="font-size:58px; color:#F2A93B; -webkit-text-stroke:3px #2E2117; line-height:1;">★</span>
+            <span style="font-size:78px; color:#F2A93B; -webkit-text-stroke:3px #2E2117; line-height:1; margin-bottom:8px;">★</span>
+            <span style="font-size:58px; color:#E4DCC8; -webkit-text-stroke:3px #2E2117; line-height:1;">★</span>
+          </div>
+
+          <!-- score row -->
+          <div style="display:flex; justify-content:center; gap:30px; margin-bottom:22px;">
+            <div>
+              <div style="font-family:'Nunito'; font-weight:800; font-size:11px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Score</div>
+              <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:34px; color:#2E2117; line-height:1;">12,450</div>
+            </div>
+            <div style="width:3px; background:#E4DCC8; border-radius:2px;"></div>
+            <div>
+              <div style="font-family:'Nunito'; font-weight:800; font-size:11px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Best</div>
+              <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:34px; color:#C9851E; line-height:1;">14,000</div>
+            </div>
+          </div>
+
+          <!-- buttons -->
+          <div style="display:flex; gap:12px; align-items:stretch;">
+            <button style="width:58px; border:3.5px solid #2E2117; border-radius:15px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 L12 4 L20 11" /><path d="M6 10 V19 H18 V10" fill="#EAD9B0"/><rect x="10" y="13" width="4" height="6" fill="#2E2117" stroke="none"/></svg>
+            </button>
+            <button style="flex:1; font-family:'Nunito'; font-weight:900; font-size:18px; color:#2E2117; padding:13px; border:3.5px solid #2E2117; border-radius:15px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:9px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11 a8 8 0 1 0 -2 5"/><path d="M20 5 V11 H14"/></svg> Retry
+            </button>
+            <button style="flex:1.4; font-family:'Nunito'; font-weight:900; font-size:20px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:13px; border:3.5px solid #2E2117; border-radius:15px; cursor:pointer; background:#E8533A; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:9px;">
+              NEXT <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M7 5 L17 12 L7 19 Z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 6 · GAME OVER ========== -->
+    <div data-screen-label="Game Over" style="margin-bottom:56px;">
+      <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:14px;">
+        <span style="font-family:'Grenze Gotisch',serif; font-weight:800; font-size:24px; color:#2E2117;">06</span>
+        <span style="font-weight:800; font-size:18px; color:#2E2117;">Game Over</span>
+        <span style="font-size:14px; color:#6b6356;">· defeat variant of screen 05</span>
+      </div>
+
+      <div style="position:relative; width:100%; aspect-ratio:1000/562; border:4px solid #2E2117; border-radius:22px; overflow:hidden; box-shadow:0 10px 0 #2E2117, 0 26px 40px rgba(0,0,0,.28);">
+        <dc-import name="Battle Scene" hint-size="100%,100%" style="position:absolute; inset:0; width:100%; height:100%;"></dc-import>
+        <div style="position:absolute; inset:0; background:rgba(58,42,28,.40);"></div>
+
+        <div style="position:absolute; left:50%; top:54%; transform:translate(-50%,-50%); width:46%; background:#FBF3DD; border:4px solid #2E2117; border-radius:24px; box-shadow:0 8px 0 #2E2117, 0 30px 50px rgba(0,0,0,.45); padding:54px 36px 30px; text-align:center;">
+          <div style="position:absolute; top:-28px; left:50%; transform:translateX(-50%); background:#2E2117; color:#FBF3DD; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:32px; letter-spacing:1px; padding:8px 36px; border-radius:14px; border:3.5px solid #8C8378; box-shadow:0 5px 0 rgba(0,0,0,.35); white-space:nowrap;">Defeat</div>
+
+          <!-- empty stars -->
+          <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:16px;">
+            <span style="font-size:54px; color:#E4DCC8; -webkit-text-stroke:3px #2E2117; line-height:1;">★</span>
+            <span style="font-size:54px; color:#E4DCC8; -webkit-text-stroke:3px #2E2117; line-height:1;">★</span>
+            <span style="font-size:54px; color:#E4DCC8; -webkit-text-stroke:3px #2E2117; line-height:1;">★</span>
+          </div>
+          <p style="font-family:'Nunito'; font-weight:700; font-size:16px; color:#5B4A36; margin-bottom:22px;">The castle still stands. Out of ammo!</p>
+
+          <div style="display:flex; gap:12px;">
+            <button style="flex:1; font-family:'Nunito'; font-weight:900; font-size:18px; color:#2E2117; padding:13px; border:3.5px solid #2E2117; border-radius:15px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:9px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4 H6 a2 2 0 0 0 -2 2 V18 a2 2 0 0 0 2 2 H14"/><path d="M17 8 L21 12 L17 16 M21 12 H10"/></svg> Menu
+            </button>
+            <button style="flex:1.4; font-family:'Nunito'; font-weight:900; font-size:20px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:13px; border:3.5px solid #2E2117; border-radius:15px; cursor:pointer; background:#E8533A; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:9px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11 a8 8 0 1 0 -2 5"/><path d="M20 5 V11 H14"/></svg> Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREENS_ANCHOR -->
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

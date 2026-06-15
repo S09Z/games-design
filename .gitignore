@@ -79,3 +79,4 @@ cabal.project.local~
 
 .vscode/
 */**/.claude/worktrees/
+*/.serena/
