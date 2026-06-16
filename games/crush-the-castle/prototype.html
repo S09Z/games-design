@@ -134,26 +134,88 @@ input[type=range].ct::-moz-range-thumb {
       </div>
 
       <!-- Pause overlay -->
-      <div id="pause-overlay" style="display:none; position:absolute; inset:0; background:rgba(58,42,28,.34); align-items:center; justify-content:center;">
-        <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:42px; color:#FBF3DD; background:#2E2117; border:3px solid #F2A93B; padding:10px 40px; border-radius:16px; box-shadow:0 5px 0 rgba(0,0,0,.4);">Paused</div>
+      <div id="pause-overlay" style="display:none; position:absolute; inset:0; background:rgba(58,42,28,.34); align-items:center; justify-content:center; z-index:10;">
+        <div style="position:relative; width:42%; min-width:260px; background:#FBF3DD; border:4px solid #2E2117; border-radius:24px; box-shadow:0 8px 0 #2E2117, 0 30px 50px rgba(0,0,0,.45); padding:46px 28px 26px;">
+          <div style="position:absolute; top:-24px; left:50%; transform:translateX(-50%); background:#2E2117; color:#FBF3DD; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:28px; letter-spacing:1px; padding:7px 30px; border-radius:13px; border:3px solid #F2A93B; box-shadow:0 5px 0 rgba(0,0,0,.35); white-space:nowrap;">Paused</div>
+          <div style="display:flex; flex-direction:column; gap:11px;">
+            <button id="btn-pause-resume" style="font-family:'Nunito'; font-weight:900; font-size:18px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:13px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#E8533A; box-shadow:0 6px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:9px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M7 5 L19 12 L7 19 Z"/></svg> RESUME</button>
+            <button id="btn-pause-restart" style="font-family:'Nunito'; font-weight:900; font-size:16px; color:#2E2117; padding:12px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:9px;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11 a8 8 0 1 0 -2 5"/><path d="M20 5 V11 H14"/></svg> Restart</button>
+            <button id="btn-pause-quit" style="font-family:'Nunito'; font-weight:900; font-size:16px; color:#2E2117; padding:12px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:9px;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4 H6 a2 2 0 0 0 -2 2 V18 a2 2 0 0 0 2 2 H14"/><path d="M17 8 L21 12 L17 16 M21 12 H10"/></svg> Quit to Menu</button>
+            <div style="display:flex; gap:10px; margin-top:3px;">
+              <div style="flex:1; display:flex; align-items:center; justify-content:space-between; background:#EFE2C4; border:3px solid #2E2117; border-radius:11px; padding:7px 11px;">
+                <span style="font-family:'Nunito'; font-weight:800; font-size:12px; color:#2E2117;">Music</span>
+                <div id="toggle-music" style="width:42px; height:22px; border-radius:999px; background:#6E8B5A; border:2.5px solid #2E2117; position:relative; cursor:pointer;"><div style="position:absolute; right:2px; top:50%; transform:translateY(-50%); width:15px; height:15px; border-radius:50%; background:#FBF3DD; border:2px solid #2E2117;"></div></div>
+              </div>
+              <div style="flex:1; display:flex; align-items:center; justify-content:space-between; background:#EFE2C4; border:3px solid #2E2117; border-radius:11px; padding:7px 11px;">
+                <span style="font-family:'Nunito'; font-weight:800; font-size:12px; color:#2E2117;">Sound</span>
+                <div id="toggle-sound" style="width:42px; height:22px; border-radius:999px; background:#6E8B5A; border:2.5px solid #2E2117; position:relative; cursor:pointer;"><div style="position:absolute; right:2px; top:50%; transform:translateY(-50%); width:15px; height:15px; border-radius:50%; background:#FBF3DD; border:2px solid #2E2117;"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Result modal -->
-      <div id="modal-overlay" style="display:none; position:absolute; inset:0; background:rgba(58,42,28,.32); align-items:center; justify-content:center;">
-        <div style="position:relative; width:48%; min-width:300px; background:#FBF3DD; border:4px solid #2E2117; border-radius:22px; box-shadow:0 8px 0 #2E2117, 0 26px 44px rgba(0,0,0,.45); padding:48px 30px 26px; text-align:center;">
-          <div id="modal-title" style="position:absolute; top:-26px; left:50%; transform:translateX(-50%); background:#E8533A; color:#fff; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:30px; letter-spacing:1px; padding:7px 36px; border-radius:13px; border:3.5px solid #2E2117; box-shadow:0 5px 0 #2E2117; white-space:nowrap; text-shadow:0 2px 0 rgba(0,0,0,.3);">Victory!</div>
-          <p id="modal-msg" style="font-family:'Nunito'; font-weight:700; font-size:15px; color:#5B4A36; margin-bottom:8px;"></p>
-          <div id="modal-score" style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:38px; color:#2E2117; margin-bottom:20px;">0</div>
-          <button class="modal-play-again" id="btn-modal-restart">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11 a8 8 0 1 0 -2 5"/><path d="M20 5 V11 H14"/></svg>
-            Play Again
+      <div id="modal-overlay" style="display:none; position:absolute; inset:0; background:rgba(58,42,28,.32); align-items:center; justify-content:center; z-index:10;">
+        <div style="position:relative; width:48%; min-width:280px; background:#FBF3DD; border:4px solid #2E2117; border-radius:22px; box-shadow:0 8px 0 #2E2117, 0 26px 44px rgba(0,0,0,.45); padding:48px 28px 24px; text-align:center;">
+          <div id="modal-title" style="position:absolute; top:-26px; left:50%; transform:translateX(-50%); background:#E8533A; color:#fff; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:28px; letter-spacing:1px; padding:7px 32px; border-radius:13px; border:3.5px solid #2E2117; box-shadow:0 5px 0 #2E2117; white-space:nowrap; text-shadow:0 2px 0 rgba(0,0,0,.3);">Victory!</div>
+          <div style="display:flex; justify-content:center; align-items:flex-end; gap:8px; margin-bottom:12px;">
+            <span id="modal-star1" style="font-size:46px; -webkit-text-stroke:2.5px #2E2117; line-height:1; color:#F2A93B;">★</span>
+            <span id="modal-star2" style="font-size:60px; -webkit-text-stroke:2.5px #2E2117; line-height:1; margin-bottom:5px; color:#F2A93B;">★</span>
+            <span id="modal-star3" style="font-size:46px; -webkit-text-stroke:2.5px #2E2117; line-height:1; color:#F2A93B;">★</span>
+          </div>
+          <p id="modal-msg" style="font-family:'Nunito'; font-weight:700; font-size:14px; color:#5B4A36; margin-bottom:10px;"></p>
+          <div style="display:flex; justify-content:center; gap:22px; margin-bottom:18px;">
+            <div>
+              <div style="font-family:'Nunito'; font-weight:800; font-size:10px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase; margin-bottom:2px;">Score</div>
+              <div id="modal-score" style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:28px; color:#2E2117; line-height:1;">0</div>
+            </div>
+            <div style="width:2px; background:#E4DCC8; border-radius:2px;"></div>
+            <div>
+              <div style="font-family:'Nunito'; font-weight:800; font-size:10px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase; margin-bottom:2px;">Best</div>
+              <div id="modal-best" style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:28px; color:#C9851E; line-height:1;">0</div>
+            </div>
+          </div>
+          <div id="modal-btns-victory" style="display:none; gap:10px; align-items:stretch;">
+            <button id="btn-modal-home" style="width:50px; padding:0; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 L12 4 L20 11"/><path d="M6 10 V19 H18 V10" fill="#EAD9B0"/><rect x="10" y="13" width="4" height="6" fill="#2E2117" stroke="none"/></svg>
+            </button>
+            <button id="btn-modal-retry" style="flex:1; font-family:'Nunito'; font-weight:900; font-size:15px; color:#2E2117; padding:11px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11 a8 8 0 1 0 -2 5"/><path d="M20 5 V11 H14"/></svg> Retry</button>
+            <button id="btn-modal-next" style="flex:1.4; font-family:'Nunito'; font-weight:900; font-size:17px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:11px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#E8533A; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:8px;">NEXT <svg width="19" height="19" viewBox="0 0 24 24" fill="#fff"><path d="M7 5 L17 12 L7 19 Z"/></svg></button>
+          </div>
+          <div id="modal-btns-defeat" style="display:none; gap:10px;">
+            <button id="btn-modal-menu" style="flex:1; font-family:'Nunito'; font-weight:900; font-size:15px; color:#2E2117; padding:11px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4 H6 a2 2 0 0 0 -2 2 V18 a2 2 0 0 0 2 2 H14"/><path d="M17 8 L21 12 L17 16 M21 12 H10"/></svg> Menu</button>
+            <button id="btn-modal-tryagain" style="flex:1.4; font-family:'Nunito'; font-weight:900; font-size:17px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:11px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#E8533A; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:8px;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11 a8 8 0 1 0 -2 5"/><path d="M20 5 V11 H14"/></svg> Try Again</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main menu overlay (shown on load, hidden when PLAY is pressed) -->
+      <div id="menu-overlay" style="position:absolute; inset:0; z-index:20; display:flex;">
+        <div style="position:absolute; inset:0; background:radial-gradient(120% 95% at 50% 38%, rgba(239,226,196,.08) 50%, rgba(46,33,23,.18) 100%); pointer-events:none;"></div>
+        <div style="position:absolute; top:6%; left:0; right:0; text-align:center; pointer-events:none;">
+          <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:clamp(32px,6.5vw,62px); line-height:.86; color:#2E2117; text-shadow:0 2px 0 #FBF3DD;">Crush<br><span style="color:#E8533A; -webkit-text-stroke:2px #2E2117; paint-order:stroke fill;">the Castle</span></div>
+        </div>
+        <div style="position:absolute; left:50%; bottom:8%; transform:translateX(-50%); width:40%; display:flex; flex-direction:column; gap:12px;">
+          <button id="btn-menu-play" style="font-family:'Nunito'; font-weight:900; font-size:22px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:15px; border:3.5px solid #2E2117; border-radius:15px; cursor:pointer; background:#E8533A; box-shadow:0 6px 0 #2E2117; letter-spacing:1px; display:flex; align-items:center; justify-content:center; gap:10px;"><span>▶</span> PLAY</button>
+          <div style="display:flex; gap:12px;">
+            <button id="btn-menu-howto" style="flex:1; font-family:'Nunito'; font-weight:900; font-size:14px; color:#2E2117; padding:12px; border:3.5px solid #2E2117; border-radius:13px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117;">How to Play</button>
+            <button style="flex:1; font-family:'Nunito'; font-weight:900; font-size:14px; color:#2E2117; padding:12px; border:3.5px solid #2E2117; border-radius:13px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117;">Settings</button>
+          </div>
+        </div>
+        <div style="position:absolute; right:3%; top:5%; display:flex; gap:9px;">
+          <button style="width:48px; height:48px; border:3.5px solid #2E2117; border-radius:13px; background:#FBF3DD; box-shadow:0 5px 0 #2E2117; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 9 H8 L13 5 V19 L8 15 H4 Z" fill="#E8533A"/><path d="M16.5 8.5 a5 5 0 0 1 0 7"/><path d="M19 6 a8.5 8.5 0 0 1 0 12"/></svg>
+          </button>
+          <button style="width:48px; height:48px; border:3.5px solid #2E2117; border-radius:13px; background:#FBF3DD; box-shadow:0 5px 0 #2E2117; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M7 4 H17 V9 a5 5 0 0 1 -10 0 Z" fill="#F2A93B"/><path d="M7 5 H4 V7 a3 3 0 0 0 3 3"/><path d="M17 5 H20 V7 a3 3 0 0 1 -3 3"/><path d="M12 14 V17 M9 20 H15 M10 20 a2 2 0 0 1 4 0" fill="#F2A93B"/></svg>
           </button>
         </div>
       </div>
     </div>
 
     <!-- How to play -->
-    <p style="font-family:'Nunito'; font-weight:600; font-size:14px; color:#5B4A36; margin-top:16px; line-height:1.5;">
+    <p id="howto" style="font-family:'Nunito'; font-weight:600; font-size:14px; color:#5B4A36; margin-top:16px; line-height:1.5;">
       <b style="color:#2E2117;">How to play:</b> Set the <b>Direction</b> (launch angle in degrees) and <b>Power</b> with the sliders, then press <b>FIRE</b> — or drag backward from the trebuchet. The counterweight drops, the arm whips over, and the sling hurls the boulder. Topple every guard and the golden king before you run out of ammo.
     </p>
   </div>
@@ -192,6 +254,8 @@ class CrushGame {
     this.stillF = 0; this.flyF = 0; this.gameState = 'aiming';
     this.particles = []; this.shake = 0;
     this.paused = false;
+    this.starsEarned = 0;
+    this.bestScore = parseInt(localStorage.getItem('ctc_best') || '0');
 
     // UI values
     this.aimDeg = 32; this.power = 66;
@@ -214,17 +278,41 @@ class CrushGame {
     document.getElementById('slider-power').value = this.power;
   }
 
-  showModal(title, msg, accent) {
-    const overlay = document.getElementById('modal-overlay');
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-title').style.background = accent;
+  showModal(type, msg) {
+    if (this.score > this.bestScore) {
+      this.bestScore = this.score;
+      try { localStorage.setItem('ctc_best', this.bestScore); } catch(e) {}
+    }
+    const isVictory = type === 'victory';
+    const titleEl = document.getElementById('modal-title');
+    titleEl.textContent = isVictory ? 'Victory!' : 'Defeat';
+    titleEl.style.background = isVictory ? '#E8533A' : '#2E2117';
+    titleEl.style.borderColor = isVictory ? '#2E2117' : '#8C8378';
+    const starFill = '#F2A93B', starEmpty = '#E4DCC8';
+    document.getElementById('modal-star1').style.color = this.starsEarned >= 1 ? starFill : starEmpty;
+    document.getElementById('modal-star2').style.color = this.starsEarned >= 2 ? starFill : starEmpty;
+    document.getElementById('modal-star3').style.color = this.starsEarned >= 3 ? starFill : starEmpty;
     document.getElementById('modal-msg').textContent = msg;
     document.getElementById('modal-score').textContent = this.score.toLocaleString();
-    overlay.style.display = 'flex';
+    document.getElementById('modal-best').textContent = this.bestScore.toLocaleString();
+    document.getElementById('modal-btns-victory').style.display = isVictory ? 'flex' : 'none';
+    document.getElementById('modal-btns-defeat').style.display = isVictory ? 'none' : 'flex';
+    document.getElementById('modal-overlay').style.display = 'flex';
   }
 
   hideModal() {
     document.getElementById('modal-overlay').style.display = 'none';
+  }
+
+  showMenu() {
+    this.hideModal();
+    this.setPaused(false);
+    if (this.M) this.buildLevel();
+    document.getElementById('menu-overlay').style.display = 'flex';
+  }
+
+  hideMenu() {
+    document.getElementById('menu-overlay').style.display = 'none';
   }
 
   setPaused(p) {
@@ -374,7 +462,7 @@ class CrushGame {
     };
 
     this._dn = e => {
-      if (this.gameState !== 'aiming' || this.paused || document.getElementById('modal-overlay').style.display !== 'none') return;
+      if (this.gameState !== 'aiming' || this.paused || document.getElementById('modal-overlay').style.display !== 'none' || document.getElementById('menu-overlay').style.display !== 'none') return;
       const p = toLocal(e);
       if (Math.hypot(p.x - this.PV.x, p.y - this.PV.y) > 260) return;
       this.dragging = true; this.dragStart = { ...p }; c.style.cursor = 'grabbing';
@@ -402,11 +490,26 @@ class CrushGame {
       document.getElementById('label-power').textContent = this.power + '%';
     });
 
-    // Buttons
+    // Buttons — HUD
     document.getElementById('btn-fire').addEventListener('click', () => this.fire());
     document.getElementById('btn-pause').addEventListener('click', () => this.setPaused(!this.paused));
-    document.getElementById('btn-restart').addEventListener('click', () => { if (this.M) this.buildLevel(); });
-    document.getElementById('btn-modal-restart').addEventListener('click', () => { if (this.M) this.buildLevel(); });
+    document.getElementById('btn-restart').addEventListener('click', () => { if (this.M) { this.hideModal(); this.buildLevel(); } });
+
+    // Buttons — pause menu
+    document.getElementById('btn-pause-resume').addEventListener('click', () => this.setPaused(false));
+    document.getElementById('btn-pause-restart').addEventListener('click', () => { this.setPaused(false); if (this.M) this.buildLevel(); });
+    document.getElementById('btn-pause-quit').addEventListener('click', () => this.showMenu());
+
+    // Buttons — result modal
+    document.getElementById('btn-modal-home').addEventListener('click', () => this.showMenu());
+    document.getElementById('btn-modal-retry').addEventListener('click', () => { if (this.M) { this.hideModal(); this.buildLevel(); } });
+    document.getElementById('btn-modal-next').addEventListener('click', () => { if (this.M) { this.hideModal(); this.buildLevel(); } });
+    document.getElementById('btn-modal-menu').addEventListener('click', () => this.showMenu());
+    document.getElementById('btn-modal-tryagain').addEventListener('click', () => { if (this.M) { this.hideModal(); this.buildLevel(); } });
+
+    // Buttons — main menu
+    document.getElementById('btn-menu-play').addEventListener('click', () => { this.hideMenu(); if (this.M) this.buildLevel(); });
+    document.getElementById('btn-menu-howto').addEventListener('click', () => { document.getElementById('howto').scrollIntoView({ behavior: 'smooth' }); });
   }
 
   dragAim(p) {
@@ -510,12 +613,14 @@ class CrushGame {
     if (alive <= 0) {
       this.gameState = 'won';
       this.score += this.ammo * 300;
+      this.starsEarned = this.ammo >= 2 ? 3 : this.ammo === 1 ? 2 : 1;
       this.updateHUD();
-      this.showModal('Victory!', 'Castle captured! Ammo bonus earned.', '#E8533A');
+      this.showModal('victory', 'Castle captured! Ammo bonus earned.');
     } else if (this.ammo <= 0) {
       this.gameState = 'lost';
+      this.starsEarned = 0;
       this.updateHUD();
-      this.showModal('Defeat', `Out of ammo — ${alive} still standing.`, '#5B4A36');
+      this.showModal('defeat', `Out of ammo — ${alive} still standing.`);
     } else {
       this.gameState = 'aiming';
       this.trebAngle = this.A_LOAD;
