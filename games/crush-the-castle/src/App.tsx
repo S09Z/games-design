@@ -9,6 +9,7 @@ import { createBlockMesh, resizeBlockMesh, addCastleDetails, updateBlockMesh } f
 import { createEnemyMesh, syncEnemyMesh } from './game/Enemy';
 import { ParticleSystem } from './game/Particles';
 import { Effects } from './game/Effects';
+import { A_LOAD } from './config';
 
 export function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -33,6 +34,7 @@ export function App() {
     const effects = new Effects(scene);
 
     const bodyMeshes = new Map<number, THREE.Mesh>();
+    let onKeyDown: ((e: KeyboardEvent) => void) | null = null;
 
     function getColliderSize(collider: import('@dimforge/rapier3d-compat').Collider) {
       try {
@@ -77,22 +79,42 @@ export function App() {
         effects.hideTrajectory();
       };
 
-      physics.onEnemyKilled = () => {
-        // particles already handled via displacement check
+      physics.onEnemyKilled = (_idx: number, pos?: { x: number; y: number; z: number }) => {
+        if (pos) particles.spawnImpact(pos.x, pos.y, 9);
       };
+
+      // Fire sequence: trebuchet animation → release → flying
+      treb.onRelease = (pos, vel) => {
+        physics.launchBoulder(pos, vel);
+      };
+      treb.onSwingComplete = () => {
+        gameState.startFlying();
+      };
+
+      // Keyboard trigger for fire (dev testing — Phase 4 will add proper input)
+      onKeyDown = (e: KeyboardEvent) => {
+        if (e.code === 'Space' && gameState.phase === 'aiming') {
+          e.preventDefault();
+          gameState.fire();
+          treb.fire();
+        }
+        if (e.code === 'KeyR' && (gameState.phase === 'won' || gameState.phase === 'lost')) {
+          window.location.reload();
+        }
+      };
+      window.addEventListener('keydown', onKeyDown);
 
       function animate() {
         requestAnimationFrame(animate);
 
-        // Update trebuchet animation
-        treb.update();
-
-        // Handle trebuchet fire
-        if (treb.swinging && treb.swingF >= 0) {
-          if (treb.swingF === (treb.swingF < 5 ? -1 : 4)) {
-            // placeholder
-          }
+        // Reset treb when entering aiming phase
+        if (gameState.phase === 'aiming' && !treb.swinging) {
+          treb.angle = A_LOAD;
+          treb.swingF = 0;
         }
+
+        // Update trebuchet animation (fires onRelease / onSwingComplete callbacks)
+        treb.update();
 
         physics.step();
 
@@ -148,6 +170,7 @@ export function App() {
     });
 
     return () => {
+      if (onKeyDown) window.removeEventListener('keydown', onKeyDown);
       physics.destroy();
       world.dispose();
       particles.clear();

@@ -29,11 +29,13 @@ export class Trebuchet {
   armPivot: THREE.Object3D;
   boulderMesh: THREE.Mesh;
   slingLine: THREE.Line;
-  aimAngle = 32; // degrees
+  aimAngle = 32;
   power = 66;
   angle = A_LOAD;
   swinging = false;
   swingF = 0;
+  onRelease: ((pos: { x: number; y: number; z: number }, vel: { x: number; y: number; z: number }) => void) | null = null;
+  onSwingComplete: (() => void) | null = null;
 
   constructor() {
     const g = this.group;
@@ -217,7 +219,32 @@ export class Trebuchet {
     return { x: Math.cos(r) * v, y: -Math.sin(r) * v, vx: Math.cos(r) * v, vy: -Math.sin(r) * v };
   }
 
+  fire() {
+    if (this.swinging) return;
+    this.swinging = true;
+    this.swingF = 0;
+    this.angle = A_LOAD;
+  }
+
   update() {
+    // Fire sequence: quintic ease arm animation
+    if (this.swinging) {
+      this.swingF++;
+      const p = Math.min(this.swingF / SF, 1);
+      const e = p * p * p * p * p;
+      this.angle = A_LOAD + (A_REST - A_LOAD) * e;
+
+      if (this.swingF === RELEASE_FRAME) {
+        const { pos, vel } = this.spawnBoulder();
+        this.onRelease?.(pos, vel);
+      }
+
+      if (this.swingF >= SF) {
+        this.swinging = false;
+        this.onSwingComplete?.();
+      }
+    }
+
     const ang = this.angle;
     const cos = Math.cos(ang);
     const sin = Math.sin(ang);
@@ -225,28 +252,12 @@ export class Trebuchet {
     // Arm rotation
     this.armPivot.rotation.z = -(ang - A_LOAD);
 
-    // Arm tip in 3D
-    const tipX = px + AL * cos;
-    const tipY3 = gy - (PV.y + AL * sin);
-
-    // Counterweight side
-    const cwX = px - AS * cos;
-    const cwY3 = gy - (PV.y - AS * sin);
-
-    if (this.swinging && this.swingF <= SF) {
-      this.swingF++;
-      const p = Math.min(this.swingF / SF, 1);
-      const e = p * p * p * p * p; // quintic
-      this.angle = A_LOAD + (A_REST - A_LOAD) * e;
-    }
-
-    // Update boulder position at sling end (pre-fire)
-    if (this.swingF < RELEASE_FRAME || !this.swinging) {
+    // Pre-fire boulder and sling line (hide after release frame)
+    if (this.swingF < RELEASE_FRAME) {
       const sp = this.spawnPos();
       this.boulderMesh.visible = true;
       this.boulderMesh.position.set(sp.x, gy - sp.y, 0);
 
-      // Sling line: arm tip → boulder
       const tip = this.armTip();
       const pos = this.slingLine.geometry.attributes.position.array as Float32Array;
       pos[0] = tip.x; pos[1] = gy - tip.y; pos[2] = 0;
@@ -256,13 +267,6 @@ export class Trebuchet {
     } else {
       this.boulderMesh.visible = false;
       this.slingLine.visible = false;
-    }
-
-    // Update counterweight position
-    const cwParent = this.armPivot.children.find(c => c.position.x === -AS) as THREE.Object3D;
-    if (cwParent) {
-      cwParent.position.x = -AS;
-      cwParent.position.y = 0;
     }
   }
 

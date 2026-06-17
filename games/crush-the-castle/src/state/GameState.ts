@@ -17,8 +17,10 @@ export class GameState {
     this.physics = physics;
 
     this.physics.onTurnEnded = () => this.endTurn();
-    this.physics.onEnemyKilled = () => {
+    this.physics.onEnemyKilled = (_idx: number) => {
       this.enemiesAlive--;
+      this.score += SCORE_PER_KILL;
+      events.emit('score-changed', this.score);
     };
   }
 
@@ -32,12 +34,12 @@ export class GameState {
     events.emit('ammo-changed', this.ammo);
   }
 
-  fire(pos: { x: number; y: number; z: number }, vel: { x: number; y: number; z: number }) {
+  fire() {
     if (this.phase !== 'aiming') return;
     this.phase = 'swinging';
-    // Physics will launch boulder at release frame (handled by caller/trebuchet anim)
-    // For now fire directly:
-    this.physics.launchBoulder(pos, vel);
+  }
+
+  startFlying() {
     this.phase = 'flying';
   }
 
