@@ -1,164 +1,169 @@
-# Crush the Castle — Phaser 3 Migration
+# Crush the Castle — Three.js + Rapier Migration
+
+## Stack
+| Layer | Choice |
+|-------|--------|
+| Rendering | **Three.js** (3D, replaces Phaser/Canvas 2D) |
+| Physics | **Rapier** (WASM 3D rigid body, replaces Matter.js) |
+| UI | **React** (component tree, replaces DOM overlays) |
+| Build | **Vite** (already in place) |
+| Language | **TypeScript** |
+
+## Key insight
+The prototype is **960×540 2D** with hand-drawn Canvas art & Matter.js physics.  
+The entire game is **procedural 2D draw calls** — no sprites.  
+Porting to 3D is a **creative re-imagining**, not a 1:1 port.
 
 ## Status
 - 🔴 Not started
 - 🟡 In progress
 - 🟢 Complete
 
-**Current phase:** Phase 2  
-(Phase 0 ✅ — Phase 1 ✅)
+**Current phase:** Phase 3 (Game Logic)
 
 ---
 
-## Phase 0 — Analysis & Preparation ✅
+## Phases
 
-- [x] Read the tech stack doc to understand the current architecture
-- [x] Install Phaser 3 and set up bundler (Vite)
-- [x] Create Phaser game config and entry point (`vite.config.js`, `src/main.js`, `src/config.js`)
-- [x] Create project directory structure (`src/scenes/`)
-- [x] Verify build succeeds (16 modules, no errors)
-
----
-
-## Phase 1 — Scene Shell ✅
-
-Build the skeleton scene system so we have something to render into.
-
-- [x] Create `BootScene` — shows loading overlay, transitions to MenuScene after 600ms
-- [x] Create `MenuScene` — main menu overlay, Play → GameScene, Level Select → LevelSelectScene
-- [x] Create `LevelSelectScene` — dynamic grid of 5 level buttons
-- [x] Create `GameScene` — placeholder rendering (sky, ground, level label), click to test win transition
-- [x] Create `LevelCompleteScene` — victory overlay with stars, score, Next Level / Retry / Menu buttons
-- [x] Create `GameOverScene` — defeat overlay with Try Again / Menu buttons
-- [x] Wire up scene transitions (Boot → Menu → Game → LevelComplete/Menu)
-- [x] Update `index.html` — game-container div, Vite entry, remove old canvas/scripts
+| # | Phase | File | Risk | Status |
+|---|-------|------|------|--------|
+| 0 | Foundation Setup | [`migrate/phase-0-foundation.md`](migrate/phase-0-foundation.md) | Low | ✅ |
+| 1 | Physics (Rapier) | [`migrate/phase-1-physics.md`](migrate/phase-1-physics.md) | Medium | ✅ |
+| 2 | Rendering (Three.js) | [`migrate/phase-2-rendering.md`](migrate/phase-2-rendering.md) | **High** | ✅ |
+| 3 | Game Logic | [`migrate/phase-3-game-logic.md`](migrate/phase-3-game-logic.md) | Medium | 🔴 |
+| 4 | Input | [`migrate/phase-4-input.md`](migrate/phase-4-input.md) | Low | 🔴 |
+| 5 | UI (React) | [`migrate/phase-5-ui.md`](migrate/phase-5-ui.md) | Low | 🔴 |
+| 6 | Audio | [`migrate/phase-6-audio.md`](migrate/phase-6-audio.md) | Low | 🔴 |
+| 7 | Polish & Cleanup | [`migrate/phase-7-polish.md`](migrate/phase-7-polish.md) | Medium | 🔴 |
 
 ---
 
-## Phase 2 — Physics (Matter.js)
+## Phase 0 — Foundation Setup ✅
 
-Port the custom physics engine to Matter.js (built into Phaser). **Highest risk phase.**
+**Files created:**
+- `src/main.tsx` — React entry point (StrictMode + createRoot)
+- `src/App.tsx` — Root component with Three.js scene + debug renderer + physics integration
+- `src/config.ts` — Game constants (W, H, GY, block sizes, trebuchet params, physics params)
+- `src/vite-env.d.ts` — Vite client type reference
+- `src/physics/` — Physics module structure
+- `src/state/` — State management module structure
+- `src/game/Level.ts` — Level data (Level 1 castle layout)
+- `index.html` — Vite entry HTML
+- `vite.config.js` — Vite + React plugin config
+- `tsconfig.json` — TypeScript config (ES2020, strict, jsx-react)
+- `package.json` — Dependencies (Three.js 0.174, Rapier 0.14, React 19, Vite 8)
 
-- [ ] Create `MatterGameConfig` — set gravity, ground body, world bounds
-- [ ] Port `Body` creation — map material props (friction, restitution, density) to Matter.js body options
-- [ ] Port structure bodies — static/dynamic rectangles from level JSON
-- [ ] Port enemy bodies — dynamic rectangles with custom labels
-- [ ] Port projectile bodies — circle bodies with high velocity
-- [ ] Port collision damage system — listen to `collisionstart`, compute impact speed, apply health damage
-- [ ] Port material-based collision (stone vs wood impact sounds)
-- [ ] Port explosion forces — `Body.applyForce()` in radius around center
-- [ ] Port ground collision — static ground body with friction
-- [ ] Port sleeping system — `Body.setStatic()` when velocity is low enough
-- [ ] Port projectile detonation — explosive type detonates on collision
-- [ ] Verify physics feel matches original (gravity, bounce, friction)
-
----
-
-## Phase 3 — Game Logic
-
-Port LevelManager and game state to work with Phaser scenes and Matter.js events.
-
-- [ ] Create `LevelDataLoader` — fetch and cache JSON level files (keep as-is)
-- [ ] Create `GameState` class — manages ammo queue, score, enemies alive, win/lose
-- [ ] Port `fire()` — spawn Matter circle body from trebuchet position with velocity
-- [ ] Port projectile lifecycle — track active projectile, detect settle, trigger end conditions
-- [ ] Port score system — enemy kills (+500), structure destroyed (+100), ammo bonus
-- [ ] Port star calculation from score thresholds
-- [ ] Port win/lose conditions — all enemies dead vs out of ammo + nothing moving
-- [ ] Port save manager (localStorage, keep as-is)
-- [ ] Port analytics stub (keep as-is)
+**Verification:**
+- ✅ `npm run dev` starts without errors
+- ✅ `npm run build` produces dist/
+- ✅ React root mounts in browser
+- ✅ Three.js viewport renders with lights, shadows
+- ✅ All dependencies resolve without warnings
 
 ---
 
-## Phase 4 — Rendering
+## Phase 1 — Physics (Rapier) ✅
 
-Replace Canvas 2D draw calls with Phaser Graphics objects.
+### 1a — World setup
+- ✅ Initialize Rapier WASM (`RAPIER.init()`) in `PhysicsWorld.init()`
+- ✅ Create `RAPIER.World` with gravity `{ x: 0, y: -30, z: 0 }`
+- ✅ Create `EventQueue` for collision event collection
+- ✅ Ground plane (static cuboid, friction 0.9)
+- ✅ Wall boundaries (static cuboids at left/right edges)
 
-- [ ] Port background rendering — sky gradient, mountains, clouds, trees
-- [ ] Port ground rendering — dirt + grass strip
-- [ ] Port trebuchet drawing — base, wheels, arm, counterweight, sling (Phaser Graphics)
-- [ ] Port aim trajectory preview — dotted arc line with color per ammo type
-- [ ] Port structure rendering — colored rectangles with cracks, damage tint, wood grain
-- [ ] Port enemy rendering — soldier with helmet, shield, health bar
-- [ ] Port projectile rendering — rock (gray circle), explosive (red + fuse), ice (blue + glint)
-- [ ] Port explosion effect — radial gradient that grows and fades (tween or Graphics)
-- [ ] Port particle spawning — use Phaser `ParticleEmitter` for debris and explosions
-- [ ] Debug overlay — FPS counter, hitbox toggle
+### 1b — Castle blocks
+- ✅ Stone blocks at left watchtower, central keep, right barbican
+- ✅ Dark stone blocks (rows 4+ at keep)
+- ✅ Wood beams at varying widths/positions
 
----
+### 1c — Enemies
+- ✅ 3 guards + 1 king with custom data (`enemyType`, `dead`, `spawnPos`)
 
-## Phase 5 — Camera
+### 1d — Boulder
+- ✅ Sphere collider (r=16), density .026, restitution .2, friction .4
 
-- [ ] Configure Phaser camera bounds
-- [ ] Port projectile following — `camera.startFollow()` on projectile spawn
-- [ ] Port smooth lerp — camera lerp for polished feel
-- [ ] Port camera reset on level start/restart
+### 1e — Collision events
+- ✅ `EventQueue.drainCollisionEvents` on all dynamic colliders
+- ✅ Boulder impact detection + crack level increment
 
----
+### 1f — Settle detection
+- ✅ Velocity threshold 1.5 for 26 consecutive frames
 
-## Phase 6 — Input
-
-- [ ] Port pointer input — mousedown/touch to aim, release to fire
-- [ ] Port angle/power calculation from pointer distance relative to trebuchet
-- [ ] Port keyboard input — Space to fire, Esc to pause, F for FPS, H for hitboxes
-- [ ] Port mobile fire button
-- [ ] Port input enable/disable based on game state
+### 1g — Body sync
+- ✅ Map + position/rotation copy each frame
 
 ---
 
-## Phase 7 — Audio
+## Phase 2 — Rendering (Three.js) ✅
 
-**Decision needed:** keep Web Audio API (procedural) or pre-record assets.
+### 2a — Background
+- ✅ **Sky gradient** → canvas texture on `scene.background` (`#9CC2D2` → `#C9DDCF` → `#EFDEB4` → `#F7D89A`)
+- ✅ **Sun** → emissive sphere at 3D position (820, GY-110)
+- ✅ **Sun glow** → sprite with radial gradient texture
+- ✅ **Far hills** → `ShapeGeometry` with color `#AEC6B2`
+- ✅ **Near hills** → `ShapeGeometry` with color `#86A06C`
+- ✅ **Ground** → `PlaneGeometry` with `MeshStandardMaterial` `#82A268`
 
-### Option A — Keep Web Audio (faster, less authentic)
-- [ ] Keep `audioManager.js` as-is alongside Phaser
-- [ ] Hook audio calls into game events (fire, impact, explosion, win, lose)
+### 2b — Trebuchet
+- ✅ **Rear/front A-frame legs** → 4 `BoxGeometry` beams from ground to pivot
+- ✅ **Forward brace** → beam from pivot to (374, gy-2)
+- ✅ **Lower/upper cross braces** → 2 X-pattern beam pairs
+- ✅ **Ground sill** → thick beam along ground between legs
+- ✅ **Axle housing** → cylinder + bolt details at pivot
+- ✅ **Throwing arm** → long box with quintic ease rotation (`A_LOAD` 2.3 → `A_REST` 5.8 rad)
+- ✅ **Arm banding** → cross-marks along arm at intervals
+- ✅ **Counterweight chain** → thin cylinder
+- ✅ **Counterweight box** → box with metal bar stripes + rivet spheres
+- ✅ **Sling rope** → `THREE.Line` from arm tip to boulder (visible pre-fire)
+- ✅ **Boulder (pre-fire)** → sphere at sling end with gradient material
+- ✅ **Ground shadow** → dark `PlaneGeometry` with opacity
+- ✅ **Quintic ease interpolation** for arm swing animation
+- ✅ **Sling snap** to aim direction in last frames before release
 
-### Option B — Pre-record assets (recommended for quality)
-- [ ] Record/generate 11 sound effects as OGG/WAV
-- [ ] Load sounds in BootScene
-- [ ] Replace procedural calls with `this.sound.play('name')`
+### 2c — Castle
+- ✅ **Block materials** → `MeshStandardMaterial` per type (stone `#9A9284`, darkStone `#787268`, wood `#9A6B38`)
+- ✅ **Block damage tint** → material darkens as `cl` counter increases (12% per level)
+- ✅ **Arch gateway** → `ShapeGeometry` at central keep (793, gy) with border line
+- ✅ **Arrow-slit windows** → 5 `PlaneGeometry` dark insets at tower/keep positions
+- ✅ **Flags** → triangular `ShapeGeometry` + pole cylinders at (665, `#E8533A`), (793, `#F2A93B`), (917, `#E8533A`)
 
----
+### 2d — Enemies
+- ✅ **Guard (×3)**: legs + chainmail body (`#9A9284`) + red tabard (`#E8533A`) + shield (`#8A5A30` with red cross) + spear (`#B0B8C0` tip) + head (`#F5D9C0`) + eyes + helmet (`#8A8278`) + visor slit
+- ✅ **King (×1)**: cape (translucent `#E8533A`) + gold robe (`#F2A93B`) + belt + sceptre + head + crown (5-point with red gems) + beard (`#C8A462`) + eyes
 
-## Phase 8 — UI (DOM Overlays)
+### 2e — Effects
+- ✅ **Trajectory preview** → 30 dotted markers + dashed `LineDashedMaterial` along parabolic path
+- ✅ **Launch marker** → `RingGeometry` at spawn point
+- ✅ **Impact particles** → `SphereGeometry` debris (12-20 particles, 5 colors, random velocity + gravity + fade)
+- ✅ **Dust puffs** → larger translucent spheres that expand and fade
+- ✅ **Camera shake** → offset with decay factor `0.78`, triggered on boulder impact (shake=12) and spawn (shake=5)
 
-Keep existing CSS/HTML UI to avoid rewriting 300 lines of DOM logic in Phaser.
+### 2f — Lighting
+- ✅ `AmbientLight` — soft warm tone (0.6 intensity)
+- ✅ `DirectionalLight` — sun direction, shadow map 2048, camera bounds covering game area
+- ✅ Shadow maps enabled on renderer
+- ✅ Cast shadows: trebuchet, castle blocks, boulder
+- ✅ Receive shadows: ground plane, castle blocks
 
-- [ ] Show/hide DOM overlays from Phaser scene lifecycle methods
-- [ ] Wire button clicks to scene transitions
-- [ ] Keep HUD (score, ammo, level name) as DOM elements
-- [ ] Keep level select grid rendering
-- [ ] Port mute button, volume control
+### New files created
+| File | Purpose |
+|------|---------|
+| `src/game/World.ts` | Scene setup, camera, renderer, lighting |
+| `src/game/Background.ts` | Sky gradient, sun glow, hills, ground plane |
+| `src/game/Trebuchet.ts` | 3D trebuchet model + quintic arm animation |
+| `src/game/Castle.ts` | Block materials, arch, windows, flags, damage tint |
+| `src/game/Enemy.ts` | Guard + king 3D character models |
+| `src/game/Particles.ts` | Impact particle system + dust puffs |
+| `src/game/Effects.ts` | Camera shake + trajectory preview |
 
----
-
-## Phase 9 — Polish & Testing
-
-- [ ] Test all 5 levels end-to-end
-- [ ] Verify physics feel is on-par with original
-- [ ] Test mobile touch input
-- [ ] Test save/load progression
-- [ ] Test edge cases: out of ammo, all enemies dead, explosive mid-air detonation
-- [ ] Remove all old JS files and HTML script tags
-- [ ] Remove old CSS no longer needed (animations, responsive)
-- [ ] Remove old `package.json` dependencies (headroom-ai if unused)
-- [ ] Clean up unused assets
-
----
-
-## Effort Summary
-
-| Phase | Estimate | Risk | Status |
-|---|---|---|---|---|
-| 0 — Preparation | 2–3h | Low | ✅ |
-| 1 — Scene Shell | 6–8h | Low | ✅ |
-| 2 — Physics | 10–15h | **High** | 🔴 |
-| 3 — Game Logic | 4–6h | Medium | 🔴 |
-| 4 — Rendering | 8–12h | Medium | 🔴 |
-| 5 — Camera | 1h | Low | 🔴 |
-| 6 — Input | 1–2h | Low | 🔴 |
-| 7 — Audio | 2–6h | Low | 🔴 |
-| 8 — UI Overlays | 2h | Low | 🔴 |
-| 9 — Polish | 4–6h | Medium | 🔴 |
-| **Total** | **40–60h** | |
+### Verification
+- ✅ `npm run build` compiles cleanly (33 modules)
+- ✅ Dev server starts on port 3000
+- ✅ Scene shows full background (sky, sun, hills, ground)
+- ✅ Trebuchet 3D model renders with moving arm
+- ✅ Castle blocks render with correct materials
+- ✅ Flag poles + banners visible
+- ✅ Trajectory preview visible during aiming
+- ✅ Particles spawn on collision
+- ✅ Camera shake on boulder impact
+- ✅ Shadows render on ground and objects
