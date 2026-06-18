@@ -16,6 +16,7 @@ import { MainMenu } from './ui/MainMenu';
 import { PauseModal } from './ui/PauseModal';
 import { ResultModal } from './ui/ResultModal';
 import { Hint } from './ui/Hint';
+import { audioManager } from './audio/AudioManager';
 import { A_LOAD, PV } from './config';
 
 export function App() {
@@ -35,6 +36,8 @@ export function App() {
     parseInt(localStorage.getItem('ctc_best') || '0', 10)
   );
   const [hintVisible, setHintVisible] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(audioManager.soundEnabled);
+  const [musicEnabled, setMusicEnabled] = useState(audioManager.musicEnabled);
 
   const handlePlay = useCallback(() => {
     gameStateRef.current?.startLevel();
@@ -59,6 +62,16 @@ export function App() {
   const handleHowToPlay = useCallback(() => {
     const el = document.getElementById('howto');
     if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  const handleToggleSound = useCallback(() => {
+    audioManager.toggleSound();
+    setSoundEnabled(audioManager.soundEnabled);
+  }, []);
+
+  const handleToggleMusic = useCallback(() => {
+    audioManager.toggleMusic();
+    setMusicEnabled(audioManager.musicEnabled);
   }, []);
 
   useEffect(() => {
@@ -155,13 +168,23 @@ export function App() {
     const onScoreChanged = (s: unknown) => setScore(s as number);
     const onAmmoChanged = (a: unknown) => setAmmo(a as number);
     const onEnemiesChanged = (e: unknown) => setEnemiesAlive(e as number);
-    const onPause = () => setPaused(true);
-    const onResume = () => setPaused(false);
+    const onPause = () => {
+      audioManager.play('button');
+      setPaused(true);
+    };
+    const onResume = () => {
+      audioManager.play('button');
+      setPaused(false);
+    };
     const onVictory = () => {
+      audioManager.play('win');
       setResult('victory');
       setBestScore(gameState.bestScore);
     };
-    const onDefeat = () => setResult('defeat');
+    const onDefeat = () => {
+      audioManager.play('lose');
+      setResult('defeat');
+    };
 
     function getColliderSize(collider: import('@dimforge/rapier3d-compat').Collider) {
       try {
@@ -201,6 +224,7 @@ export function App() {
 
       // Boulder events
       physics.onCollisionImpact = () => {
+        audioManager.play('impact');
         effects.triggerShake(12);
         if (physics.boulder) {
           const t = physics.boulder.rigidBody.translation();
@@ -209,12 +233,14 @@ export function App() {
       };
 
       physics.onBoulderLaunched = (pos) => {
+        audioManager.play('fire');
         effects.triggerShake(5);
         particles.spawnImpact(pos.x, pos.y, 5);
         effects.hideTrajectory();
       };
 
       physics.onEnemyKilled = (_idx: number, pos?: { x: number; y: number; z: number }) => {
+        audioManager.play('enemy_die');
         if (pos) particles.spawnImpact(pos.x, pos.y, 9);
       };
 
@@ -374,6 +400,10 @@ export function App() {
           onResume={handleResume}
           onRestart={handleRestart}
           onQuit={handleQuit}
+          soundEnabled={soundEnabled}
+          musicEnabled={musicEnabled}
+          onToggleSound={handleToggleSound}
+          onToggleMusic={handleToggleMusic}
         />
       )}
 

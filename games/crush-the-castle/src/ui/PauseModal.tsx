@@ -2,6 +2,10 @@ interface PauseModalProps {
   onResume: () => void;
   onRestart: () => void;
   onQuit: () => void;
+  soundEnabled: boolean;
+  musicEnabled: boolean;
+  onToggleSound: () => void;
+  onToggleMusic: () => void;
 }
 
 const STYLE_OVERLAY: React.CSSProperties = {
@@ -108,29 +112,38 @@ const STYLE_TOGGLE_LABEL: React.CSSProperties = {
   color: '#2E2117',
 };
 
-const STYLE_TOGGLE_TRACK: React.CSSProperties = {
-  width: 42,
-  height: 22,
-  borderRadius: 999,
-  background: '#6E8B5A',
-  border: '2.5px solid #2E2117',
-  position: 'relative',
-  cursor: 'pointer',
-};
+function toggleTrackStyle(on: boolean): React.CSSProperties {
+  return {
+    width: 42,
+    height: 22,
+    borderRadius: 999,
+    background: on ? '#6E8B5A' : '#B6AE9F',
+    border: '2.5px solid #2E2117',
+    position: 'relative',
+    cursor: 'pointer',
+  };
+}
 
-const STYLE_TOGGLE_THUMB: React.CSSProperties = {
-  position: 'absolute',
-  right: 2,
-  top: '50%',
-  transform: 'translateY(-50%)',
-  width: 15,
-  height: 15,
-  borderRadius: '50%',
-  background: '#FBF3DD',
-  border: '2px solid #2E2117',
-};
+function toggleThumbStyle(on: boolean): React.CSSProperties {
+  return {
+    position: 'absolute',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: 15,
+    height: 15,
+    borderRadius: '50%',
+    background: '#FBF3DD',
+    border: '2px solid #2E2117',
+    right: on ? 2 : 'auto',
+    left: on ? 'auto' : 2,
+  };
+}
 
-export function PauseModal({ onResume, onRestart, onQuit }: PauseModalProps) {
+export function PauseModal({
+  onResume, onRestart, onQuit,
+  soundEnabled, musicEnabled,
+  onToggleSound, onToggleMusic,
+}: PauseModalProps) {
   return (
     <div style={STYLE_OVERLAY}>
       <div style={STYLE_MODAL}>
@@ -159,14 +172,14 @@ export function PauseModal({ onResume, onRestart, onQuit }: PauseModalProps) {
           <div style={STYLE_TOGGLES_ROW}>
             <div style={STYLE_TOGGLE}>
               <span style={STYLE_TOGGLE_LABEL}>Music</span>
-              <div style={STYLE_TOGGLE_TRACK}>
-                <div style={STYLE_TOGGLE_THUMB} />
+              <div style={toggleTrackStyle(musicEnabled)} onClick={onToggleMusic}>
+                <div style={toggleThumbStyle(musicEnabled)} />
               </div>
             </div>
             <div style={STYLE_TOGGLE}>
               <span style={STYLE_TOGGLE_LABEL}>Sound</span>
-              <div style={STYLE_TOGGLE_TRACK}>
-                <div style={STYLE_TOGGLE_THUMB} />
+              <div style={toggleTrackStyle(soundEnabled)} onClick={onToggleSound}>
+                <div style={toggleThumbStyle(soundEnabled)} />
               </div>
             </div>
           </div>

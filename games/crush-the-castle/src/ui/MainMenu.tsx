@@ -1,3 +1,5 @@
+import { audioManager } from '../audio/AudioManager';
+
 interface MainMenuProps {
   onPlay: () => void;
   onHowToPlay: () => void;
@@ -112,14 +114,14 @@ export function MainMenu({ onPlay, onHowToPlay }: MainMenuProps) {
           <span style={STYLE_TITLE_ACCENT}>the Castle</span>
         </div>
         <div style={STYLE_BTN_AREA}>
-          <button style={STYLE_PLAY_BTN} onClick={onPlay}>
+          <button style={STYLE_PLAY_BTN} onClick={() => { audioManager.play('select'); onPlay(); }}>
             <span>▶</span> PLAY
           </button>
           <div style={STYLE_SEC_ROW}>
-            <button style={STYLE_SEC_BTN} onClick={onHowToPlay}>
+            <button style={STYLE_SEC_BTN} onClick={() => { audioManager.play('button'); onHowToPlay(); }}>
               How to Play
             </button>
-            <button style={STYLE_SEC_BTN}>Settings</button>
+            <button style={STYLE_SEC_BTN} onClick={() => audioManager.play('button')}>Settings</button>
           </div>
         </div>
       </div>
