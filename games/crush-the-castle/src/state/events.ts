@@ -11,6 +11,7 @@ export type GameEvent =
   | 'ammo-changed'
   | 'score-changed'
   | 'level-restart'
+  | 'phase-changed'
   | 'pause'
   | 'resume';
 
