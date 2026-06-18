@@ -21,7 +21,7 @@ export class PhysicsWorld {
   flyFrames = 0;
   onBoulderLaunched: ((pos: { x: number; y: number; z: number }, vel: { x: number; y: number; z: number }) => void) | null = null;
   onBoulderRemoved: (() => void) | null = null;
-  onEnemyKilled: ((idx: number) => void) | null = null;
+  onEnemyKilled: ((idx: number, pos?: { x: number; y: number; z: number }) => void) | null = null;
   onTurnEnded: (() => void) | null = null;
   onCollisionImpact: (() => void) | null = null;
 
@@ -114,8 +114,8 @@ export class PhysicsWorld {
       const dist = Math.hypot(ep.x - sp.x, ep.y - sp.y, ep.z - sp.z);
       if (dist > 82 || ep.y < -10 || ep.x < -30 || ep.x > 990) {
         e.userData.dead = true;
-        this.onEnemyKilled?.(this.enemies.indexOf(e));
-        events.emit('enemy-killed', this.enemies.indexOf(e));
+        this.onEnemyKilled?.(this.enemies.indexOf(e), ep);
+        events.emit('enemy-killed', this.enemies.indexOf(e), ep);
       }
     }
 
