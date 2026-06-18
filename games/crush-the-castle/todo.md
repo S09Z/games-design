@@ -19,7 +19,7 @@ Porting to 3D is a **creative re-imagining**, not a 1:1 port.
 - 🟡 In progress
 - 🟢 Complete
 
-**Current phase:** Phase 3 (Game Logic)
+**Current phase:** Phase 5 (UI)
 
 ---
 
@@ -30,9 +30,9 @@ Porting to 3D is a **creative re-imagining**, not a 1:1 port.
 | 0 | Foundation Setup | [`migrate/phase-0-foundation.md`](migrate/phase-0-foundation.md) | Low | ✅ |
 | 1 | Physics (Rapier) | [`migrate/phase-1-physics.md`](migrate/phase-1-physics.md) | Medium | ✅ |
 | 2 | Rendering (Three.js) | [`migrate/phase-2-rendering.md`](migrate/phase-2-rendering.md) | **High** | ✅ |
-| 3 | Game Logic | [`migrate/phase-3-game-logic.md`](migrate/phase-3-game-logic.md) | Medium | 🔴 |
-| 4 | Input | [`migrate/phase-4-input.md`](migrate/phase-4-input.md) | Low | 🔴 |
-| 5 | UI (React) | [`migrate/phase-5-ui.md`](migrate/phase-5-ui.md) | Low | 🔴 |
+| 3 | Game Logic | [`migrate/phase-3-game-logic.md`](migrate/phase-3-game-logic.md) | Medium | ✅ |
+| 4 | Input | [`migrate/phase-4-input.md`](migrate/phase-4-input.md) | Low | ✅ |
+| 5 | UI (React) | [`migrate/phase-5-ui.md`](migrate/phase-5-ui.md) | Low | 🟡 |
 | 6 | Audio | [`migrate/phase-6-audio.md`](migrate/phase-6-audio.md) | Low | 🔴 |
 | 7 | Polish & Cleanup | [`migrate/phase-7-polish.md`](migrate/phase-7-polish.md) | Medium | 🔴 |
 
