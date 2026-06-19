@@ -19,7 +19,7 @@ Porting to 3D is a **creative re-imagining**, not a 1:1 port.
 - 🟡 In progress
 - 🟢 Complete
 
-**Current phase:** Phase 5 (UI)
+**Current phase:** Complete ✅
 
 ---
 
@@ -32,9 +32,9 @@ Porting to 3D is a **creative re-imagining**, not a 1:1 port.
 | 2 | Rendering (Three.js) | [`migrate/phase-2-rendering.md`](migrate/phase-2-rendering.md) | **High** | ✅ |
 | 3 | Game Logic | [`migrate/phase-3-game-logic.md`](migrate/phase-3-game-logic.md) | Medium | ✅ |
 | 4 | Input | [`migrate/phase-4-input.md`](migrate/phase-4-input.md) | Low | ✅ |
-| 5 | UI (React) | [`migrate/phase-5-ui.md`](migrate/phase-5-ui.md) | Low | 🟡 |
-| 6 | Audio | [`migrate/phase-6-audio.md`](migrate/phase-6-audio.md) | Low | 🔴 |
-| 7 | Polish & Cleanup | [`migrate/phase-7-polish.md`](migrate/phase-7-polish.md) | Medium | 🔴 |
+| 5 | UI (React) | [`migrate/phase-5-ui.md`](migrate/phase-5-ui.md) | Low | ✅ |
+| 6 | Audio | [`migrate/phase-6-audio.md`](migrate/phase-6-audio.md) | Low | ✅ |
+| 7 | Polish & Cleanup | [`migrate/phase-7-polish.md`](migrate/phase-7-polish.md) | Medium | ✅ |
 
 ---
 
@@ -167,3 +167,28 @@ Porting to 3D is a **creative re-imagining**, not a 1:1 port.
 - ✅ Particles spawn on collision
 - ✅ Camera shake on boulder impact
 - ✅ Shadows render on ground and objects
+
+---
+
+## Phase 7 — Polish & Cleanup ✅
+
+### Cleanup
+- ✅ Removed old `js/` folder (prototype code fully ported)
+- ✅ Removed old `css/` folder (styles in `index.html` and React inline)
+- ✅ Removed `game-standalone.html` (replaced by `index.html`)
+- ✅ Updated `vite.config.js` to use `index.html` as build entry
+- ✅ Removed `dist/` (clean rebuild)
+- ✅ Removed unused `src/physics/index.ts` barrel file
+
+### Responsive
+- ✅ Container uses `max-width: 960px; width: 100%; aspect-ratio: 16/9` for fluid sizing
+- ✅ Three.js renderer resizes with window (camera aspect + renderer size)
+- ✅ Canvas `touch-action: none` prevents mobile scroll/zoom
+
+### Performance
+- ✅ `renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))`
+
+### Verification
+- ✅ `npm run build` succeeds (2,811 KB inline bundle)
+- ✅ `npm run dev` starts without errors
+- ✅ Full game loop: Menu → Play → Aim → Fire → Win/Lose → Modal

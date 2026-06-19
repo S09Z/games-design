@@ -4,6 +4,8 @@ export class World {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
+  private container: HTMLElement | null = null;
+  private resizeHandler: (() => void) | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
@@ -13,8 +15,25 @@ export class World {
     this.camera.lookAt(480, 100, 0);
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(960, 540);
     this.renderer.shadowMap.enabled = true;
+  }
+
+  bindContainer(el: HTMLElement) {
+    this.container = el;
+    this.resizeHandler = () => this.handleResize();
+    window.addEventListener('resize', this.resizeHandler);
+    this.handleResize();
+  }
+
+  private handleResize() {
+    if (!this.container) return;
+    const w = this.container.clientWidth;
+    const h = w * (540 / 960);
+    this.renderer.setSize(w, h);
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
   }
 
   setupLights() {
@@ -33,6 +52,7 @@ export class World {
   }
 
   dispose() {
+    if (this.resizeHandler) window.removeEventListener('resize', this.resizeHandler);
     this.renderer.dispose();
   }
 }

@@ -21,6 +21,7 @@ import { A_LOAD, PV } from './config';
 
 export function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const trebRef = useRef<Trebuchet | null>(null);
   const gameStateRef = useRef<GameState | null>(null);
 
@@ -81,6 +82,7 @@ export function App() {
     const world = new World(canvas);
     const { scene, camera, renderer } = world;
     world.setupLights();
+    if (containerRef.current) world.bindContainer(containerRef.current);
 
     createBackground(scene);
     addCastleDetails(scene);
@@ -133,7 +135,7 @@ export function App() {
       setPower(pw);
     }
 
-    function onPointerUp(_e: PointerEvent) {
+    function onPointerUp() {
       if (!isDragging) return;
       isDragging = false;
       if (gameState.phase === 'aiming' && !gameState.paused) {
@@ -353,9 +355,9 @@ export function App() {
   const showControls = phase === 'aiming';
 
   return (
-    <div style={{ width: 960, height: 540, margin: '40px auto', position: 'relative', overflow: 'hidden' }}>
-      <canvas ref={canvasRef} width={960} height={540}
-        style={{ display: 'block', width: '100%', height: '100%', border: '2px solid #333', borderRadius: 8 }} />
+    <div ref={containerRef} style={{ maxWidth: 960, width: '100%', aspectRatio: '16/9', margin: '40px auto', position: 'relative', overflow: 'hidden' }}>
+      <canvas ref={canvasRef}
+        style={{ display: 'block', width: '100%', height: '100%', border: '2px solid #333', borderRadius: 8, touchAction: 'none' }} />
 
       {isPlaying && (
         <HUD
