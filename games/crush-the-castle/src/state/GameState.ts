@@ -1,6 +1,6 @@
 import { events } from './events';
 import { START_AMMO, SCORE_PER_KILL, SCORE_PER_AMMO } from '../config';
-import { PhysicsWorld } from '../physics/PhysicsWorld';
+import type { PhysicsWorld } from '../physics/PhysicsWorld';
 
 export type GamePhase = 'menu' | 'aiming' | 'swinging' | 'flying' | 'settling' | 'won' | 'lost';
 
@@ -11,6 +11,7 @@ export class GameState {
   bestScore = parseInt(localStorage.getItem('ctc_best') || '0', 10);
   starsEarned = 0;
   enemiesAlive = 0;
+  paused = false;
   physics: PhysicsWorld;
 
   constructor(physics: PhysicsWorld) {
@@ -24,8 +25,13 @@ export class GameState {
     };
   }
 
+  private setPhase(p: GamePhase) {
+    this.phase = p;
+    events.emit('phase-changed', p);
+  }
+
   startLevel() {
-    this.phase = 'aiming';
+    this.setPhase('aiming');
     this.score = 0;
     this.ammo = START_AMMO;
     this.starsEarned = 0;
@@ -36,38 +42,40 @@ export class GameState {
 
   fire() {
     if (this.phase !== 'aiming') return;
-    this.phase = 'swinging';
+    this.setPhase('swinging');
   }
 
   startFlying() {
-    this.phase = 'flying';
+    this.setPhase('flying');
   }
 
   endTurn() {
-    this.phase = 'settling';
+    this.setPhase('settling');
     this.ammo--;
 
     if (this.enemiesAlive <= 0) {
-      // Victory
       this.score += this.ammo * SCORE_PER_AMMO;
       this.starsEarned = this.ammo >= 2 ? 3 : this.ammo === 1 ? 2 : 1;
       this.updateBest();
-      this.phase = 'won';
+      this.setPhase('won');
       events.emit('victory');
       return;
     }
 
     if (this.ammo <= 0) {
-      // Defeat
       this.starsEarned = 0;
-      this.phase = 'lost';
+      this.setPhase('lost');
       events.emit('defeat');
       return;
     }
 
-    // Next shot
-    this.phase = 'aiming';
+    this.setPhase('aiming');
     events.emit('ammo-changed', this.ammo);
+  }
+
+  togglePause() {
+    this.paused = !this.paused;
+    events.emit(this.paused ? 'pause' : 'resume');
   }
 
   private updateBest() {
