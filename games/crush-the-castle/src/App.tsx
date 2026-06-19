@@ -147,14 +147,19 @@ export function App() {
       }
     }
 
+    let onBoulderLaunched: () => void;
+    let onBoulderRemoved: (handle: unknown) => void;
+    let onAmmoChanged: (n: unknown) => void;
+    let onAmmoTypeChanged: (t: unknown) => void;
+
     physics.init().then(() => {
       // Subscribe to events before triggering state changes
       events.on('phase-changed', onPhaseChanged);
 
-      const onAmmoChanged = (n: unknown) => setAmmo(n as number);
+      onAmmoChanged = (n: unknown) => setAmmo(n as number);
       events.on('ammo-changed', onAmmoChanged);
 
-      const onAmmoTypeChanged = (t: unknown) => setSelectedAmmo(t as AmmoType);
+      onAmmoTypeChanged = (t: unknown) => setSelectedAmmo(t as AmmoType);
       events.on('ammo-type-changed', onAmmoTypeChanged);
 
       physics.loadLevel(level1);
@@ -184,13 +189,13 @@ export function App() {
         }
       };
 
-      const onBoulderLaunched = () => {
+      onBoulderLaunched = () => {
         world.triggerShake(5);
         effects.hideTrajectory();
       };
       events.on('boulder-launched', onBoulderLaunched);
 
-      const onBoulderRemoved = (handle: unknown) => {
+      onBoulderRemoved = (handle: unknown) => {
         const mesh = bodyMeshes.get(handle as number);
         if (mesh) {
           scene.remove(mesh);
