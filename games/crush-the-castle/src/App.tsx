@@ -46,6 +46,8 @@ export function App() {
     const bodyMeshes = new Map<number, THREE.Mesh>();
 
     let isDragging = false;
+    let isPanning = false;
+    let panStart = { x: 0, y: 0 };
 
     function toCanvasCoords(e: PointerEvent) {
       const rect = canvas.getBoundingClientRect();
@@ -56,32 +58,55 @@ export function App() {
     }
 
     function onPointerDown(e: PointerEvent) {
-      if (gameState.phase !== 'aiming' || gameState.paused) return;
-      const p = toCanvasCoords(e);
-      const dx = p.x - PV.x;
-      const dy = p.y - PV.y;
-      if (Math.hypot(dx, dy) > 260) return;
-      isDragging = true;
-      canvas.setPointerCapture(e.pointerId);
+      if (gameState.paused) return;
+
+      if (gameState.phase === 'aiming') {
+        const p = toCanvasCoords(e);
+        const dx = p.x - PV.x;
+        const dy = p.y - PV.y;
+        if (Math.hypot(dx, dy) <= 260) {
+          isDragging = true;
+          canvas.setPointerCapture(e.pointerId);
+          return;
+        }
+      }
+
+      if (gameState.phase === 'aiming' || gameState.phase === 'settling') {
+        isPanning = true;
+        panStart = { x: e.clientX, y: e.clientY };
+        canvas.setPointerCapture(e.pointerId);
+      }
     }
 
     function onPointerMove(e: PointerEvent) {
-      if (!isDragging) return;
-      const p = toCanvasCoords(e);
-      const dx = PV.x - p.x;
-      const dy = PV.y - p.y;
-      const d = Math.hypot(dx, dy);
-      if (d < 8) return;
-      let deg = Math.atan2(-dy, Math.abs(dx) || 0.001) * 180 / Math.PI;
-      deg = Math.max(8, Math.min(62, Math.round(deg)));
-      const pw = Math.max(20, Math.min(100, Math.round(d / 260 * 100)));
-      treb.aimAngle = deg;
-      treb.power = pw;
-      setAimDeg(deg);
-      setPower(pw);
+      if (isDragging) {
+        const p = toCanvasCoords(e);
+        const dx = PV.x - p.x;
+        const dy = PV.y - p.y;
+        const d = Math.hypot(dx, dy);
+        if (d < 8) return;
+        let deg = Math.atan2(-dy, Math.abs(dx) || 0.001) * 180 / Math.PI;
+        deg = Math.max(8, Math.min(62, Math.round(deg)));
+        const pw = Math.max(20, Math.min(100, Math.round(d / 260 * 100)));
+        treb.aimAngle = deg;
+        treb.power = pw;
+        setAimDeg(deg);
+        setPower(pw);
+        return;
+      }
+      if (isPanning) {
+        const dx = e.clientX - panStart.x;
+        const dy = e.clientY - panStart.y;
+        world.panBy(dx * 0.5, dy * 0.5);
+        panStart = { x: e.clientX, y: e.clientY };
+      }
     }
 
     function onPointerUp(_e: PointerEvent) {
+      if (isPanning) {
+        isPanning = false;
+        return;
+      }
       if (!isDragging) return;
       isDragging = false;
       if (gameState.phase === 'aiming' && !gameState.paused) {
@@ -105,7 +130,10 @@ export function App() {
       }
     };
 
-    const onPhaseChanged = (p: unknown) => setPhase(p as GamePhase);
+    const onPhaseChanged = (p: unknown) => {
+      setPhase(p as GamePhase);
+      if (p === 'aiming') world.reset();
+    };
 
     function getColliderSize(collider: import('@dimforge/rapier3d-compat').Collider) {
       try {
@@ -140,7 +168,7 @@ export function App() {
 
       // Boulder events
       physics.onCollisionImpact = () => {
-        effects.triggerShake(12);
+        world.triggerShake(12);
         for (const b of physics.activeBoulders) {
           const t = b.rigidBody.translation();
           particles.spawnImpact(t.x, t.y, 18);
@@ -148,7 +176,7 @@ export function App() {
       };
 
       const onBoulderLaunched = () => {
-        effects.triggerShake(5);
+        world.triggerShake(5);
         effects.hideTrajectory();
       };
       events.on('boulder-launched', onBoulderLaunched);
@@ -240,8 +268,9 @@ export function App() {
           mesh.quaternion.set(r.x, r.y, r.z, r.w);
         }
 
-        // Camera shake
-        effects.updateShake(camera);
+        // Update camera (auto-follow + shake)
+        const boulderPositions = physics.activeBoulders.map(b => b.rigidBody.translation());
+        world.update(gameState.phase, boulderPositions);
 
         // Update particles
         particles.update();
