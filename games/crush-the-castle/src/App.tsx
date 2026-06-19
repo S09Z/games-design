@@ -321,10 +321,10 @@ export function App() {
   const disabled = phase !== 'aiming';
 
   return (
-    <div style={{ width: 960, margin: '40px auto', position: 'relative' }}>
-      <div style={{ width: 960, height: 540, position: 'relative' }}>
+    <div style={{ maxWidth: 980, margin: '40px auto', position: 'relative' }}>
+      <div style={{ width: 980, height: 540, position: 'relative', border: '4px solid #2E2117', borderRadius: 22, overflow: 'hidden' }}>
         <canvas ref={canvasRef} width={960} height={540}
-          style={{ display: 'block', width: '100%', height: '100%', border: '2px solid #333', borderRadius: 8 }} />
+          style={{ display: 'block', width: '100%', height: '100%' }} />
         {gameStateRef.current?.paused && (
           <PauseModal
             onResume={() => gameStateRef.current?.togglePause()}

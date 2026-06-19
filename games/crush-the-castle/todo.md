@@ -182,7 +182,7 @@ V2 adds **ammunition types** (Standard/Spread/Heavy), **camera auto-follow + pan
 - 🟡 In progress
 - 🟢 Complete
 
-**Current phase:** V2 Phase 5 (Polish) | 0 ✅ 1 ✅ 2 ✅ 3 ✅ 4 ✅
+**Current phase:** ✅ All V2 phases complete
 
 ---
 
@@ -195,4 +195,4 @@ V2 adds **ammunition types** (Standard/Spread/Heavy), **camera auto-follow + pan
 | 2 | Camera — Auto-follow & pan | [`migrate/v2/phase-2-camera.md`](migrate/v2/phase-2-camera.md) | Medium | ✅ |
 | 3 | Command Bar UI | [`migrate/v2/phase-3-command-bar.md`](migrate/v2/phase-3-command-bar.md) | Medium | ✅ |
 | 4 | Modal simplification | [`migrate/v2/phase-4-modals.md`](migrate/v2/phase-4-modals.md) | Low | ✅ |
-| 5 | Polish & Final Verification | [`migrate/v2/phase-5-polish.md`](migrate/v2/phase-5-polish.md) | Low | 🔴 |
+| 5 | Polish & Final Verification | [`migrate/v2/phase-5-polish.md`](migrate/v2/phase-5-polish.md) | Low | ✅ |
