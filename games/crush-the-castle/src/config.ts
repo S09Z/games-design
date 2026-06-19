@@ -44,3 +44,5 @@ export const FLY_TIMEOUT = 300;
 export const START_AMMO = 5;
 export const SCORE_PER_KILL = 1000;
 export const SCORE_PER_AMMO = 300;
+
+export const LEVEL_NAME = 'LEVEL 1';

@@ -10,6 +10,7 @@ export type GameEvent =
   | 'aim-changed'
   | 'ammo-changed'
   | 'score-changed'
+  | 'enemies-changed'
   | 'level-restart'
   | 'phase-changed'
   | 'pause'

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { PhysicsWorld } from './physics/PhysicsWorld';
 import { level1 } from './game/Level';
 import { GameState, type GamePhase } from './state/GameState';
@@ -11,6 +11,11 @@ import { createEnemyMesh, syncEnemyMesh } from './game/Enemy';
 import { ParticleSystem } from './game/Particles';
 import { Effects } from './game/Effects';
 import { Controls } from './ui/Controls';
+import { HUD } from './ui/HUD';
+import { MainMenu } from './ui/MainMenu';
+import { PauseModal } from './ui/PauseModal';
+import { ResultModal } from './ui/ResultModal';
+import { Hint } from './ui/Hint';
 import { A_LOAD, PV } from './config';
 
 export function App() {
@@ -21,6 +26,40 @@ export function App() {
   const [aimDeg, setAimDeg] = useState(32);
   const [power, setPower] = useState(66);
   const [phase, setPhase] = useState<GamePhase>('menu');
+  const [score, setScore] = useState(0);
+  const [ammo, setAmmo] = useState(5);
+  const [enemiesAlive, setEnemiesAlive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [result, setResult] = useState<'victory' | 'defeat' | null>(null);
+  const [bestScore, setBestScore] = useState(
+    parseInt(localStorage.getItem('ctc_best') || '0', 10)
+  );
+  const [hintVisible, setHintVisible] = useState(true);
+
+  const handlePlay = useCallback(() => {
+    gameStateRef.current?.startLevel();
+  }, []);
+
+  const handleRestart = useCallback(() => {
+    window.location.reload();
+  }, []);
+
+  const handleQuit = useCallback(() => {
+    window.location.reload();
+  }, []);
+
+  const handlePause = useCallback(() => {
+    gameStateRef.current?.togglePause();
+  }, []);
+
+  const handleResume = useCallback(() => {
+    gameStateRef.current?.togglePause();
+  }, []);
+
+  const handleHowToPlay = useCallback(() => {
+    const el = document.getElementById('howto');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -105,7 +144,24 @@ export function App() {
       }
     };
 
-    const onPhaseChanged = (p: unknown) => setPhase(p as GamePhase);
+    const onPhaseChanged = (p: unknown) => {
+      const phaseVal = p as GamePhase;
+      setPhase(phaseVal);
+      if (phaseVal === 'swinging') {
+        setHintVisible(false);
+      }
+    };
+
+    const onScoreChanged = (s: unknown) => setScore(s as number);
+    const onAmmoChanged = (a: unknown) => setAmmo(a as number);
+    const onEnemiesChanged = (e: unknown) => setEnemiesAlive(e as number);
+    const onPause = () => setPaused(true);
+    const onResume = () => setPaused(false);
+    const onVictory = () => {
+      setResult('victory');
+      setBestScore(gameState.bestScore);
+    };
+    const onDefeat = () => setResult('defeat');
 
     function getColliderSize(collider: import('@dimforge/rapier3d-compat').Collider) {
       try {
@@ -117,11 +173,16 @@ export function App() {
     }
 
     physics.init().then(() => {
-      // Subscribe to events before triggering state changes
       events.on('phase-changed', onPhaseChanged);
+      events.on('score-changed', onScoreChanged);
+      events.on('ammo-changed', onAmmoChanged);
+      events.on('enemies-changed', onEnemiesChanged);
+      events.on('pause', onPause);
+      events.on('resume', onResume);
+      events.on('victory', onVictory);
+      events.on('defeat', onDefeat);
 
       physics.loadLevel(level1);
-      gameState.startLevel();
 
       // Create meshes for blocks
       for (const h of physics.blocks) {
@@ -248,6 +309,13 @@ export function App() {
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       events.off('phase-changed', onPhaseChanged);
+      events.off('score-changed', onScoreChanged);
+      events.off('ammo-changed', onAmmoChanged);
+      events.off('enemies-changed', onEnemiesChanged);
+      events.off('pause', onPause);
+      events.off('resume', onResume);
+      events.off('victory', onVictory);
+      events.off('defeat', onDefeat);
       physics.destroy();
       world.dispose();
       particles.clear();
@@ -255,30 +323,71 @@ export function App() {
   }, []);
 
   const disabled = phase !== 'aiming';
+  const isPlaying = phase !== 'menu';
+  const showControls = phase === 'aiming';
 
   return (
-    <div style={{ width: 960, height: 540, margin: '40px auto', position: 'relative' }}>
+    <div style={{ width: 960, height: 540, margin: '40px auto', position: 'relative', overflow: 'hidden' }}>
       <canvas ref={canvasRef} width={960} height={540}
         style={{ display: 'block', width: '100%', height: '100%', border: '2px solid #333', borderRadius: 8 }} />
-      <Controls
-        aimDeg={aimDeg}
-        power={power}
-        disabled={disabled}
-        onAimChange={(deg) => {
-          setAimDeg(deg);
-          if (trebRef.current) trebRef.current.aimAngle = deg;
-        }}
-        onPowerChange={(pct) => {
-          setPower(pct);
-          if (trebRef.current) trebRef.current.power = pct;
-        }}
-        onFire={() => {
-          if (gameStateRef.current && trebRef.current) {
-            gameStateRef.current.fire();
-            trebRef.current.fire();
-          }
-        }}
-      />
+
+      {isPlaying && (
+        <HUD
+          score={score}
+          enemiesAlive={enemiesAlive}
+          ammo={ammo}
+          onPause={handlePause}
+          onRestart={handleRestart}
+        />
+      )}
+
+      {showControls && (
+        <Controls
+          aimDeg={aimDeg}
+          power={power}
+          disabled={false}
+          onAimChange={(deg) => {
+            setAimDeg(deg);
+            if (trebRef.current) trebRef.current.aimAngle = deg;
+          }}
+          onPowerChange={(pct) => {
+            setPower(pct);
+            if (trebRef.current) trebRef.current.power = pct;
+          }}
+          onFire={() => {
+            if (gameStateRef.current && trebRef.current) {
+              gameStateRef.current.fire();
+              trebRef.current.fire();
+            }
+          }}
+        />
+      )}
+
+      {isPlaying && <Hint visible={hintVisible} />}
+
+      {phase === 'menu' && (
+        <MainMenu onPlay={handlePlay} onHowToPlay={handleHowToPlay} />
+      )}
+
+      {paused && (
+        <PauseModal
+          onResume={handleResume}
+          onRestart={handleRestart}
+          onQuit={handleQuit}
+        />
+      )}
+
+      {result && (
+        <ResultModal
+          result={result}
+          score={score}
+          bestScore={bestScore}
+          starsEarned={result === 'victory' ? (ammo >= 2 ? 3 : ammo === 1 ? 2 : 1) : 0}
+          onHome={handleQuit}
+          onRetry={handleRestart}
+          onNext={result === 'victory' ? handleRestart : null}
+        />
+      )}
     </div>
   );
 }
