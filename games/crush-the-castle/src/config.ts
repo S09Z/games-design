@@ -44,3 +44,26 @@ export const FLY_TIMEOUT = 300;
 export const START_AMMO = 5;
 export const SCORE_PER_KILL = 1000;
 export const SCORE_PER_AMMO = 300;
+
+// ── V2 Ammo Types ──
+export type AmmoType = 'standard' | 'spread' | 'heavy';
+
+export interface AmmoTypeConfig {
+  count: number;
+  speedMul: number;
+  sizeMul: number;
+  spreadRad: number;
+  label: string;
+  sub: string;
+}
+
+export const AMMO_TYPES: Record<AmmoType, AmmoTypeConfig> = {
+  standard: { count: 1, speedMul: 1, sizeMul: 1, spreadRad: 0, label: 'Standard', sub: 'Fast · 1' },
+  spread:   { count: 3, speedMul: 0.85, sizeMul: 0.7, spreadRad: 0.15, label: 'Spread', sub: 'Med · 3×' },
+  heavy:    { count: 1, speedMul: 0.7, sizeMul: 1.6, spreadRad: 0, label: 'Heavy', sub: 'Slow · 2×' },
+};
+
+// ── V2 Camera ──
+export const CAM_FOLLOW_SPEED = 0.06;
+export const CAM_PAN_BOUNDS = { minX: -200, maxX: 800, minY: -100, maxY: 300 };
+export const CAM_DEFAULT = { x: 480, y: 200, z: 600 };

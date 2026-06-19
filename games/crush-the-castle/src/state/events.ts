@@ -13,7 +13,8 @@ export type GameEvent =
   | 'level-restart'
   | 'phase-changed'
   | 'pause'
-  | 'resume';
+  | 'resume'
+  | 'ammo-type-changed';
 
 export type Listener = (...args: unknown[]) => void;
 

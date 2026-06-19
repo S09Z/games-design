@@ -1,5 +1,6 @@
 import { events } from './events';
 import { START_AMMO, SCORE_PER_KILL, SCORE_PER_AMMO } from '../config';
+import type { AmmoType } from '../config';
 import type { PhysicsWorld } from '../physics/PhysicsWorld';
 
 export type GamePhase = 'menu' | 'aiming' | 'swinging' | 'flying' | 'settling' | 'won' | 'lost';
@@ -8,6 +9,7 @@ export class GameState {
   phase: GamePhase = 'menu';
   score = 0;
   ammo = START_AMMO;
+  selectedAmmo: AmmoType = 'standard';
   bestScore = parseInt(localStorage.getItem('ctc_best') || '0', 10);
   starsEarned = 0;
   enemiesAlive = 0;
@@ -38,6 +40,11 @@ export class GameState {
     this.enemiesAlive = this.physics.enemies.length;
     events.emit('score-changed', this.score);
     events.emit('ammo-changed', this.ammo);
+  }
+
+  selectAmmo(type: AmmoType) {
+    this.selectedAmmo = type;
+    events.emit('ammo-type-changed', type);
   }
 
   fire() {

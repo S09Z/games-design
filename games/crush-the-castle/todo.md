@@ -167,3 +167,32 @@ Porting to 3D is a **creative re-imagining**, not a 1:1 port.
 - ✅ Particles spawn on collision
 - ✅ Camera shake on boulder impact
 - ✅ Shadows render on ground and objects
+
+---
+
+## V2 — Ammo Types & Command Bar UI
+
+### Stack (no changes)
+
+### Key insight
+V2 adds **ammunition types** (Standard/Spread/Heavy), **camera auto-follow + pan**, and a redesigned **command bar UI** — derived from the V2 standalone spec.
+
+### Status
+- 🔴 Not started
+- 🟡 In progress
+- 🟢 Complete
+
+**Current phase:** V2 Phase 1 (Projectiles)
+
+---
+
+## V2 Phases
+
+| # | Phase | File | Risk | Status |
+|---|-------|------|------|--------|
+| 0 | Foundation — Config, types, state | [`migrate/v2/phase-0-foundation.md`](migrate/v2/phase-0-foundation.md) | Low | ✅ |
+| 1 | Projectiles — Spread & Heavy physics | [`migrate/v2/phase-1-projectiles.md`](migrate/v2/phase-1-projectiles.md) | Medium | 🔴 |
+| 2 | Camera — Auto-follow & pan | [`migrate/v2/phase-2-camera.md`](migrate/v2/phase-2-camera.md) | Medium | 🔴 |
+| 3 | Command Bar UI | [`migrate/v2/phase-3-command-bar.md`](migrate/v2/phase-3-command-bar.md) | Medium | 🔴 |
+| 4 | Modal simplification | [`migrate/v2/phase-4-modals.md`](migrate/v2/phase-4-modals.md) | Low | 🔴 |
+| 5 | Polish & Final Verification | [`migrate/v2/phase-5-polish.md`](migrate/v2/phase-5-polish.md) | Low | 🔴 |

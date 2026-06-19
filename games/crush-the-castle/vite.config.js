@@ -8,7 +8,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     rollupOptions: {
-      input: './game-standalone.html',
+      input: './index.html',
     },
   },
   server: { port: 3000 },
