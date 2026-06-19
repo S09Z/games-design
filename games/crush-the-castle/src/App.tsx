@@ -141,17 +141,26 @@ export function App() {
       // Boulder events
       physics.onCollisionImpact = () => {
         effects.triggerShake(12);
-        if (physics.boulder) {
-          const t = physics.boulder.rigidBody.translation();
+        for (const b of physics.activeBoulders) {
+          const t = b.rigidBody.translation();
           particles.spawnImpact(t.x, t.y, 18);
         }
       };
 
-      physics.onBoulderLaunched = (pos) => {
+      const onBoulderLaunched = () => {
         effects.triggerShake(5);
-        particles.spawnImpact(pos.x, pos.y, 5);
         effects.hideTrajectory();
       };
+      events.on('boulder-launched', onBoulderLaunched);
+
+      const onBoulderRemoved = (handle: unknown) => {
+        const mesh = bodyMeshes.get(handle as number);
+        if (mesh) {
+          scene.remove(mesh);
+          bodyMeshes.delete(handle as number);
+        }
+      };
+      events.on('boulder-removed', onBoulderRemoved);
 
       physics.onEnemyKilled = (_idx: number, pos?: { x: number; y: number; z: number }) => {
         if (pos) particles.spawnImpact(pos.x, pos.y, 9);
@@ -159,7 +168,7 @@ export function App() {
 
       // Fire sequence: trebuchet animation -> release -> flying
       treb.onRelease = (pos, vel) => {
-        physics.launchBoulder(pos, vel);
+        physics.launchBoulder(pos, vel, gameState.selectedAmmo);
       };
       treb.onSwingComplete = () => {
         gameState.startFlying();
@@ -212,21 +221,21 @@ export function App() {
           if (mesh && !h.userData.dead) syncEnemyMesh(mesh, h);
         }
 
-        // Handle boulder
-        if (physics.boulder) {
-          let mesh = bodyMeshes.get(physics.boulder.collider.handle);
+        // Handle active boulders
+        for (const b of physics.activeBoulders) {
+          let mesh = bodyMeshes.get(b.collider.handle);
           if (!mesh) {
-            const t = physics.boulder.rigidBody.translation();
-            const size = getColliderSize(physics.boulder.collider);
+            const t = b.rigidBody.translation();
+            const size = getColliderSize(b.collider);
             const geo = new THREE.SphereGeometry(size.x, 12, 12);
             const mat = new THREE.MeshStandardMaterial({ color: 0x8C8378, roughness: 0.9 });
             mesh = new THREE.Mesh(geo, mat);
             mesh.castShadow = true;
             scene.add(mesh);
-            bodyMeshes.set(physics.boulder.collider.handle, mesh);
+            bodyMeshes.set(b.collider.handle, mesh);
           }
-          const t = physics.boulder.rigidBody.translation();
-          const r = physics.boulder.rigidBody.rotation();
+          const t = b.rigidBody.translation();
+          const r = b.rigidBody.rotation();
           mesh.position.set(t.x, t.y, t.z);
           mesh.quaternion.set(r.x, r.y, r.z, r.w);
         }
@@ -248,6 +257,8 @@ export function App() {
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       events.off('phase-changed', onPhaseChanged);
+      events.off('boulder-launched', onBoulderLaunched);
+      events.off('boulder-removed', onBoulderRemoved);
       physics.destroy();
       world.dispose();
       particles.clear();

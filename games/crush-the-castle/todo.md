@@ -182,7 +182,7 @@ V2 adds **ammunition types** (Standard/Spread/Heavy), **camera auto-follow + pan
 - 🟡 In progress
 - 🟢 Complete
 
-**Current phase:** V2 Phase 1 (Projectiles)
+**Current phase:** V2 Phase 2 (Camera) | 0 Foundation ✅ | 1 Projectiles ✅
 
 ---
 
@@ -191,7 +191,7 @@ V2 adds **ammunition types** (Standard/Spread/Heavy), **camera auto-follow + pan
 | # | Phase | File | Risk | Status |
 |---|-------|------|------|--------|
 | 0 | Foundation — Config, types, state | [`migrate/v2/phase-0-foundation.md`](migrate/v2/phase-0-foundation.md) | Low | ✅ |
-| 1 | Projectiles — Spread & Heavy physics | [`migrate/v2/phase-1-projectiles.md`](migrate/v2/phase-1-projectiles.md) | Medium | 🔴 |
+| 1 | Projectiles — Spread & Heavy physics | [`migrate/v2/phase-1-projectiles.md`](migrate/v2/phase-1-projectiles.md) | Medium | ✅ |
 | 2 | Camera — Auto-follow & pan | [`migrate/v2/phase-2-camera.md`](migrate/v2/phase-2-camera.md) | Medium | 🔴 |
 | 3 | Command Bar UI | [`migrate/v2/phase-3-command-bar.md`](migrate/v2/phase-3-command-bar.md) | Medium | 🔴 |
 | 4 | Modal simplification | [`migrate/v2/phase-4-modals.md`](migrate/v2/phase-4-modals.md) | Low | 🔴 |
