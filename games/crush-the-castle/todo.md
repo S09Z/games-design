@@ -170,25 +170,29 @@ Porting to 3D is a **creative re-imagining**, not a 1:1 port.
 
 ---
 
-## Phase 7 — Polish & Cleanup ✅
+## V2 — Ammo Types & Command Bar UI
 
-### Cleanup
-- ✅ Removed old `js/` folder (prototype code fully ported)
-- ✅ Removed old `css/` folder (styles in `index.html` and React inline)
-- ✅ Removed `game-standalone.html` (replaced by `index.html`)
-- ✅ Updated `vite.config.js` to use `index.html` as build entry
-- ✅ Removed `dist/` (clean rebuild)
-- ✅ Removed unused `src/physics/index.ts` barrel file
+### Stack (no changes)
 
-### Responsive
-- ✅ Container uses `max-width: 960px; width: 100%; aspect-ratio: 16/9` for fluid sizing
-- ✅ Three.js renderer resizes with window (camera aspect + renderer size)
-- ✅ Canvas `touch-action: none` prevents mobile scroll/zoom
+### Key insight
+V2 adds **ammunition types** (Standard/Spread/Heavy), **camera auto-follow + pan**, and a redesigned **command bar UI** — derived from the V2 standalone spec.
 
-### Performance
-- ✅ `renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))`
+### Status
+- 🔴 Not started
+- 🟡 In progress
+- 🟢 Complete
 
-### Verification
-- ✅ `npm run build` succeeds (2,811 KB inline bundle)
-- ✅ `npm run dev` starts without errors
-- ✅ Full game loop: Menu → Play → Aim → Fire → Win/Lose → Modal
+**Current phase:** V2 Phase 1 (Projectiles)
+
+---
+
+## V2 Phases
+
+| # | Phase | File | Risk | Status |
+|---|-------|------|------|--------|
+| 0 | Foundation — Config, types, state | [`migrate/v2/phase-0-foundation.md`](migrate/v2/phase-0-foundation.md) | Low | ✅ |
+| 1 | Projectiles — Spread & Heavy physics | [`migrate/v2/phase-1-projectiles.md`](migrate/v2/phase-1-projectiles.md) | Medium | 🔴 |
+| 2 | Camera — Auto-follow & pan | [`migrate/v2/phase-2-camera.md`](migrate/v2/phase-2-camera.md) | Medium | 🔴 |
+| 3 | Command Bar UI | [`migrate/v2/phase-3-command-bar.md`](migrate/v2/phase-3-command-bar.md) | Medium | 🔴 |
+| 4 | Modal simplification | [`migrate/v2/phase-4-modals.md`](migrate/v2/phase-4-modals.md) | Low | 🔴 |
+| 5 | Polish & Final Verification | [`migrate/v2/phase-5-polish.md`](migrate/v2/phase-5-polish.md) | Low | 🔴 |
