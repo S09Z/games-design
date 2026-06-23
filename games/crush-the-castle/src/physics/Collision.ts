@@ -14,7 +14,7 @@ export interface CollisionResult {
  */
 export function detectCollisions(
   eventQueue: RAPIER.EventQueue,
-  boulderHandle: BodyHandle | null,
+  boulderHandles: BodyHandle[],
   allBodies: BodyHandle[],
 ): CollisionResult {
   let boulderImpact = false;
@@ -31,15 +31,16 @@ export function detectCollisions(
     const vel1 = h1.rigidBody.linvel();
     const vel2 = h2.rigidBody.linvel();
     const rv = Math.hypot(vel1.x - vel2.x, vel1.y - vel2.y, vel1.z - vel2.z);
+    const isBoulder = boulderHandles.includes(h1) || boulderHandles.includes(h2);
 
-    if (rv > 5 && boulderHandle && (h1 === boulderHandle || h2 === boulderHandle)) {
+    if (rv > 5 && isBoulder) {
       boulderImpact = true;
       highSpeedHit = true;
     }
 
     if (rv > 3) {
       [h1, h2].forEach(h => {
-        if (h !== boulderHandle && !h.rigidBody.isFixed() && h.userData.kind === 'block') {
+        if (!boulderHandles.includes(h) && !h.rigidBody.isFixed() && h.userData.kind === 'block') {
           bodiesToCrack.push(h);
         }
       });
