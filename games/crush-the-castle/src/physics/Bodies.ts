@@ -119,7 +119,7 @@ export function createEnemy(world: RAPIER.World, def: EnemyDef): BodyHandle {
   };
 }
 
-export function createBoulder(world: RAPIER.World, pos: Vec3, vel: Vec3): BodyHandle {
+export function createBoulder(world: RAPIER.World, pos: Vec3, vel: Vec3, radius = BOULDER_RADIUS): BodyHandle {
   const body = world.createRigidBody(
     RAPIER.RigidBodyDesc.dynamic()
       .setTranslation(pos.x, pos.y, pos.z)
@@ -127,7 +127,7 @@ export function createBoulder(world: RAPIER.World, pos: Vec3, vel: Vec3): BodyHa
       .setCanSleep(false),
   );
   const collider = world.createCollider(
-    RAPIER.ColliderDesc.ball(BOULDER_RADIUS)
+    RAPIER.ColliderDesc.ball(radius)
       .setFriction(0.4)
       .setRestitution(0.2)
       .setDensity(BOULDER_DENSITY * 100)
