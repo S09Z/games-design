@@ -24,6 +24,7 @@ export class GameState {
       this.enemiesAlive--;
       this.score += SCORE_PER_KILL;
       events.emit('score-changed', this.score);
+      events.emit('enemies-changed', this.enemiesAlive);
     };
   }
 
@@ -40,6 +41,7 @@ export class GameState {
     this.enemiesAlive = this.physics.enemies.length;
     events.emit('score-changed', this.score);
     events.emit('ammo-changed', this.ammo);
+    events.emit('enemies-changed', this.enemiesAlive);
   }
 
   selectAmmo(type: AmmoType) {
