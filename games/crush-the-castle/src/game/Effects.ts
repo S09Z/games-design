@@ -2,10 +2,6 @@ import * as THREE from 'three';
 import { GY, W } from '../config';
 
 export class Effects {
-  shakeAmount = 0;
-  private shakeDecay = 0.78;
-  private shakeSub = 0.08;
-
   // Trajectory preview
   private trajectoryDots: THREE.Mesh[] = [];
   private trajectoryLine: THREE.Line | null = null;
@@ -44,21 +40,6 @@ export class Effects {
     this.launchMarker = new THREE.Mesh(ringGeo, ringMat);
     this.launchMarker.visible = false;
     scene.add(this.launchMarker);
-  }
-
-  triggerShake(amount: number) {
-    this.shakeAmount = Math.max(this.shakeAmount, amount);
-  }
-
-  updateShake(camera: THREE.PerspectiveCamera) {
-    if (this.shakeAmount > 0.5) {
-      const sx = (Math.random() - 0.5) * this.shakeAmount;
-      const sy = (Math.random() - 0.5) * this.shakeAmount;
-      camera.position.x += sx;
-      camera.position.y += sy;
-      camera.lookAt(480, 100, 0);
-    }
-    this.shakeAmount = Math.max(0, this.shakeAmount * this.shakeDecay - this.shakeSub);
   }
 
   showTrajectory(
