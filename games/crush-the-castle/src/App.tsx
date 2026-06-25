@@ -10,6 +10,7 @@ import { createBlockMesh, resizeBlockMesh, addCastleDetails, updateBlockMesh } f
 import { createEnemyMesh, syncEnemyMesh } from './game/Enemy';
 import { ParticleSystem } from './game/Particles';
 import { Effects } from './game/Effects';
+import { CommandBar } from './ui/CommandBar';
 import { Controls } from './ui/Controls';
 import { HUD } from './ui/HUD';
 import { MainMenu } from './ui/MainMenu';
@@ -18,6 +19,7 @@ import { ResultModal } from './ui/ResultModal';
 import { Hint } from './ui/Hint';
 import { audioManager } from './audio/AudioManager';
 import { A_LOAD, PV } from './config';
+import type { AmmoType } from './config';
 
 export function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -28,6 +30,8 @@ export function App() {
   const [aimDeg, setAimDeg] = useState(32);
   const [power, setPower] = useState(66);
   const [phase, setPhase] = useState<GamePhase>('menu');
+  const [ammo, setAmmo] = useState(5);
+  const [selectedAmmo, setSelectedAmmo] = useState<AmmoType>('standard');
   const [score, setScore] = useState(0);
   const [ammo, setAmmo] = useState(5);
   const [enemiesAlive, setEnemiesAlive] = useState(0);
@@ -198,6 +202,11 @@ export function App() {
       }
     }
 
+    let onBoulderLaunched: () => void;
+    let onBoulderRemoved: (handle: unknown) => void;
+    let onAmmoChanged: (n: unknown) => void;
+    let onAmmoTypeChanged: (t: unknown) => void;
+
     physics.init().then(() => {
       events.on('phase-changed', onPhaseChanged);
       events.on('score-changed', onScoreChanged);
@@ -207,6 +216,12 @@ export function App() {
       events.on('resume', onResume);
       events.on('victory', onVictory);
       events.on('defeat', onDefeat);
+
+      onAmmoChanged = (n: unknown) => setAmmo(n as number);
+      events.on('ammo-changed', onAmmoChanged);
+
+      onAmmoTypeChanged = (t: unknown) => setSelectedAmmo(t as AmmoType);
+      events.on('ammo-type-changed', onAmmoTypeChanged);
 
       physics.loadLevel(level1);
 
@@ -234,13 +249,13 @@ export function App() {
         }
       };
 
-      const onBoulderLaunched = () => {
+      onBoulderLaunched = () => {
         world.triggerShake(5);
         effects.hideTrajectory();
       };
       events.on('boulder-launched', onBoulderLaunched);
 
-      const onBoulderRemoved = (handle: unknown) => {
+      onBoulderRemoved = (handle: unknown) => {
         const mesh = bodyMeshes.get(handle as number);
         if (mesh) {
           scene.remove(mesh);
@@ -348,6 +363,8 @@ export function App() {
       events.off('phase-changed', onPhaseChanged);
       events.off('boulder-launched', onBoulderLaunched);
       events.off('boulder-removed', onBoulderRemoved);
+      events.off('ammo-changed', onAmmoChanged);
+      events.off('ammo-type-changed', onAmmoTypeChanged);
       physics.destroy();
       world.dispose();
       particles.clear();
@@ -359,6 +376,37 @@ export function App() {
   const showControls = phase === 'aiming';
 
   return (
+    <div style={{ width: 960, margin: '40px auto', position: 'relative' }}>
+      <div style={{ width: 960, height: 540, position: 'relative' }}>
+        <canvas ref={canvasRef} width={960} height={540}
+          style={{ display: 'block', width: '100%', height: '100%', border: '2px solid #333', borderRadius: 8 }} />
+      </div>
+      <CommandBar
+        aimDeg={aimDeg}
+        power={power}
+        selectedAmmo={selectedAmmo}
+        disabled={disabled}
+        onAimChange={(deg) => {
+          setAimDeg(deg);
+          if (trebRef.current) trebRef.current.aimAngle = deg;
+        }}
+        onPowerChange={(pct) => {
+          setPower(pct);
+          if (trebRef.current) trebRef.current.power = pct;
+        }}
+        onAmmoSelect={(type) => {
+          if (gameStateRef.current) gameStateRef.current.selectAmmo(type);
+        }}
+        onFire={() => {
+          if (gameStateRef.current && trebRef.current) {
+            gameStateRef.current.fire();
+            trebRef.current.fire();
+          }
+        }}
+        onPause={() => {
+          if (gameStateRef.current) gameStateRef.current.togglePause();
+        }}
+      />
     <div ref={containerRef} style={{ maxWidth: 960, width: '100%', aspectRatio: '16/9', margin: '40px auto', position: 'relative', overflow: 'hidden' }}>
       <canvas ref={canvasRef}
         style={{ display: 'block', width: '100%', height: '100%', border: '2px solid #333', borderRadius: 8, touchAction: 'none' }} />
