@@ -11,13 +11,8 @@ import { createEnemyMesh, syncEnemyMesh } from './game/Enemy';
 import { ParticleSystem } from './game/Particles';
 import { Effects } from './game/Effects';
 import { CommandBar } from './ui/CommandBar';
-import { Controls } from './ui/Controls';
-import { HUD } from './ui/HUD';
-import { MainMenu } from './ui/MainMenu';
 import { PauseModal } from './ui/PauseModal';
 import { ResultModal } from './ui/ResultModal';
-import { Hint } from './ui/Hint';
-import { audioManager } from './audio/AudioManager';
 import { A_LOAD, PV } from './config';
 import type { AmmoType } from './config';
 
@@ -33,51 +28,6 @@ export function App() {
   const [ammo, setAmmo] = useState(5);
   const [selectedAmmo, setSelectedAmmo] = useState<AmmoType>('standard');
   const [score, setScore] = useState(0);
-  const [ammo, setAmmo] = useState(5);
-  const [enemiesAlive, setEnemiesAlive] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const [result, setResult] = useState<'victory' | 'defeat' | null>(null);
-  const [bestScore, setBestScore] = useState(
-    parseInt(localStorage.getItem('ctc_best') || '0', 10)
-  );
-  const [hintVisible, setHintVisible] = useState(true);
-  const [soundEnabled, setSoundEnabled] = useState(audioManager.soundEnabled);
-  const [musicEnabled, setMusicEnabled] = useState(audioManager.musicEnabled);
-
-  const handlePlay = useCallback(() => {
-    gameStateRef.current?.startLevel();
-  }, []);
-
-  const handleRestart = useCallback(() => {
-    window.location.reload();
-  }, []);
-
-  const handleQuit = useCallback(() => {
-    window.location.reload();
-  }, []);
-
-  const handlePause = useCallback(() => {
-    gameStateRef.current?.togglePause();
-  }, []);
-
-  const handleResume = useCallback(() => {
-    gameStateRef.current?.togglePause();
-  }, []);
-
-  const handleHowToPlay = useCallback(() => {
-    const el = document.getElementById('howto');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  }, []);
-
-  const handleToggleSound = useCallback(() => {
-    audioManager.toggleSound();
-    setSoundEnabled(audioManager.soundEnabled);
-  }, []);
-
-  const handleToggleMusic = useCallback(() => {
-    audioManager.toggleMusic();
-    setMusicEnabled(audioManager.musicEnabled);
-  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -206,6 +156,7 @@ export function App() {
     let onBoulderRemoved: (handle: unknown) => void;
     let onAmmoChanged: (n: unknown) => void;
     let onAmmoTypeChanged: (t: unknown) => void;
+    let onScoreChanged: (n: unknown) => void;
 
     physics.init().then(() => {
       events.on('phase-changed', onPhaseChanged);
@@ -222,6 +173,9 @@ export function App() {
 
       onAmmoTypeChanged = (t: unknown) => setSelectedAmmo(t as AmmoType);
       events.on('ammo-type-changed', onAmmoTypeChanged);
+
+      onScoreChanged = (n: unknown) => setScore(n as number);
+      events.on('score-changed', onScoreChanged);
 
       physics.loadLevel(level1);
 
@@ -365,6 +319,7 @@ export function App() {
       events.off('boulder-removed', onBoulderRemoved);
       events.off('ammo-changed', onAmmoChanged);
       events.off('ammo-type-changed', onAmmoTypeChanged);
+      events.off('score-changed', onScoreChanged);
       physics.destroy();
       world.dispose();
       particles.clear();
@@ -380,6 +335,19 @@ export function App() {
       <div style={{ width: 960, height: 540, position: 'relative' }}>
         <canvas ref={canvasRef} width={960} height={540}
           style={{ display: 'block', width: '100%', height: '100%', border: '2px solid #333', borderRadius: 8 }} />
+        {gameStateRef.current?.paused && (
+          <PauseModal
+            onResume={() => gameStateRef.current?.togglePause()}
+            onQuit={() => window.location.reload()}
+          />
+        )}
+        {(phase === 'won' || phase === 'lost') && (
+          <ResultModal
+            score={score}
+            won={phase === 'won'}
+            onPlayAgain={() => window.location.reload()}
+          />
+        )}
       </div>
       <CommandBar
         aimDeg={aimDeg}

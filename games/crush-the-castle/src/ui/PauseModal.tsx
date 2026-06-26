@@ -1,188 +1,47 @@
 interface PauseModalProps {
   onResume: () => void;
-  onRestart: () => void;
   onQuit: () => void;
-  soundEnabled: boolean;
-  musicEnabled: boolean;
-  onToggleSound: () => void;
-  onToggleMusic: () => void;
 }
 
-const STYLE_OVERLAY: React.CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  background: 'rgba(58,42,28,.34)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
+const OVERLAY: React.CSSProperties = {
+  position: 'absolute', inset: 0,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  background: 'rgba(0,0,0,0.6)',
   zIndex: 10,
 };
 
-const STYLE_MODAL: React.CSSProperties = {
-  position: 'relative',
-  width: '42%',
-  minWidth: 260,
-  background: '#FBF3DD',
-  border: '4px solid #2E2117',
-  borderRadius: 24,
-  boxShadow: '0 8px 0 #2E2117, 0 30px 50px rgba(0,0,0,.45)',
-  padding: '46px 28px 26px',
+const BOX: React.CSSProperties = {
+  background: '#1a1a2e',
+  border: '1px solid rgba(255,255,255,0.15)',
+  borderRadius: 16,
+  padding: '32px 48px',
+  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24,
 };
 
-const STYLE_RIBBON: React.CSSProperties = {
-  position: 'absolute',
-  top: -24,
-  left: '50%',
-  transform: 'translateX(-50%)',
-  background: '#2E2117',
-  color: '#FBF3DD',
-  fontFamily: "'Grenze Gotisch', serif",
-  fontWeight: 900,
-  fontSize: 28,
-  letterSpacing: 1,
-  padding: '7px 30px',
-  borderRadius: 13,
-  border: '3px solid #F2A93B',
-  boxShadow: '0 5px 0 rgba(0,0,0,.35)',
-  whiteSpace: 'nowrap',
-};
-
-const STYLE_BTN_GROUP: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 11,
-};
-
-const STYLE_PRIMARY_BTN: React.CSSProperties = {
+const TITLE: React.CSSProperties = {
   fontFamily: "'Nunito', sans-serif",
-  fontWeight: 900,
-  fontSize: 18,
+  fontWeight: 900, fontSize: 28, letterSpacing: 3,
   color: '#fff',
-  textShadow: '0 2px 0 rgba(0,0,0,.3)',
-  padding: 13,
-  border: '3.5px solid #2E2117',
-  borderRadius: 14,
-  cursor: 'pointer',
-  background: '#E8533A',
-  boxShadow: '0 6px 0 #2E2117',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 9,
 };
 
-const STYLE_SEC_BTN: React.CSSProperties = {
+const BTN: React.CSSProperties = {
   fontFamily: "'Nunito', sans-serif",
-  fontWeight: 900,
-  fontSize: 16,
-  color: '#2E2117',
-  padding: 12,
-  border: '3.5px solid #2E2117',
-  borderRadius: 14,
-  cursor: 'pointer',
-  background: '#EAD9B0',
-  boxShadow: '0 5px 0 #2E2117',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 9,
+  fontWeight: 800, fontSize: 14, letterSpacing: 1,
+  color: '#fff', padding: '10px 32px',
+  border: '2px solid rgba(255,255,255,0.2)',
+  borderRadius: 10,
+  cursor: 'pointer', background: 'transparent',
+  width: 180,
 };
 
-const STYLE_TOGGLES_ROW: React.CSSProperties = {
-  display: 'flex',
-  gap: 10,
-  marginTop: 3,
-};
-
-const STYLE_TOGGLE: React.CSSProperties = {
-  flex: 1,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  background: '#EFE2C4',
-  border: '3px solid #2E2117',
-  borderRadius: 11,
-  padding: '7px 11px',
-};
-
-const STYLE_TOGGLE_LABEL: React.CSSProperties = {
-  fontFamily: "'Nunito', sans-serif",
-  fontWeight: 800,
-  fontSize: 12,
-  color: '#2E2117',
-};
-
-function toggleTrackStyle(on: boolean): React.CSSProperties {
-  return {
-    width: 42,
-    height: 22,
-    borderRadius: 999,
-    background: on ? '#6E8B5A' : '#B6AE9F',
-    border: '2.5px solid #2E2117',
-    position: 'relative',
-    cursor: 'pointer',
-  };
-}
-
-function toggleThumbStyle(on: boolean): React.CSSProperties {
-  return {
-    position: 'absolute',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    width: 15,
-    height: 15,
-    borderRadius: '50%',
-    background: '#FBF3DD',
-    border: '2px solid #2E2117',
-    right: on ? 2 : 'auto',
-    left: on ? 'auto' : 2,
-  };
-}
-
-export function PauseModal({
-  onResume, onRestart, onQuit,
-  soundEnabled, musicEnabled,
-  onToggleSound, onToggleMusic,
-}: PauseModalProps) {
+export function PauseModal({ onResume, onQuit }: PauseModalProps) {
   return (
-    <div style={STYLE_OVERLAY}>
-      <div style={STYLE_MODAL}>
-        <div style={STYLE_RIBBON}>Paused</div>
-        <div style={STYLE_BTN_GROUP}>
-          <button style={STYLE_PRIMARY_BTN} onClick={onResume}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff">
-              <path d="M7 5 L19 12 L7 19 Z" />
-            </svg>
-            RESUME
-          </button>
-          <button style={STYLE_SEC_BTN} onClick={onRestart}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2E2117" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 11 a8 8 0 1 0 -2 5" />
-              <path d="M20 5 V11 H14" />
-            </svg>
-            Restart
-          </button>
-          <button style={STYLE_SEC_BTN} onClick={onQuit}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2E2117" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 4 H6 a2 2 0 0 0 -2 2 V18 a2 2 0 0 0 2 2 H14" />
-              <path d="M17 8 L21 12 L17 16 M21 12 H10" />
-            </svg>
-            Quit to Menu
-          </button>
-          <div style={STYLE_TOGGLES_ROW}>
-            <div style={STYLE_TOGGLE}>
-              <span style={STYLE_TOGGLE_LABEL}>Music</span>
-              <div style={toggleTrackStyle(musicEnabled)} onClick={onToggleMusic}>
-                <div style={toggleThumbStyle(musicEnabled)} />
-              </div>
-            </div>
-            <div style={STYLE_TOGGLE}>
-              <span style={STYLE_TOGGLE_LABEL}>Sound</span>
-              <div style={toggleTrackStyle(soundEnabled)} onClick={onToggleSound}>
-                <div style={toggleThumbStyle(soundEnabled)} />
-              </div>
-            </div>
-          </div>
+    <div style={OVERLAY}>
+      <div style={BOX}>
+        <div style={TITLE}>PAUSED</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button style={BTN} onClick={onResume}>RESUME</button>
+          <button style={BTN} onClick={onQuit}>QUIT</button>
         </div>
       </div>
     </div>
