@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { PhysicsWorld } from './physics/PhysicsWorld';
 import { level1 } from './game/Level';
 import { GameState, type GamePhase } from './state/GameState';
@@ -18,6 +18,7 @@ import type { AmmoType } from './config';
 
 export function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const trebRef = useRef<Trebuchet | null>(null);
   const gameStateRef = useRef<GameState | null>(null);
 
@@ -35,6 +36,7 @@ export function App() {
     const world = new World(canvas);
     const { scene, camera, renderer } = world;
     world.setupLights();
+    if (containerRef.current) world.bindContainer(containerRef.current);
 
     createBackground(scene);
     addCastleDetails(scene);
@@ -157,8 +159,14 @@ export function App() {
     let onScoreChanged: (n: unknown) => void;
 
     physics.init().then(() => {
-      // Subscribe to events before triggering state changes
       events.on('phase-changed', onPhaseChanged);
+      events.on('score-changed', onScoreChanged);
+      events.on('ammo-changed', onAmmoChanged);
+      events.on('enemies-changed', onEnemiesChanged);
+      events.on('pause', onPause);
+      events.on('resume', onResume);
+      events.on('victory', onVictory);
+      events.on('defeat', onDefeat);
 
       onAmmoChanged = (n: unknown) => setAmmo(n as number);
       events.on('ammo-changed', onAmmoChanged);
@@ -170,7 +178,6 @@ export function App() {
       events.on('score-changed', onScoreChanged);
 
       physics.loadLevel(level1);
-      gameState.startLevel();
 
       // Create meshes for blocks
       for (const h of physics.blocks) {
@@ -212,6 +219,7 @@ export function App() {
       events.on('boulder-removed', onBoulderRemoved);
 
       physics.onEnemyKilled = (_idx: number, pos?: { x: number; y: number; z: number }) => {
+        audioManager.play('enemy_die');
         if (pos) particles.spawnImpact(pos.x, pos.y, 9);
       };
 
@@ -319,6 +327,8 @@ export function App() {
   }, []);
 
   const disabled = phase !== 'aiming';
+  const isPlaying = phase !== 'menu';
+  const showControls = phase === 'aiming';
 
   return (
     <div style={{ maxWidth: 980, margin: '40px auto', position: 'relative' }}>
@@ -365,6 +375,71 @@ export function App() {
           if (gameStateRef.current) gameStateRef.current.togglePause();
         }}
       />
+    <div ref={containerRef} style={{ maxWidth: 960, width: '100%', aspectRatio: '16/9', margin: '40px auto', position: 'relative', overflow: 'hidden' }}>
+      <canvas ref={canvasRef}
+        style={{ display: 'block', width: '100%', height: '100%', border: '2px solid #333', borderRadius: 8, touchAction: 'none' }} />
+
+      {isPlaying && (
+        <HUD
+          score={score}
+          enemiesAlive={enemiesAlive}
+          ammo={ammo}
+          onPause={handlePause}
+          onRestart={handleRestart}
+        />
+      )}
+
+      {showControls && (
+        <Controls
+          aimDeg={aimDeg}
+          power={power}
+          disabled={false}
+          onAimChange={(deg) => {
+            setAimDeg(deg);
+            if (trebRef.current) trebRef.current.aimAngle = deg;
+          }}
+          onPowerChange={(pct) => {
+            setPower(pct);
+            if (trebRef.current) trebRef.current.power = pct;
+          }}
+          onFire={() => {
+            if (gameStateRef.current && trebRef.current) {
+              gameStateRef.current.fire();
+              trebRef.current.fire();
+            }
+          }}
+        />
+      )}
+
+      {isPlaying && <Hint visible={hintVisible} />}
+
+      {phase === 'menu' && (
+        <MainMenu onPlay={handlePlay} onHowToPlay={handleHowToPlay} />
+      )}
+
+      {paused && (
+        <PauseModal
+          onResume={handleResume}
+          onRestart={handleRestart}
+          onQuit={handleQuit}
+          soundEnabled={soundEnabled}
+          musicEnabled={musicEnabled}
+          onToggleSound={handleToggleSound}
+          onToggleMusic={handleToggleMusic}
+        />
+      )}
+
+      {result && (
+        <ResultModal
+          result={result}
+          score={score}
+          bestScore={bestScore}
+          starsEarned={result === 'victory' ? (ammo >= 2 ? 3 : ammo === 1 ? 2 : 1) : 0}
+          onHome={handleQuit}
+          onRetry={handleRestart}
+          onNext={result === 'victory' ? handleRestart : null}
+        />
+      )}
     </div>
   );
 }
