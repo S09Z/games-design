@@ -9,22 +9,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@400;700;800;900&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #DED7C8; font-family: 'Nunito', sans-serif; }
-    input[type=range].ct {
-      -webkit-appearance: none; appearance: none;
-      height: 8px; border-radius: 999px;
-      background: #E8DDC2; border: 2px solid #2E2117; outline: none;
-    }
-    input[type=range].ct::-webkit-slider-thumb {
-      -webkit-appearance: none; appearance: none;
-      width: 20px; height: 20px; border-radius: 50%;
-      background: #E8533A; border: 2.5px solid #2E2117;
-      cursor: pointer; box-shadow: 0 2px 0 #2E2117;
-    }
-    input[type=range].ct::-moz-range-thumb {
-      width: 20px; height: 20px; border-radius: 50%;
-      background: #E8533A; border: 2.5px solid #2E2117; cursor: pointer;
-    }
+    body { background: #DED7C8; font-family: sans-serif; }
+    input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; }
+    input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.15); }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #E8533A; border: 2px solid rgba(255,255,255,0.3); margin-top: -5px; }
+    input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.15); border: none; }
+    input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #E8533A; border: 2px solid rgba(255,255,255,0.3); }
   </style>
 </head>
 <body>
