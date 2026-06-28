@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GY, W } from '../config';
+import { W } from '../config';
 
 export class Effects {
   // Trajectory preview
@@ -43,15 +43,15 @@ export class Effects {
   }
 
   showTrajectory(
-    origin: { x: number; y: number },
-    vel: { x: number; vx: number; y: number; vy: number },
-    gy: number,
+    origin: { x: number; y: number; z?: number },
+    vel: { x: number; y: number },
   ) {
+    // All coords are in the 3D world (y-up, ground at y=0); gravity pulls down.
     const ox = origin.x;
     const oy = origin.y;
-    const vx = vel.vx || vel.x;
-    const vy = vel.vy || vel.y;
-    const pg = 0.60;
+    const vx = vel.x;
+    const vy = vel.y;
+    const pg = -0.60;
 
     let dotCount = 0;
     const pts: THREE.Vector3[] = [];
@@ -59,7 +59,7 @@ export class Effects {
       const t = i * 2.6;
       const x = ox + vx * t;
       const y = oy + vy * t + 0.5 * pg * t * t;
-      if (y > GY || x > W) break;
+      if (y < 0 || x > W) break;
       this.trajectoryDots[i].position.set(x, y, 0);
       this.trajectoryDots[i].visible = true;
       const r = 4 - i * 0.1;

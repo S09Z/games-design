@@ -61,6 +61,7 @@ export class GameState {
   }
 
   endTurn() {
+    console.log('[endTurn] ammo before--', this.ammo, new Error().stack);
     this.setPhase('settling');
     this.ammo--;
 

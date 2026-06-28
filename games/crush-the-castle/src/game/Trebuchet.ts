@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { GY, PV, AL, AS, SL, A_LOAD, A_REST, SF, RELEASE_FRAME, RELEASE_ANGLE, W, VMAX } from '../config';
+import { GY, PV, AL, AS, SL, A_LOAD, A_REST, SF, RELEASE_FRAME, RELEASE_ANGLE, VMAX } from '../config';
+import { woodTexture, stoneTexture } from './textures';
 
 const gy = GY;
 const px = PV.x;
@@ -103,7 +104,7 @@ export class Trebuchet {
     // Counterweight box
     const cwBox = new THREE.Mesh(
       new THREE.BoxGeometry(46, 58, 24),
-      new THREE.MeshStandardMaterial({ color: 0x5C3F26, roughness: 0.9 })
+      new THREE.MeshStandardMaterial({ color: 0x5C3F26, roughness: 0.9, map: woodTexture() })
     );
     cwBox.position.set(0, 46, 0);
     cwBox.castShadow = true;
@@ -136,9 +137,12 @@ export class Trebuchet {
 
     // Throwing arm (the long beam)
     const totalLen = AL + AS;
+    const armTex = woodTexture().clone();
+    armTex.needsUpdate = true;
+    armTex.repeat.set(4, 1); // grain runs along the beam length
     this.arm = new THREE.Mesh(
       new THREE.BoxGeometry(totalLen, 16, 14),
-      new THREE.MeshStandardMaterial({ color: 0xA87848, roughness: 0.7 })
+      new THREE.MeshStandardMaterial({ color: 0xA87848, roughness: 0.7, map: armTex })
     );
     // Arm extends from -AS (short side) to +AL (long side)
     this.arm.position.set((AL - AS) / 2, 0, 0);
@@ -175,11 +179,13 @@ export class Trebuchet {
     pinInner.position.set(0, 0, 0);
     this.armPivot.add(pinInner);
 
-    // Pre-fire boulder at sling end
-    const boulderGeo = new THREE.SphereGeometry(16, 16, 16);
+    // Pre-fire boulder at sling end — faceted rock with stone texture
+    const boulderGeo = new THREE.IcosahedronGeometry(16, 1);
     const boulderMat = new THREE.MeshStandardMaterial({
-      color: 0x8C8378,
-      roughness: 0.9,
+      color: 0x9A9085,
+      roughness: 1,
+      flatShading: true,
+      map: stoneTexture(),
     });
     this.boulderMesh = new THREE.Mesh(boulderGeo, boulderMat);
     this.boulderMesh.castShadow = true;
@@ -208,9 +214,12 @@ export class Trebuchet {
   }
 
   spawnPos(): { x: number; y: number } {
+    // Launch/preview origin is the FIXED release tip (where the arm is when it lets
+    // go), not the live arm tip — otherwise the preview starts from the loaded pose.
     const r = this.aimAngle * Math.PI / 180;
-    const tip = this.armTip();
-    return { x: tip.x + SL * Math.cos(r), y: tip.y - SL * Math.sin(r) };
+    const tx = px + AL * Math.cos(RELEASE_ANGLE);
+    const ty = PV.y + AL * Math.sin(RELEASE_ANGLE);
+    return { x: tx + SL * Math.cos(r), y: ty - SL * Math.sin(r) };
   }
 
   aimVel(): { x: number; y: number; vx: number; vy: number } {
@@ -246,22 +255,48 @@ export class Trebuchet {
     }
 
     const ang = this.angle;
-    const cos = Math.cos(ang);
-    const sin = Math.sin(ang);
 
-    // Arm rotation
-    this.armPivot.rotation.z = -(ang - A_LOAD);
+    // Arm rotation: the throwing arm's local +x must point along (cos a, -sin a) in
+    // 3D (y-up), so rotation.z = -angle. (The old -(angle - A_LOAD) left the rendered
+    // arm pointing at the castle while the loaded sling hung off the other side.)
+    this.armPivot.rotation.z = -ang;
 
-    // Pre-fire boulder and sling line (hide after release frame)
+    // Pre-fire boulder + sling rope (hidden once the boulder is released)
     if (this.swingF < RELEASE_FRAME) {
-      const sp = this.spawnPos();
-      this.boulderMesh.visible = true;
-      this.boulderMesh.position.set(sp.x, gy - sp.y, 0);
+      const tip = this.armTip();          // live arm tip, 2D canvas coords
+      const lx = tip.x, ly = tip.y;
+      let bx: number, by: number;         // boulder position, 2D canvas coords
 
-      const tip = this.armTip();
+      if (!this.swinging || this.swingF === 0) {
+        // Loaded: rope + boulder hang straight down under gravity
+        bx = lx; by = ly + SL;
+      } else {
+        // Rope physics: gravity-dominant at the slow start, centrifugal trailing as
+        // the arm whips over (cf ramps with the quintic's angular velocity).
+        const swingP = Math.min(this.swingF / SF, 1);
+        const angVelNorm = 5 * Math.pow(swingP, 4); // derivative of the quintic ease
+        const cf = Math.min(1, angVelNorm * 0.26);
+        const dx = Math.sin(ang) * cf;
+        const dy = (1 - cf) - Math.cos(ang) * cf;
+        const dl = Math.hypot(dx, dy) || 1;
+        bx = lx + SL * dx / dl;
+        by = ly + SL * dy / dl;
+        // Snap toward the aim direction over the final 8 frames — the release whip
+        const ftr = RELEASE_FRAME - this.swingF;
+        if (ftr <= 8 && ftr >= 0) {
+          const snap = 1 - ftr / 8;
+          const ar = this.aimAngle * Math.PI / 180;
+          bx = bx * (1 - snap) + (lx + SL * Math.cos(ar)) * snap;
+          by = by * (1 - snap) + (ly - SL * Math.sin(ar)) * snap;
+        }
+      }
+
+      this.boulderMesh.visible = true;
+      this.boulderMesh.position.set(bx, gy - by, 0);
+
       const pos = this.slingLine.geometry.attributes.position.array as Float32Array;
-      pos[0] = tip.x; pos[1] = gy - tip.y; pos[2] = 0;
-      pos[3] = sp.x; pos[4] = gy - sp.y; pos[5] = 0;
+      pos[0] = lx; pos[1] = gy - ly; pos[2] = 0;
+      pos[3] = bx; pos[4] = gy - by; pos[5] = 0;
       this.slingLine.geometry.attributes.position.needsUpdate = true;
       this.slingLine.visible = true;
     } else {
@@ -273,9 +308,10 @@ export class Trebuchet {
   spawnBoulder(): { pos: { x: number; y: number; z: number }; vel: { x: number; y: number; z: number } } {
     const sp = this.spawnPos();
     const v = this.aimVel();
+    // aimVel() is in 2D-canvas convention (y-down), so vy is negated for the y-up world.
     return {
       pos: { x: sp.x, y: gy - sp.y, z: 0 },
-      vel: { x: v.x, y: v.vy, z: 0 },
+      vel: { x: v.x, y: -v.vy, z: 0 },
     };
   }
 }

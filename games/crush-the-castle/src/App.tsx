@@ -11,6 +11,7 @@ import { createBlockMesh, resizeBlockMesh, addCastleDetails, updateBlockMesh } f
 import { createEnemyMesh, syncEnemyMesh } from './game/Enemy';
 import { ParticleSystem } from './game/Particles';
 import { Effects } from './game/Effects';
+import { stoneTexture } from './game/textures';
 import { CommandBar } from './ui/CommandBar';
 import { Hud } from './ui/Hud';
 import { PauseModal } from './ui/PauseModal';
@@ -45,6 +46,7 @@ export function App() {
     createBackground(scene);
     addCastleDetails(scene);
 
+    console.log('[App effect MOUNT]');
     const treb = new Trebuchet();
     trebRef.current = treb;
     scene.add(treb.group);
@@ -270,11 +272,10 @@ export function App() {
         treb.update();
         physics.step();
 
-        // Show trajectory during aiming
+        // Show trajectory during aiming (3D world coords — same source as the launch)
         if (gameState.phase === 'aiming') {
-          const sp = treb.spawnPos();
-          const v = treb.aimVel();
-          effects.showTrajectory(sp, v as any, 468);
+          const { pos, vel } = treb.spawnBoulder();
+          effects.showTrajectory(pos, vel);
         } else {
           effects.hideTrajectory();
         }
@@ -297,8 +298,8 @@ export function App() {
           if (!mesh) {
             const t = b.rigidBody.translation();
             const size = getColliderSize(b.collider);
-            const geo = new THREE.SphereGeometry(size.x, 12, 12);
-            const mat = new THREE.MeshStandardMaterial({ color: 0x8C8378, roughness: 0.9 });
+            const geo = new THREE.IcosahedronGeometry(size.x, 1);
+            const mat = new THREE.MeshStandardMaterial({ color: 0x9A9085, roughness: 1, flatShading: true, map: stoneTexture() });
             mesh = new THREE.Mesh(geo, mat);
             mesh.castShadow = true;
             scene.add(mesh);
