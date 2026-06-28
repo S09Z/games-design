@@ -1,48 +1,25 @@
 interface PauseModalProps {
   onResume: () => void;
-  onQuit: () => void;
 }
 
-const OVERLAY: React.CSSProperties = {
-  position: 'absolute', inset: 0,
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  background: 'rgba(0,0,0,0.6)',
-  zIndex: 10,
-};
-
-const BOX: React.CSSProperties = {
-  background: '#1a1a2e',
-  border: '1px solid rgba(255,255,255,0.15)',
-  borderRadius: 16,
-  padding: '32px 48px',
-  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24,
-};
-
-const TITLE: React.CSSProperties = {
-  fontFamily: "'Nunito', sans-serif",
-  fontWeight: 900, fontSize: 28, letterSpacing: 3,
-  color: '#fff',
-};
-
-const BTN: React.CSSProperties = {
-  fontFamily: "'Nunito', sans-serif",
-  fontWeight: 800, fontSize: 14, letterSpacing: 1,
-  color: '#fff', padding: '10px 32px',
-  border: '2px solid rgba(255,255,255,0.2)',
-  borderRadius: 10,
-  cursor: 'pointer', background: 'transparent',
-  width: 180,
-};
-
-export function PauseModal({ onResume, onQuit }: PauseModalProps) {
+export function PauseModal({ onResume }: PauseModalProps) {
   return (
-    <div style={OVERLAY}>
-      <div style={BOX}>
-        <div style={TITLE}>PAUSED</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <button style={BTN} onClick={onResume}>RESUME</button>
-          <button style={BTN} onClick={onQuit}>QUIT</button>
-        </div>
+    <div
+      onClick={onResume}
+      style={{
+        position: 'absolute', inset: 0, zIndex: 10,
+        background: 'rgba(58,42,28,.34)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer',
+      }}
+    >
+      <div style={{
+        fontFamily: "'Grenze Gotisch', serif", fontWeight: 900, fontSize: 42,
+        color: '#FBF3DD', background: '#2E2117',
+        border: '3px solid #F2A93B', padding: '10px 40px', borderRadius: 16,
+        boxShadow: '0 5px 0 rgba(0,0,0,.4)',
+      }}>
+        Paused
       </div>
     </div>
   );

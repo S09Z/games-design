@@ -7,17 +7,14 @@ import type { BlockDef, EnemyDef, LevelData } from '../physics/Bodies';
 // All coordinates are in 2D canvas space (x→right, y→down) and converted via to3D
 const gy = GY;
 const bW = BLOCK_W, bH = BLOCK_H;
+const W = 960;
 
 function stone(x: number, y: number, w = bW, h = bH, dark = false): BlockDef {
-  return { pos: to3D(x, y), size: to3D(w, h, BLOCK_D), material: dark ? 'darkStone' as const : 'stone' as const };
-}
-
-function wood(x: number, y: number, w: number, h = 18): BlockDef {
-  return { pos: to3D(x, y), size: to3D(w, h, BLOCK_D), material: 'wood' as const };
+  return { pos: to3D(x, y), size: { x: w, y: h, z: BLOCK_D }, material: dark ? 'darkStone' as const : 'stone' as const };
 }
 
 function enemy(x: number, y: number, type: 'guard' | 'king'): EnemyDef {
-  const s = type === 'king' ? to3D(24, 30) : to3D(24, 24);
+  const s = type === 'king' ? { x: 24, y: 30, z: BLOCK_D } : { x: 24, y: 24, z: BLOCK_D };
   return { pos: to3D(x, y), size: s, type };
 }
 
@@ -32,7 +29,6 @@ export const level1: LevelData = {
       stone(647, gy - bH / 2 - r * bH),
       stone(683, gy - bH / 2 - r * bH),
     ]),
-    wood(665, gy - 3 * bH - 8, bW * 2 + 10),
     stone(647, gy - 6 * bH - 10, bW - 10, 18),
     stone(683, gy - 6 * bH - 10, bW - 10, 18),
 
@@ -45,7 +41,6 @@ export const level1: LevelData = {
       stone(773, gy - bH / 2 - r * bH, bW - 8, bH, r >= 4),
       stone(813, gy - bH / 2 - r * bH, bW - 8, bH, r >= 4),
     ]),
-    wood(793, gy - 4 * bH - 8, bW * 1.2, 16),
     stone(793, gy - 8 * bH - 10, bW * 1.4, 16, true),
     stone(773, gy - 8 * bH - 24, bW - 12, 14, true),
     stone(813, gy - 8 * bH - 24, bW - 12, 14, true),
@@ -59,7 +54,6 @@ export const level1: LevelData = {
       stone(900, gy - bH / 2 - r * bH),
       stone(934, gy - bH / 2 - r * bH),
     ]),
-    wood(917, gy - 2 * bH - 8, bW * 2 + 10),
     stone(900, gy - 5 * bH - 10, bW - 10, 18),
     stone(934, gy - 5 * bH - 10, bW - 10, 18),
   ],
@@ -75,7 +69,5 @@ export const level1: LevelData = {
     right: W + 30,
   },
 };
-
-const W = 960;
 
 export const levels = [level1];

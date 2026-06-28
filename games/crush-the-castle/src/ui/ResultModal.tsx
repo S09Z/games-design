@@ -1,56 +1,57 @@
 interface ResultModalProps {
   score: number;
   won: boolean;
+  enemiesLeft: number;
   onPlayAgain: () => void;
 }
 
-const OVERLAY: React.CSSProperties = {
-  position: 'absolute', inset: 0,
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  background: 'rgba(0,0,0,0.6)',
-  zIndex: 10,
-};
+export function ResultModal({ score, won, enemiesLeft, onPlayAgain }: ResultModalProps) {
+  const title = won ? 'Victory!' : 'Defeat';
+  const accent = won ? '#E8533A' : '#5B4A36';
+  const msg = won ? 'Castle captured! Ammo bonus earned.' : `Out of ammo — ${enemiesLeft} still standing.`;
 
-const BOX: React.CSSProperties = {
-  background: '#1a1a2e',
-  border: '1px solid rgba(255,255,255,0.15)',
-  borderRadius: 16,
-  padding: '32px 48px',
-  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24,
-};
-
-const TITLE: React.CSSProperties = {
-  fontFamily: "'Nunito', sans-serif",
-  fontWeight: 900, fontSize: 28, letterSpacing: 3,
-  color: '#fff',
-};
-
-const SCORE: React.CSSProperties = {
-  fontFamily: "'Grenze Gotisch', serif",
-  fontWeight: 900, fontSize: 48,
-  color: '#E8533A',
-};
-
-const BTN: React.CSSProperties = {
-  fontFamily: "'Nunito', sans-serif",
-  fontWeight: 800, fontSize: 14, letterSpacing: 1,
-  color: '#fff', padding: '10px 32px',
-  border: '2px solid rgba(255,255,255,0.2)',
-  borderRadius: 10,
-  cursor: 'pointer', background: 'transparent',
-  width: 180,
-};
-
-export function ResultModal({ score, won, onPlayAgain }: ResultModalProps) {
   return (
-    <div style={OVERLAY}>
-      <div style={BOX}>
-        <div style={TITLE}>{won ? 'VICTORY' : 'DEFEAT'}</div>
-        <div>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textAlign: 'center', letterSpacing: 1 }}>SCORE</div>
-          <div style={SCORE}>{score.toLocaleString()}</div>
+    <div style={{
+      position: 'absolute', inset: 0, zIndex: 10,
+      background: 'rgba(58,42,28,.32)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <div style={{
+        position: 'relative', width: '48%', minWidth: 300,
+        background: '#FBF3DD', border: '4px solid #2E2117', borderRadius: 22,
+        boxShadow: '0 8px 0 #2E2117, 0 26px 44px rgba(0,0,0,.45)',
+        padding: '48px 30px 26px', textAlign: 'center',
+      }}>
+        <div style={{
+          position: 'absolute', top: -26, left: '50%', transform: 'translateX(-50%)',
+          background: accent, color: '#fff',
+          fontFamily: "'Grenze Gotisch', serif", fontWeight: 900, fontSize: 30, letterSpacing: 1,
+          padding: '7px 36px', borderRadius: 13, border: '3.5px solid #2E2117',
+          boxShadow: '0 5px 0 #2E2117', whiteSpace: 'nowrap', textShadow: '0 2px 0 rgba(0,0,0,.3)',
+        }}>
+          {title}
         </div>
-        <button style={BTN} onClick={onPlayAgain}>PLAY AGAIN</button>
+        <p style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 700, fontSize: 15, color: '#5B4A36', marginBottom: 8 }}>
+          {msg}
+        </p>
+        <div style={{ fontFamily: "'Grenze Gotisch', serif", fontWeight: 900, fontSize: 38, color: '#2E2117', marginBottom: 20 }}>
+          {score.toLocaleString()}
+        </div>
+        <button
+          onClick={onPlayAgain}
+          style={{
+            fontFamily: "'Nunito', sans-serif", fontWeight: 900, fontSize: 19, color: '#fff',
+            textShadow: '0 2px 0 rgba(0,0,0,.3)', padding: '13px 30px',
+            border: '3.5px solid #2E2117', borderRadius: 14, cursor: 'pointer',
+            background: '#E8533A', boxShadow: '0 5px 0 #2E2117',
+            display: 'inline-flex', alignItems: 'center', gap: 9,
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 11 a8 8 0 1 0 -2 5" /><path d="M20 5 V11 H14" />
+          </svg>
+          Play Again
+        </button>
       </div>
     </div>
   );
