@@ -40,9 +40,11 @@ export interface BodyHandle {
 // ── Body factory ──
 
 export function createGround(world: RAPIER.World, halfDepth = 40): BodyHandle {
-  const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(W / 2, 0, 0));
+  // Thick slab (top flush with y=0) so fast bodies can't tunnel through it.
+  const halfH = 60;
+  const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(W / 2, -halfH, 0));
   const collider = world.createCollider(
-    RAPIER.ColliderDesc.cuboid(W + 200, 1, halfDepth)
+    RAPIER.ColliderDesc.cuboid(W + 200, halfH, halfDepth)
       .setFriction(0.9),
     body,
   );

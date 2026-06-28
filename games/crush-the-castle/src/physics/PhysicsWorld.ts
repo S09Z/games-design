@@ -144,6 +144,17 @@ export class PhysicsWorld {
     }
 
     if (this.stillFrames >= SETTLE_FRAMES || this.flyFrames > FLY_TIMEOUT) {
+      // Remove the spent boulder(s) and reset counters. Otherwise a boulder that
+      // settles in-bounds stays "active", so flyFrames keeps climbing and ends a
+      // turn every few seconds — draining all ammo without the player firing.
+      for (const b of this.activeBoulders) {
+        removeBody(this.world, b);
+        this.bodies = this.bodies.filter(h => h !== b);
+        events.emit('boulder-removed', b.collider.handle);
+      }
+      this.activeBoulders = [];
+      this.flyFrames = 0;
+      this.stillFrames = 0;
       this.onTurnEnded?.();
       events.emit('turn-ended');
       return { active: false, nextState: null };
@@ -153,12 +164,13 @@ export class PhysicsWorld {
   }
 
   destroy() {
+    if (!this.world) return; // init() may not have completed (e.g. StrictMode remount)
     for (const h of this.bodies) {
       this.world.removeCollider(h.collider);
       this.world.removeRigidBody(h.rigidBody);
     }
     this.bodies = [];
     this.activeBoulders = [];
-    this.eventQueue.free();
+    this.eventQueue?.free();
   }
 }

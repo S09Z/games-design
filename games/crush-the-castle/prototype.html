@@ -12,858 +12,1172 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: #DED7C8; font-family: 'Nunito', sans-serif; }
 
-input[type=range].ct {
-  -webkit-appearance: none; appearance: none;
-  height: 8px; border-radius: 999px;
-  background: #E8DDC2; border: 2px solid #2E2117; outline: none;
+/* Battlefield card (map select) */
+.map-card {
+  background: #FBF3DD; border: 3px solid #2E2117; border-radius: 16px;
+  padding: 16px; cursor: pointer; box-shadow: 0 5px 0 #2E2117;
+  display: flex; flex-direction: column;
 }
-input[type=range].ct::-webkit-slider-thumb {
-  -webkit-appearance: none; appearance: none;
-  width: 20px; height: 20px; border-radius: 50%;
-  background: #E8533A; border: 2.5px solid #2E2117;
-  cursor: pointer; box-shadow: 0 2px 0 #2E2117;
-}
-input[type=range].ct::-moz-range-thumb {
-  width: 20px; height: 20px; border-radius: 50%;
-  background: #E8533A; border: 2.5px solid #2E2117; cursor: pointer;
+.map-card.selected {
+  border-color: #E8533A; box-shadow: 0 5px 0 #E8533A;
+  outline: 3px solid rgba(232,83,58,.18); outline-offset: 2px;
 }
 
-.hud-btn {
-  width: 46px; height: 46px;
-  border: 3px solid #2E2117; border-radius: 12px;
-  background: #FBF3DD; box-shadow: 0 4px 0 #2E2117;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
+/* Ammo-type chips (in-game HUD) */
+.chip {
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 10px;
+  padding: 4px 9px; border-radius: 5px; cursor: pointer; letter-spacing: .2px;
+  flex: 1; white-space: nowrap;
+  background: rgba(255,255,255,.05); border: 1.5px solid rgba(255,255,255,.13); color: #6E6862;
 }
-.hud-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #2E2117; }
-
-.fire-btn {
-  font-family: 'Nunito'; font-weight: 900; font-size: 17px;
-  color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.3);
-  padding: 0 20px; border: 3px solid #2E2117; border-radius: 13px;
-  cursor: pointer; background: #E8533A; box-shadow: 0 5px 0 #2E2117;
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 2px; letter-spacing: .5px;
+.chip.selected {
+  background: rgba(232,83,58,.22); border: 1.5px solid #E8533A; color: #FBF3DD;
 }
-.fire-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #2E2117; }
-
-.modal-play-again {
-  font-family: 'Nunito'; font-weight: 900; font-size: 19px;
-  color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.3);
-  padding: 13px 30px; border: 3.5px solid #2E2117; border-radius: 14px;
-  cursor: pointer; background: #E8533A; box-shadow: 0 5px 0 #2E2117;
-  display: inline-flex; align-items: center; gap: 9px;
-}
-.modal-play-again:active { transform: translateY(4px); box-shadow: 0 1px 0 #2E2117; }
 </style>
 </head>
 <body>
-<div style="background:#DED7C8; min-height:100vh; padding:36px 24px 60px;">
-  <div style="max-width:980px; margin:0 auto;">
+<div style="font-family:'Nunito',sans-serif; background:#DED7C8; min-height:100vh;">
 
-    <!-- Title row -->
-    <div style="display:flex; align-items:baseline; gap:12px; margin-bottom:14px; flex-wrap:wrap;">
-      <span style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:34px; color:#2E2117; line-height:1;">Crush the Castle</span>
-      <span style="display:inline-block; background:#E8533A; color:#fff; font-weight:800; font-size:12px; letter-spacing:1.5px; text-transform:uppercase; padding:5px 12px; border-radius:999px;">Trebuchet Physics</span>
+  <!-- ═══ MAIN MENU ═══ -->
+  <div id="screen-menu" style="position:relative; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; background:linear-gradient(175deg,#9CC2D2 0%,#C9DDCF 40%,#EFDEB4 70%,#F7D89A 100%);">
+    <svg style="position:absolute; bottom:0; left:0; right:0; width:100%; pointer-events:none;" viewBox="0 0 960 300" preserveAspectRatio="xMidYMax slice">
+      <rect x="0" y="265" width="960" height="35" fill="#82A268" opacity=".9"></rect>
+      <rect x="218" y="100" width="52" height="165" fill="#3A3028" opacity=".44"></rect>
+      <rect x="202" y="87" width="84" height="16" fill="#3A3028" opacity=".44"></rect>
+      <rect x="404" y="56" width="64" height="209" fill="#3A3028" opacity=".5"></rect>
+      <rect x="386" y="42" width="100" height="18" fill="#3A3028" opacity=".5"></rect>
+      <rect x="632" y="100" width="52" height="165" fill="#3A3028" opacity=".44"></rect>
+      <rect x="616" y="87" width="84" height="16" fill="#3A3028" opacity=".44"></rect>
+      <rect x="270" y="178" width="344" height="87" fill="#3A3028" opacity=".4"></rect>
+      <line x1="76" y1="265" x2="110" y2="206" stroke="#2E2117" stroke-width="10" stroke-linecap="round" opacity=".6"></line>
+      <line x1="110" y1="206" x2="64" y2="158" stroke="#2E2117" stroke-width="7" stroke-linecap="round" opacity=".6"></line>
+      <line x1="110" y1="206" x2="158" y2="238" stroke="#2E2117" stroke-width="7" stroke-linecap="round" opacity=".6"></line>
+      <circle cx="60" cy="154" r="18" fill="#6A6258" opacity=".62"></circle>
+    </svg>
+    <div style="position:relative; z-index:2; text-align:center; padding:0 24px;">
+      <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:clamp(44px,9vw,96px); color:#2E2117; text-shadow:0 6px 0 rgba(0,0,0,.10); line-height:.92; margin-bottom:10px;">Crush the Castle</div>
+      <div style="font-weight:800; font-size:13px; letter-spacing:5px; color:#7A7068; text-transform:uppercase; margin-bottom:60px;">Trebuchet Physics</div>
+      <button id="btn-play" style="font-family:'Grenze Gotisch',serif; font-weight:700; font-size:clamp(20px,3vw,30px); color:#FBF3DD; background:#E8533A; border:4px solid #2E2117; border-radius:16px; padding:16px 72px; box-shadow:0 7px 0 #2E2117; cursor:pointer; letter-spacing:1px; text-shadow:0 2px 0 rgba(0,0,0,.18);">Play</button>
     </div>
-
-    <!-- Game viewport -->
-    <div style="position:relative; width:100%; aspect-ratio:16/9; border:4px solid #2E2117; border-radius:22px; overflow:hidden; box-shadow:0 10px 0 #2E2117, 0 26px 40px rgba(0,0,0,.28); touch-action:none; user-select:none;">
-
-      <canvas id="game-canvas" width="960" height="540" style="position:absolute; inset:0; width:100%; height:100%; display:block; cursor:grab;"></canvas>
-
-      <!-- Top-left: level + score -->
-      <div style="position:absolute; left:2.2%; top:4.5%; display:flex; flex-direction:column; gap:8px; pointer-events:none;">
-        <div style="display:flex; align-items:center; gap:8px; background:#2E2117; padding:5px 13px 5px 7px; border-radius:999px; align-self:flex-start;">
-          <span style="display:inline-flex; width:24px; height:24px; align-items:center; justify-content:center; background:#F2A93B; border-radius:50%;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="#2E2117"><path d="M5 8 L9 11 L12 5 L15 11 L19 8 L17 18 H7 Z"/></svg>
-          </span>
-          <span style="font-weight:900; font-size:13px; letter-spacing:1px; color:#FBF3DD;">LEVEL 1</span>
-        </div>
-        <div style="display:flex; align-items:center; gap:9px; background:#FBF3DD; border:3px solid #2E2117; border-radius:12px; box-shadow:0 4px 0 #2E2117; padding:6px 14px;">
-          <span style="font-weight:800; font-size:10px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Score</span>
-          <span id="hud-score" style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:26px; line-height:.9; color:#2E2117;">0</span>
-        </div>
-      </div>
-
-      <!-- Top-center: enemies left -->
-      <div style="position:absolute; left:50%; top:4.5%; transform:translateX(-50%); display:flex; align-items:center; gap:8px; background:#FBF3DD; border:3px solid #2E2117; border-radius:999px; box-shadow:0 4px 0 #2E2117; padding:5px 14px; pointer-events:none;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="#E8533A" stroke="#2E2117" stroke-width="1.6"><circle cx="12" cy="12" r="9"/></svg>
-        <span id="hud-enemies" style="font-family:'Nunito'; font-weight:900; font-size:14px; color:#2E2117;">5 left</span>
-      </div>
-
-      <!-- Top-right: pause + restart -->
-      <div style="position:absolute; right:2.2%; top:4.5%; display:flex; gap:9px;">
-        <button class="hud-btn" id="btn-pause">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="#2E2117"><rect x="6" y="5" width="4.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="4.5" height="14" rx="1.5"/></svg>
-        </button>
-        <button class="hud-btn" id="btn-restart">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11 a8 8 0 1 0 -2 5"/><path d="M20 5 V11 H14"/></svg>
-        </button>
-      </div>
-
-      <!-- Bottom-left: ammo -->
-      <div style="position:absolute; left:2.2%; bottom:4.5%; display:flex; align-items:center; gap:9px; background:#FBF3DD; border:3px solid #2E2117; border-radius:12px; box-shadow:0 4px 0 #2E2117; padding:7px 14px; pointer-events:none;">
-        <span style="font-weight:800; font-size:10px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Ammo</span>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="#8C8378" stroke="#2E2117" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
-        <span id="hud-ammo" style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:22px; color:#2E2117;">×5</span>
-      </div>
-
-      <!-- Bottom-center: control panel -->
-      <div style="position:absolute; left:50%; bottom:4.2%; transform:translateX(-50%); display:flex; align-items:stretch; gap:12px; background:#FBF3DD; border:3px solid #2E2117; border-radius:16px; box-shadow:0 5px 0 #2E2117; padding:11px 13px;">
-        <div style="display:flex; flex-direction:column; gap:9px;">
-          <div style="display:flex; align-items:center; gap:9px;">
-            <span style="width:64px; font-weight:800; font-size:9.5px; letter-spacing:1px; color:#8C8378; text-transform:uppercase;">Direction</span>
-            <input class="ct" type="range" id="slider-aim" min="8" max="62" value="32" style="width:128px;">
-            <span id="label-aim" style="width:38px; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:18px; color:#2E2117; text-align:right;">32°</span>
-          </div>
-          <div style="display:flex; align-items:center; gap:9px;">
-            <span style="width:64px; font-weight:800; font-size:9.5px; letter-spacing:1px; color:#8C8378; text-transform:uppercase;">Power</span>
-            <input class="ct" type="range" id="slider-power" min="20" max="100" value="66" style="width:128px;">
-            <span id="label-power" style="width:38px; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:18px; color:#E8533A; text-align:right;">66%</span>
-          </div>
-        </div>
-        <button class="fire-btn" id="btn-fire">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M7 5 L19 12 L7 19 Z"/></svg>
-          FIRE
-        </button>
-      </div>
-
-      <!-- Hint text -->
-      <div id="hint" style="position:absolute; left:50%; top:22%; transform:translateX(-50%); background:rgba(46,33,23,.82); color:#FBF3DD; font-family:'Nunito'; font-weight:800; font-size:14px; padding:9px 18px; border-radius:999px; pointer-events:none; white-space:nowrap;">
-        Set direction &amp; power, then press FIRE — or drag from the trebuchet
-      </div>
-
-      <!-- Pause overlay -->
-      <div id="pause-overlay" style="display:none; position:absolute; inset:0; background:rgba(58,42,28,.34); align-items:center; justify-content:center; z-index:10;">
-        <div style="position:relative; width:42%; min-width:260px; background:#FBF3DD; border:4px solid #2E2117; border-radius:24px; box-shadow:0 8px 0 #2E2117, 0 30px 50px rgba(0,0,0,.45); padding:46px 28px 26px;">
-          <div style="position:absolute; top:-24px; left:50%; transform:translateX(-50%); background:#2E2117; color:#FBF3DD; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:28px; letter-spacing:1px; padding:7px 30px; border-radius:13px; border:3px solid #F2A93B; box-shadow:0 5px 0 rgba(0,0,0,.35); white-space:nowrap;">Paused</div>
-          <div style="display:flex; flex-direction:column; gap:11px;">
-            <button id="btn-pause-resume" style="font-family:'Nunito'; font-weight:900; font-size:18px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:13px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#E8533A; box-shadow:0 6px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:9px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M7 5 L19 12 L7 19 Z"/></svg> RESUME</button>
-            <button id="btn-pause-restart" style="font-family:'Nunito'; font-weight:900; font-size:16px; color:#2E2117; padding:12px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:9px;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11 a8 8 0 1 0 -2 5"/><path d="M20 5 V11 H14"/></svg> Restart</button>
-            <button id="btn-pause-quit" style="font-family:'Nunito'; font-weight:900; font-size:16px; color:#2E2117; padding:12px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:9px;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4 H6 a2 2 0 0 0 -2 2 V18 a2 2 0 0 0 2 2 H14"/><path d="M17 8 L21 12 L17 16 M21 12 H10"/></svg> Quit to Menu</button>
-            <div style="display:flex; gap:10px; margin-top:3px;">
-              <div style="flex:1; display:flex; align-items:center; justify-content:space-between; background:#EFE2C4; border:3px solid #2E2117; border-radius:11px; padding:7px 11px;">
-                <span style="font-family:'Nunito'; font-weight:800; font-size:12px; color:#2E2117;">Music</span>
-                <div id="toggle-music" style="width:42px; height:22px; border-radius:999px; background:#6E8B5A; border:2.5px solid #2E2117; position:relative; cursor:pointer;"><div style="position:absolute; right:2px; top:50%; transform:translateY(-50%); width:15px; height:15px; border-radius:50%; background:#FBF3DD; border:2px solid #2E2117;"></div></div>
-              </div>
-              <div style="flex:1; display:flex; align-items:center; justify-content:space-between; background:#EFE2C4; border:3px solid #2E2117; border-radius:11px; padding:7px 11px;">
-                <span style="font-family:'Nunito'; font-weight:800; font-size:12px; color:#2E2117;">Sound</span>
-                <div id="toggle-sound" style="width:42px; height:22px; border-radius:999px; background:#6E8B5A; border:2.5px solid #2E2117; position:relative; cursor:pointer;"><div style="position:absolute; right:2px; top:50%; transform:translateY(-50%); width:15px; height:15px; border-radius:50%; background:#FBF3DD; border:2px solid #2E2117;"></div></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Result modal -->
-      <div id="modal-overlay" style="display:none; position:absolute; inset:0; background:rgba(58,42,28,.32); align-items:center; justify-content:center; z-index:10;">
-        <div style="position:relative; width:48%; min-width:280px; background:#FBF3DD; border:4px solid #2E2117; border-radius:22px; box-shadow:0 8px 0 #2E2117, 0 26px 44px rgba(0,0,0,.45); padding:48px 28px 24px; text-align:center;">
-          <div id="modal-title" style="position:absolute; top:-26px; left:50%; transform:translateX(-50%); background:#E8533A; color:#fff; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:28px; letter-spacing:1px; padding:7px 32px; border-radius:13px; border:3.5px solid #2E2117; box-shadow:0 5px 0 #2E2117; white-space:nowrap; text-shadow:0 2px 0 rgba(0,0,0,.3);">Victory!</div>
-          <div style="display:flex; justify-content:center; align-items:flex-end; gap:8px; margin-bottom:12px;">
-            <span id="modal-star1" style="font-size:46px; -webkit-text-stroke:2.5px #2E2117; line-height:1; color:#F2A93B;">★</span>
-            <span id="modal-star2" style="font-size:60px; -webkit-text-stroke:2.5px #2E2117; line-height:1; margin-bottom:5px; color:#F2A93B;">★</span>
-            <span id="modal-star3" style="font-size:46px; -webkit-text-stroke:2.5px #2E2117; line-height:1; color:#F2A93B;">★</span>
-          </div>
-          <p id="modal-msg" style="font-family:'Nunito'; font-weight:700; font-size:14px; color:#5B4A36; margin-bottom:10px;"></p>
-          <div style="display:flex; justify-content:center; gap:22px; margin-bottom:18px;">
-            <div>
-              <div style="font-family:'Nunito'; font-weight:800; font-size:10px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase; margin-bottom:2px;">Score</div>
-              <div id="modal-score" style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:28px; color:#2E2117; line-height:1;">0</div>
-            </div>
-            <div style="width:2px; background:#E4DCC8; border-radius:2px;"></div>
-            <div>
-              <div style="font-family:'Nunito'; font-weight:800; font-size:10px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase; margin-bottom:2px;">Best</div>
-              <div id="modal-best" style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:28px; color:#C9851E; line-height:1;">0</div>
-            </div>
-          </div>
-          <div id="modal-btns-victory" style="display:none; gap:10px; align-items:stretch;">
-            <button id="btn-modal-home" style="width:50px; padding:0; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center;">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 L12 4 L20 11"/><path d="M6 10 V19 H18 V10" fill="#EAD9B0"/><rect x="10" y="13" width="4" height="6" fill="#2E2117" stroke="none"/></svg>
-            </button>
-            <button id="btn-modal-retry" style="flex:1; font-family:'Nunito'; font-weight:900; font-size:15px; color:#2E2117; padding:11px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11 a8 8 0 1 0 -2 5"/><path d="M20 5 V11 H14"/></svg> Retry</button>
-            <button id="btn-modal-next" style="flex:1.4; font-family:'Nunito'; font-weight:900; font-size:17px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:11px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#E8533A; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:8px;">NEXT <svg width="19" height="19" viewBox="0 0 24 24" fill="#fff"><path d="M7 5 L17 12 L7 19 Z"/></svg></button>
-          </div>
-          <div id="modal-btns-defeat" style="display:none; gap:10px;">
-            <button id="btn-modal-menu" style="flex:1; font-family:'Nunito'; font-weight:900; font-size:15px; color:#2E2117; padding:11px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4 H6 a2 2 0 0 0 -2 2 V18 a2 2 0 0 0 2 2 H14"/><path d="M17 8 L21 12 L17 16 M21 12 H10"/></svg> Menu</button>
-            <button id="btn-modal-tryagain" style="flex:1.4; font-family:'Nunito'; font-weight:900; font-size:17px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:11px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#E8533A; box-shadow:0 5px 0 #2E2117; display:flex; align-items:center; justify-content:center; gap:8px;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11 a8 8 0 1 0 -2 5"/><path d="M20 5 V11 H14"/></svg> Try Again</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Main menu overlay (shown on load, hidden when PLAY is pressed) -->
-      <div id="menu-overlay" style="position:absolute; inset:0; z-index:20; display:flex;">
-        <div style="position:absolute; inset:0; background:radial-gradient(120% 95% at 50% 38%, rgba(239,226,196,.08) 50%, rgba(46,33,23,.18) 100%); pointer-events:none;"></div>
-        <div style="position:absolute; top:6%; left:0; right:0; text-align:center; pointer-events:none;">
-          <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:clamp(32px,6.5vw,62px); line-height:.86; color:#2E2117; text-shadow:0 2px 0 #FBF3DD;">Crush<br><span style="color:#E8533A; -webkit-text-stroke:2px #2E2117; paint-order:stroke fill;">the Castle</span></div>
-        </div>
-        <div style="position:absolute; left:50%; bottom:8%; transform:translateX(-50%); width:40%; display:flex; flex-direction:column; gap:12px;">
-          <button id="btn-menu-play" style="font-family:'Nunito'; font-weight:900; font-size:22px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:15px; border:3.5px solid #2E2117; border-radius:15px; cursor:pointer; background:#E8533A; box-shadow:0 6px 0 #2E2117; letter-spacing:1px; display:flex; align-items:center; justify-content:center; gap:10px;"><span>▶</span> PLAY</button>
-          <div style="display:flex; gap:12px;">
-            <button id="btn-menu-howto" style="flex:1; font-family:'Nunito'; font-weight:900; font-size:14px; color:#2E2117; padding:12px; border:3.5px solid #2E2117; border-radius:13px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117;">How to Play</button>
-            <button style="flex:1; font-family:'Nunito'; font-weight:900; font-size:14px; color:#2E2117; padding:12px; border:3.5px solid #2E2117; border-radius:13px; cursor:pointer; background:#EAD9B0; box-shadow:0 5px 0 #2E2117;">Settings</button>
-          </div>
-        </div>
-        <div style="position:absolute; right:3%; top:5%; display:flex; gap:9px;">
-          <button style="width:48px; height:48px; border:3.5px solid #2E2117; border-radius:13px; background:#FBF3DD; box-shadow:0 5px 0 #2E2117; cursor:pointer; display:flex; align-items:center; justify-content:center;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 9 H8 L13 5 V19 L8 15 H4 Z" fill="#E8533A"/><path d="M16.5 8.5 a5 5 0 0 1 0 7"/><path d="M19 6 a8.5 8.5 0 0 1 0 12"/></svg>
-          </button>
-          <button style="width:48px; height:48px; border:3.5px solid #2E2117; border-radius:13px; background:#FBF3DD; box-shadow:0 5px 0 #2E2117; cursor:pointer; display:flex; align-items:center; justify-content:center;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M7 4 H17 V9 a5 5 0 0 1 -10 0 Z" fill="#F2A93B"/><path d="M7 5 H4 V7 a3 3 0 0 0 3 3"/><path d="M17 5 H20 V7 a3 3 0 0 1 -3 3"/><path d="M12 14 V17 M9 20 H15 M10 20 a2 2 0 0 1 4 0" fill="#F2A93B"/></svg>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- How to play -->
-    <p id="howto" style="font-family:'Nunito'; font-weight:600; font-size:14px; color:#5B4A36; margin-top:16px; line-height:1.5;">
-      <b style="color:#2E2117;">How to play:</b> Set the <b>Direction</b> (launch angle in degrees) and <b>Power</b> with the sliders, then press <b>FIRE</b> — or drag backward from the trebuchet. The counterweight drops, the arm whips over, and the sling hurls the boulder. Topple every guard and the golden king before you run out of ammo.
-    </p>
   </div>
+
+  <!-- ═══ MAP SELECT ═══ -->
+  <div id="screen-mapselect" style="display:none; min-height:100vh; padding:32px 24px 28px;">
+    <div style="max-width:1060px; margin:0 auto; width:100%; display:flex; flex-direction:column;">
+      <div style="display:flex; align-items:center; gap:18px; margin-bottom:28px;">
+        <button id="btn-mapback" style="font-family:'Nunito'; font-weight:800; font-size:14px; color:#2E2117; background:#FBF3DD; border:3px solid #2E2117; border-radius:10px; padding:8px 18px; box-shadow:0 4px 0 #2E2117; cursor:pointer;">← Back</button>
+        <div>
+          <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:38px; color:#2E2117; line-height:1;">Select Battlefield</div>
+          <div style="font-weight:700; font-size:13px; color:#8C8378; margin-top:3px;">Choose your target — then launch the assault</div>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(186px,1fr)); gap:16px;">
+
+        <div id="map-card-0" class="map-card">
+          <div style="border-radius:8px; overflow:hidden; margin-bottom:12px; background:#C8C0B4;">
+            <svg viewBox="0 0 200 100" style="display:block; width:100%; height:auto;">
+              <rect x="0" y="78" width="200" height="22" fill="#82A268"></rect>
+              <rect x="28" y="18" width="26" height="60" fill="#9A9088"></rect><rect x="22" y="11" width="38" height="9" fill="#787268"></rect>
+              <rect x="87" y="32" width="26" height="46" fill="#6A6258"></rect><rect x="81" y="25" width="38" height="9" fill="#5C5650"></rect>
+              <rect x="146" y="18" width="26" height="60" fill="#9A9088"></rect><rect x="140" y="11" width="38" height="9" fill="#787268"></rect>
+              <line x1="41" y1="18" x2="41" y2="5" stroke="#6B4427" stroke-width="2"></line><polygon points="41,5 54,9 41,13" fill="#E8533A"></polygon>
+              <line x1="159" y1="18" x2="159" y2="5" stroke="#6B4427" stroke-width="2"></line><polygon points="159,5 172,9 159,13" fill="#E8533A"></polygon>
+              <line x1="100" y1="25" x2="100" y2="12" stroke="#6B4427" stroke-width="2"></line><polygon points="100,12 113,16 100,20" fill="#F2A93B"></polygon>
+            </svg>
+          </div>
+          <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:19px; color:#2E2117; margin-bottom:2px;">Stone Keep</div>
+          <div style="font-weight:700; font-size:9px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase; margin-bottom:7px;">Classic · I</div>
+          <div style="font-weight:600; font-size:12px; color:#5B4A36; line-height:1.45; margin-bottom:8px;">Three-tower fortress. Perfect for beginners.</div>
+          <div style="font-weight:800; font-size:11px; color:#8C8378;">5 enemies · 5 shots</div>
+        </div>
+
+        <div id="map-card-1" class="map-card">
+          <div style="border-radius:8px; overflow:hidden; margin-bottom:12px; background:#C8C0B4;">
+            <svg viewBox="0 0 200 100" style="display:block; width:100%; height:auto;">
+              <rect x="0" y="82" width="200" height="18" fill="#82A268"></rect>
+              <rect x="55" y="5" width="20" height="77" fill="#9A9288"></rect><rect x="48" y="0" width="34" height="8" fill="#787268"></rect>
+              <rect x="125" y="5" width="20" height="77" fill="#9A9288"></rect><rect x="118" y="0" width="34" height="8" fill="#787268"></rect>
+              <rect x="75" y="36" width="50" height="8" fill="#6A6258"></rect>
+              <line x1="65" y1="5" x2="65" y2="0" stroke="#6B4427" stroke-width="1.5"></line><polygon points="65,0 75,3 65,6" fill="#E8533A"></polygon>
+              <line x1="135" y1="5" x2="135" y2="0" stroke="#6B4427" stroke-width="1.5"></line><polygon points="135,0 145,3 135,6" fill="#E8533A"></polygon>
+            </svg>
+          </div>
+          <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:19px; color:#2E2117; margin-bottom:2px;">Twin Spires</div>
+          <div style="font-weight:700; font-size:9px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase; margin-bottom:7px;">Heights · II</div>
+          <div style="font-weight:600; font-size:12px; color:#5B4A36; line-height:1.45; margin-bottom:8px;">Two soaring towers linked by a high bridge.</div>
+          <div style="font-weight:800; font-size:11px; color:#8C8378;">4 enemies · 5 shots</div>
+        </div>
+
+        <div id="map-card-2" class="map-card">
+          <div style="border-radius:8px; overflow:hidden; margin-bottom:12px; background:#C8C0B4;">
+            <svg viewBox="0 0 200 100" style="display:block; width:100%; height:auto;">
+              <rect x="0" y="82" width="200" height="18" fill="#82A268"></rect>
+              <rect x="75" y="28" width="50" height="10" fill="#9A6B38"></rect>
+              <rect x="65" y="50" width="70" height="10" fill="#8A5A24"></rect>
+              <rect x="40" y="72" width="120" height="10" fill="#9A6B38"></rect>
+              <rect x="93" y="38" width="8" height="22" fill="#7A5230"></rect>
+              <rect x="78" y="60" width="8" height="22" fill="#7A5230"></rect>
+              <rect x="114" y="60" width="8" height="22" fill="#7A5230"></rect>
+              <line x1="100" y1="28" x2="100" y2="14" stroke="#6B4427" stroke-width="2"></line><polygon points="100,14 113,18 100,22" fill="#F2A93B"></polygon>
+            </svg>
+          </div>
+          <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:19px; color:#2E2117; margin-bottom:2px;">Wooden Fort</div>
+          <div style="font-weight:700; font-size:9px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase; margin-bottom:7px;">Timber · III</div>
+          <div style="font-weight:600; font-size:12px; color:#5B4A36; line-height:1.45; margin-bottom:8px;">Tiered timber platforms. Aim for the base.</div>
+          <div style="font-weight:800; font-size:11px; color:#8C8378;">6 enemies · 6 shots</div>
+        </div>
+
+        <div id="map-card-3" class="map-card">
+          <div style="border-radius:8px; overflow:hidden; margin-bottom:12px; background:#C8C0B4;">
+            <svg viewBox="0 0 200 100" style="display:block; width:100%; height:auto;">
+              <rect x="0" y="82" width="200" height="18" fill="#82A268"></rect>
+              <rect x="15" y="54" width="170" height="28" fill="#8C8480"></rect>
+              <rect x="15" y="42" width="17" height="14" fill="#8C8480"></rect>
+              <rect x="42" y="42" width="17" height="14" fill="#8C8480"></rect>
+              <rect x="69" y="42" width="17" height="14" fill="#8C8480"></rect>
+              <rect x="96" y="42" width="17" height="14" fill="#8C8480"></rect>
+              <rect x="123" y="42" width="17" height="14" fill="#8C8480"></rect>
+              <rect x="150" y="42" width="17" height="14" fill="#8C8480"></rect>
+              <line x1="100" y1="54" x2="100" y2="36" stroke="#6B4427" stroke-width="2"></line><polygon points="100,36 113,40 100,44" fill="#E8533A"></polygon>
+            </svg>
+          </div>
+          <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:19px; color:#2E2117; margin-bottom:2px;">The Ramparts</div>
+          <div style="font-weight:700; font-size:9px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase; margin-bottom:7px;">Spread · IV</div>
+          <div style="font-weight:600; font-size:12px; color:#5B4A36; line-height:1.45; margin-bottom:8px;">Long wall packed with soldiers. Hit them all.</div>
+          <div style="font-weight:800; font-size:11px; color:#8C8378;">8 enemies · 7 shots</div>
+        </div>
+
+        <div id="map-card-4" class="map-card">
+          <div style="border-radius:8px; overflow:hidden; margin-bottom:12px; background:#C8C0B4;">
+            <svg viewBox="0 0 200 100" style="display:block; width:100%; height:auto;">
+              <rect x="0" y="82" width="200" height="18" fill="#82A268"></rect>
+              <rect x="8" y="46" width="24" height="36" fill="#9A9288"></rect><rect x="4" y="40" width="32" height="8" fill="#787268"></rect>
+              <rect x="168" y="46" width="24" height="36" fill="#9A9288"></rect><rect x="164" y="40" width="32" height="8" fill="#787268"></rect>
+              <rect x="76" y="14" width="48" height="68" fill="#5E5850"></rect><rect x="70" y="8" width="60" height="10" fill="#4A4640"></rect>
+              <rect x="34" y="54" width="20" height="28" fill="#8C8480"></rect>
+              <rect x="146" y="54" width="20" height="28" fill="#8C8480"></rect>
+              <rect x="54" y="64" width="22" height="8" fill="#787268"></rect>
+              <rect x="124" y="64" width="22" height="8" fill="#787268"></rect>
+              <line x1="100" y1="8" x2="100" y2="1" stroke="#6B4427" stroke-width="2"></line><polygon points="100,1 112,4 100,7" fill="#F2A93B"></polygon>
+              <line x1="20" y1="40" x2="20" y2="30" stroke="#6B4427" stroke-width="1.5"></line><polygon points="20,30 29,33 20,36" fill="#E8533A"></polygon>
+              <line x1="180" y1="40" x2="180" y2="30" stroke="#6B4427" stroke-width="1.5"></line><polygon points="180,30 189,33 180,36" fill="#E8533A"></polygon>
+            </svg>
+          </div>
+          <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:19px; color:#2E2117; margin-bottom:2px;">Grand Citadel</div>
+          <div style="font-weight:700; font-size:9px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase; margin-bottom:7px;">Boss · V</div>
+          <div style="font-weight:600; font-size:12px; color:#5B4A36; line-height:1.45; margin-bottom:8px;">Multi-tier fortress. The ultimate siege.</div>
+          <div style="font-weight:800; font-size:11px; color:#8C8378;">9 enemies · 8 shots</div>
+        </div>
+
+      </div>
+      <div style="text-align:center; padding-top:24px; margin-top:20px; border-top:2px solid rgba(46,33,23,.1);">
+        <button id="btn-launch" style="font-family:'Grenze Gotisch',serif; font-weight:700; font-size:24px; color:#FBF3DD; background:#E8533A; border:4px solid #2E2117; border-radius:14px; padding:15px 56px; box-shadow:0 6px 0 #2E2117; cursor:pointer; text-shadow:0 2px 0 rgba(0,0,0,.18);">Launch Assault →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ GAME ═══ -->
+  <div id="screen-game" style="display:none; padding:20px 24px 20px;">
+    <div style="max-width:980px; margin:0 auto;">
+      <div style="display:flex; align-items:baseline; gap:12px; margin-bottom:14px; flex-wrap:wrap;">
+        <button id="btn-maps" style="font-family:'Nunito'; font-weight:800; font-size:13px; color:#2E2117; background:#FBF3DD; border:2.5px solid #2E2117; border-radius:8px; padding:5px 12px; box-shadow:0 3px 0 #2E2117; cursor:pointer; align-self:center;">← Maps</button>
+        <span id="game-mapname" style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:34px; color:#2E2117; line-height:1;">Stone Keep</span>
+        <span id="game-mapsub" style="display:inline-block; background:#E8533A; color:#fff; font-weight:800; font-size:12px; letter-spacing:1.5px; text-transform:uppercase; padding:5px 12px; border-radius:999px;">CLASSIC · I</span>
+      </div>
+
+      <div style="position:relative; width:100%; aspect-ratio:16/9; border:4px solid #2E2117; border-radius:22px; overflow:hidden; box-shadow:0 10px 0 #2E2117, 0 26px 40px rgba(0,0,0,.28); touch-action:none; user-select:none;">
+        <canvas id="game-canvas" width="960" height="540" style="position:absolute; inset:0; width:100%; height:100%; display:block; cursor:grab;"></canvas>
+
+        <div style="position:absolute; left:2.2%; top:4.5%; display:flex; flex-direction:column; gap:8px; pointer-events:none;">
+          <div style="display:flex; align-items:center; gap:8px; background:#2E2117; padding:5px 13px 5px 7px; border-radius:999px; align-self:flex-start;">
+            <span style="display:inline-flex; width:24px; height:24px; align-items:center; justify-content:center; background:#F2A93B; border-radius:50%;"><svg width="14" height="14" viewBox="0 0 24 24" fill="#2E2117"><path d="M5 8 L9 11 L12 5 L15 11 L19 8 L17 18 H7 Z"></path></svg></span>
+            <span id="hud-sub" style="font-weight:900; font-size:13px; letter-spacing:1px; color:#FBF3DD;">CLASSIC · I</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:9px; background:#FBF3DD; border:3px solid #2E2117; border-radius:12px; box-shadow:0 4px 0 #2E2117; padding:6px 14px;">
+            <span style="font-weight:800; font-size:10px; letter-spacing:1.5px; color:#8C8378; text-transform:uppercase;">Score</span>
+            <span id="hud-score" style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:26px; line-height:.9; color:#2E2117;">0</span>
+          </div>
+        </div>
+
+        <div style="position:absolute; left:50%; top:4.5%; transform:translateX(-50%); display:flex; align-items:center; gap:8px; background:#FBF3DD; border:3px solid #2E2117; border-radius:999px; box-shadow:0 4px 0 #2E2117; padding:5px 14px; pointer-events:none;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#E8533A" stroke="#2E2117" stroke-width="1.6"><circle cx="12" cy="12" r="9"></circle></svg>
+          <span id="hud-enemies" style="font-family:'Nunito'; font-weight:900; font-size:14px; color:#2E2117;">5 left</span>
+        </div>
+
+        <div style="position:absolute; right:2.2%; top:4.5%; display:flex; gap:9px; z-index:3;">
+          <button id="btn-pause" style="width:46px; height:46px; border:3px solid #2E2117; border-radius:12px; background:#FBF3DD; box-shadow:0 4px 0 #2E2117; cursor:pointer; display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="#2E2117"><rect x="6" y="5" width="4.5" height="14" rx="1.5"></rect><rect x="13.5" y="5" width="4.5" height="14" rx="1.5"></rect></svg></button>
+          <button id="btn-restart" style="width:46px; height:46px; border:3px solid #2E2117; border-radius:12px; background:#FBF3DD; box-shadow:0 4px 0 #2E2117; cursor:pointer; display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2E2117" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11 a8 8 0 1 0 -2 5"></path><path d="M20 5 V11 H14"></path></svg></button>
+        </div>
+
+        <div id="hint" style="position:absolute; left:50%; top:22%; transform:translateX(-50%); background:rgba(46,33,23,.88); color:#FBF3DD; font-family:'Nunito'; font-weight:800; font-size:14px; padding:10px 22px; border-radius:999px; pointer-events:none; white-space:nowrap;">Drag the arc dial to aim  ·  Hold FIRE to charge, release to shoot  ·  Topple all soldiers!</div>
+
+        <!-- PAUSE MENU -->
+        <div id="pause-overlay" style="display:none; position:absolute; inset:0; z-index:20; background:rgba(16,8,2,.66); align-items:center; justify-content:center;">
+          <div style="background:#FBF3DD; border:4px solid #2E2117; border-radius:22px; box-shadow:0 8px 0 #2E2117, 0 20px 40px rgba(0,0,0,.5); padding:36px 52px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:14px; min-width:250px;">
+            <div style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:44px; color:#2E2117; line-height:1;">Paused</div>
+            <button id="btn-resume" style="font-family:'Grenze Gotisch',serif; font-weight:700; font-size:22px; color:#FBF3DD; background:#E8533A; border:3px solid #2E2117; border-radius:12px; padding:12px 36px; box-shadow:0 5px 0 #2E2117; cursor:pointer; width:100%; text-shadow:0 2px 0 rgba(0,0,0,.2);">Resume</button>
+            <button id="btn-prestart" style="font-family:'Nunito'; font-weight:800; font-size:15px; color:#2E2117; background:#FBF3DD; border:3px solid #2E2117; border-radius:10px; padding:10px 24px; box-shadow:0 4px 0 #2E2117; cursor:pointer; width:100%;">Restart Level</button>
+            <button id="btn-pmaps" style="font-family:'Nunito'; font-weight:700; font-size:14px; color:#5B4A36; background:transparent; border:2px solid rgba(46,33,23,.2); border-radius:10px; padding:8px 24px; cursor:pointer; width:100%;">Change Map</button>
+            <button id="btn-pmenu" style="font-family:'Nunito'; font-weight:700; font-size:13px; color:#8C8378; background:transparent; border:none; cursor:pointer; padding:4px;">Main Menu</button>
+          </div>
+        </div>
+
+        <!-- WIN / LOSE MODAL -->
+        <div id="modal-overlay" style="display:none; position:absolute; inset:0; background:rgba(58,42,28,.32); align-items:center; justify-content:center; z-index:15;">
+          <div style="position:relative; width:48%; min-width:300px; background:#FBF3DD; border:4px solid #2E2117; border-radius:22px; box-shadow:0 8px 0 #2E2117, 0 26px 44px rgba(0,0,0,.45); padding:48px 30px 26px; text-align:center;">
+            <div id="modal-title" style="position:absolute; top:-26px; left:50%; transform:translateX(-50%); background:#E8533A; color:#fff; font-family:'Grenze Gotisch',serif; font-weight:900; font-size:30px; letter-spacing:1px; padding:7px 36px; border-radius:13px; border:3.5px solid #2E2117; box-shadow:0 5px 0 #2E2117; white-space:nowrap; text-shadow:0 2px 0 rgba(0,0,0,.3);">Victory!</div>
+            <p id="modal-msg" style="font-family:'Nunito'; font-weight:700; font-size:15px; color:#5B4A36; margin-bottom:8px;"></p>
+            <div id="modal-score" style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:38px; color:#2E2117; margin-bottom:20px;">0</div>
+            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+              <button id="btn-again" style="font-family:'Nunito'; font-weight:900; font-size:16px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.3); padding:11px 22px; border:3.5px solid #2E2117; border-radius:14px; cursor:pointer; background:#E8533A; box-shadow:0 5px 0 #2E2117; display:inline-flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11 a8 8 0 1 0 -2 5"></path><path d="M20 5 V11 H14"></path></svg> Again</button>
+              <button id="btn-mmaps" style="font-family:'Nunito'; font-weight:800; font-size:15px; color:#2E2117; padding:11px 22px; border:3px solid #2E2117; border-radius:12px; cursor:pointer; background:#FBF3DD; box-shadow:0 4px 0 #2E2117;">Maps</button>
+              <button id="btn-mmenu" style="font-family:'Nunito'; font-weight:800; font-size:15px; color:#5B4A36; padding:11px 22px; border:2px solid rgba(46,33,23,.18); border-radius:12px; cursor:pointer; background:transparent;">Menu</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- HUD COMMAND BAR -->
+        <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(16,8,2,.96); border-top:1.5px solid rgba(242,169,59,.18); z-index:5; padding:5px 10px 6px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="display:flex; flex-direction:column; align-items:center; padding-right:8px; border-right:1px solid rgba(255,255,255,.1); flex-shrink:0;">
+              <span style="font-weight:800; font-size:6px; letter-spacing:1.2px; color:#8C8378; text-transform:uppercase; line-height:1.6;">Ammo</span>
+              <span id="hud-ammo" style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:22px; line-height:1; color:#F2A93B;">5</span>
+            </div>
+            <div style="flex-shrink:0;">
+              <svg id="dial" viewBox="0 0 96 88" width="60" height="55" style="cursor:crosshair; touch-action:none; display:block;">
+                <line x1="8" y1="78" x2="91" y2="78" stroke="rgba(255,255,255,.18)" stroke-width="1.2"></line>
+                <line x1="8" y1="78" x2="8" y2="5" stroke="rgba(255,255,255,.18)" stroke-width="1.2"></line>
+                <polygon points="91,78 86,75.5 86,80.5" fill="rgba(255,255,255,.22)"></polygon>
+                <polygon points="8,5 5.5,10 10.5,10" fill="rgba(255,255,255,.22)"></polygon>
+                <text x="91" y="76" font-size="7" fill="rgba(255,255,255,.35)" font-family="Nunito,sans-serif" font-weight="800">X</text>
+                <text x="3" y="5" font-size="7" fill="rgba(255,255,255,.35)" font-family="Nunito,sans-serif" font-weight="800">Y</text>
+                <path id="dial-arc" d="" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="1.2" stroke-dasharray="3,2.5"></path>
+                <path id="dial-sector" d="" fill="rgba(232,83,58,.18)" stroke="none"></path>
+                <path id="dial-ticks" d="" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="1.2" stroke-linecap="round"></path>
+                <line id="dial-line" x1="8" y1="78" x2="8" y2="5" stroke="#E8533A" stroke-width="2.5" stroke-linecap="round"></line>
+                <path id="dial-head" d="" fill="#E8533A"></path>
+                <circle cx="8" cy="78" r="3" fill="#E8533A"></circle>
+                <text id="dial-deg" x="8" y="5" font-size="9" fill="#FBF3DD" font-family="Grenze Gotisch,serif" font-weight="900" text-anchor="middle">42°</text>
+              </svg>
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:5px; min-width:0;">
+              <div style="display:flex; align-items:center; gap:5px;">
+                <span style="font-weight:800; font-size:6px; color:#8C8378; text-transform:uppercase; letter-spacing:1px; flex-shrink:0;">PWR</span>
+                <div style="flex:1; height:5px; background:rgba(255,255,255,.1); border-radius:3px; overflow:hidden; position:relative;">
+                  <div id="pwr-bar" style="position:absolute; inset:0 auto 0 0; width:0%; background:linear-gradient(to right,#8C2010,#E8533A,#F27040); transition:none;"></div>
+                </div>
+                <span id="pwr-label" style="font-family:'Grenze Gotisch',serif; font-weight:900; font-size:12px; color:#FBF3DD; min-width:26px; text-align:right; flex-shrink:0;">65%</span>
+              </div>
+              <div style="display:flex; gap:4px;">
+                <button id="chip-normal" class="chip selected">● Std</button>
+                <button id="chip-spread" class="chip">●● Spr</button>
+                <button id="chip-heavy" class="chip">⬤ Hvy</button>
+              </div>
+            </div>
+            <div id="fire-btn" style="position:relative; width:68px; height:56px; border:1.5px solid rgba(255,255,255,.2); border-radius:8px; overflow:hidden; cursor:pointer; touch-action:none; user-select:none; flex-shrink:0;">
+              <div style="position:absolute; inset:0; background:rgba(20,8,2,.88);"></div>
+              <div id="fire-fill" style="position:absolute; bottom:0; left:0; right:0; height:0%; background:linear-gradient(to top,#8C2010,#C83828,#E8533A); transition:none;"></div>
+              <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; pointer-events:none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M7 5 L19 12 L7 19 Z"></path></svg>
+                <span id="fire-label" style="font-family:'Nunito'; font-weight:900; font-size:12px; color:#fff; letter-spacing:.5px;">FIRE</span>
+                <span id="fire-hint" style="font-weight:800; font-size:6px; color:rgba(255,255,255,.4); letter-spacing:1px; text-transform:uppercase;">hold</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p style="font-family:'Nunito'; font-weight:600; font-size:14px; color:#5B4A36; margin-top:16px; line-height:1.5;"><b style="color:#2E2117;">How to play:</b> Drag the <b>arc dial</b> to set angle — then <b>hold FIRE</b> to charge power, release to shoot. Or drag backward from the trebuchet directly. Camera follows the shot. Topple every guard before ammo runs out.</p>
+    </div>
+  </div>
+
 </div>
 
 <script>
-class CrushGame {
-  constructor() {
-    // Canvas / world dimensions
-    this.W = 960; this.H = 540; this.GY = 468;
+class Game {
+  state = {screen:'menu',selectedMap:0,score:0,ammo:5,enemiesLeft:0,aimDeg:42,power:65,paused:false,showModal:false,modalTitle:'',modalMsg:'',modalAccent:'#E8533A',bulletType:'normal',charging:false};
 
-    // Trebuchet geometry — sling loads lower-LEFT (behind), arm whips upper-RIGHT toward castle
-    this.PV = { x: 230, y: 250 };
-    this.AL = 180; this.AS = 80; this.SL = 76;
-    this.A_LOAD = 2.3; this.A_REST = 5.8; // clockwise over-the-top arc
-    this.SF = 72; this.RELEASE_P = 0.982;
-    const er = Math.pow(this.RELEASE_P, 5);
-    this.releaseAngle = this.A_LOAD + (this.A_REST - this.A_LOAD) * er;
-    this.RELEASE_FRAME = Math.round(this.SF * this.RELEASE_P);
-    this.relTip = {
-      x: this.PV.x + this.AL * Math.cos(this.releaseAngle),
-      y: this.PV.y + this.AL * Math.sin(this.releaseAngle)
+  constructor(){
+    this.canvasRef={current:document.getElementById('game-canvas')};
+    this.hintRef={current:document.getElementById('hint')};
+    this.mapDefs=[
+      {name:'Stone Keep',  sub:'CLASSIC · I',   ammo:5},
+      {name:'Twin Spires', sub:'HEIGHTS · II',  ammo:5},
+      {name:'Wooden Fort', sub:'TIMBER · III',  ammo:6},
+      {name:'The Ramparts',sub:'SPREAD · IV',   ammo:7},
+      {name:'Grand Citadel',sub:'BOSS · V',     ammo:8},
+    ];
+    this.W=960;this.H=540;this.GY=405;this.ZOOM=0.85;
+    this.worldW=3900;this.camX=0;this.camY=0;
+    this.panning=false;this.panStart=null;this.panCamStart=0;
+    this.PV={x:230,y:187};
+    this.AL=180;this.AS=80;this.SL=76;
+    this.A_LOAD=2.3;this.A_REST=5.8;
+    this.SF=96;this.RELEASE_P=0.982;
+    const er=Math.pow(this.RELEASE_P,7);
+    this.releaseAngle=this.A_LOAD+(this.A_REST-this.A_LOAD)*er;
+    this.RELEASE_FRAME=Math.round(this.SF*this.RELEASE_P);
+    this.relTip={x:this.PV.x+this.AL*Math.cos(this.releaseAngle),y:this.PV.y+this.AL*Math.sin(this.releaseAngle)};
+    this.trebAngle=this.A_LOAD;this.swingF=0;this.swinging=false;
+    this.VMAX=20;
+    this.PG=0.5*0.001*(1000/60)*(1000/60);
+    this.dragging=false;this.dragStart=null;this.maxPull=150;
+    this.boulder=null;this.enemies=[];this.dynBodies=[];this.castleBlocks=[];
+    this.stillF=0;this.flyF=0;this.gameState='aiming';
+    this.particles=[];this.shake=0;
+    this.rollingOnGround=false;this.rollLandX=0;this.rollDustTimer=0;this.rollingHitSet=new Set();
+    this.activeBoulders=[];this.cameraReturning=false;
+    this.boulderHitCastle=false;this.impactX=0;this.impactY=0;this.watchSettleF=0;
+    this.currentTrailPoints=[];this.prevTrailPoints=[];
+    this.pendAngle=-0.18+(Math.random()-.5)*.12;this.pendOmega=0.005+Math.random()*.004;
+    this.gateX=null;this.flagBlocks=[];
+    this.M=null;this.engine=null;this.world=null;this.render=null;this.runner=null;
+    this.chargeTimer=null;this._dn=null;this._mv=null;this._up=null;
+    this._screenWas='menu';
+    this.bindUI();
+    this.syncUI();
+  }
+
+
+  teardown(){
+    try{
+      if(this.chargeTimer){clearInterval(this.chargeTimer);this.chargeTimer=null;}
+      if(this.render&&this.M)this.M.Render.stop(this.render);
+      if(this.runner&&this.M)this.M.Runner.stop(this.runner);
+      if(this.engine&&this.M)this.M.Engine.clear(this.engine);
+      const c=this.canvasRef.current;
+      if(c&&this._dn){c.removeEventListener('pointerdown',this._dn);c.removeEventListener('pointermove',this._mv);window.removeEventListener('pointerup',this._up);}
+      this.render=null;this.runner=null;this.engine=null;this.world=null;
+    }catch(e){}
+  }
+
+  waitAndInit(){
+    let t=0;
+    const w=()=>{
+      if(window.Matter&&this.canvasRef.current)this.init();
+      else if(t++<120)setTimeout(w,50);
     };
-    this.trebAngle = this.A_LOAD; this.swingF = 0; this.swinging = false;
-
-    // Physics tuning
-    this.VMAX = 15;
-    this.PG = 0.60; // preview gravity — elevated to match release point
-
-    // Drag input
-    this.dragging = false; this.dragStart = null; this.maxPull = 150;
-
-    // Game state
-    this.score = 0; this.ammo = 5;
-    this.boulder = null; this.enemies = []; this.dynBodies = [];
-    this.stillF = 0; this.flyF = 0; this.gameState = 'aiming';
-    this.particles = []; this.shake = 0;
-    this.paused = false;
-    this.starsEarned = 0;
-    this.bestScore = parseInt(localStorage.getItem('ctc_best') || '0');
-
-    // UI values
-    this.aimDeg = 32; this.power = 66;
-
-    this.M = null; this.engine = null; this.world = null;
-    this.render = null; this.runner = null;
-
-    this.canvas = document.getElementById('game-canvas');
-    this.hint = document.getElementById('hint');
+    setTimeout(w,50);
   }
 
-  // ---- UI helpers ----
-  updateHUD() {
-    document.getElementById('hud-score').textContent = this.score.toLocaleString();
-    document.getElementById('hud-enemies').textContent = this.enemies.filter(e => !e.dead).length + ' left';
-    document.getElementById('hud-ammo').textContent = '×' + this.ammo;
-    document.getElementById('label-aim').textContent = this.aimDeg + '°';
-    document.getElementById('label-power').textContent = this.power + '%';
-    document.getElementById('slider-aim').value = this.aimDeg;
-    document.getElementById('slider-power').value = this.power;
-  }
-
-  showModal(type, msg) {
-    if (this.score > this.bestScore) {
-      this.bestScore = this.score;
-      try { localStorage.setItem('ctc_best', this.bestScore); } catch(e) {}
-    }
-    const isVictory = type === 'victory';
-    const titleEl = document.getElementById('modal-title');
-    titleEl.textContent = isVictory ? 'Victory!' : 'Defeat';
-    titleEl.style.background = isVictory ? '#E8533A' : '#2E2117';
-    titleEl.style.borderColor = isVictory ? '#2E2117' : '#8C8378';
-    const starFill = '#F2A93B', starEmpty = '#E4DCC8';
-    document.getElementById('modal-star1').style.color = this.starsEarned >= 1 ? starFill : starEmpty;
-    document.getElementById('modal-star2').style.color = this.starsEarned >= 2 ? starFill : starEmpty;
-    document.getElementById('modal-star3').style.color = this.starsEarned >= 3 ? starFill : starEmpty;
-    document.getElementById('modal-msg').textContent = msg;
-    document.getElementById('modal-score').textContent = this.score.toLocaleString();
-    document.getElementById('modal-best').textContent = this.bestScore.toLocaleString();
-    document.getElementById('modal-btns-victory').style.display = isVictory ? 'flex' : 'none';
-    document.getElementById('modal-btns-defeat').style.display = isVictory ? 'none' : 'flex';
-    document.getElementById('modal-overlay').style.display = 'flex';
-  }
-
-  hideModal() {
-    document.getElementById('modal-overlay').style.display = 'none';
-  }
-
-  showMenu() {
-    this.hideModal();
-    this.setPaused(false);
-    if (this.M) this.buildLevel();
-    document.getElementById('menu-overlay').style.display = 'flex';
-  }
-
-  hideMenu() {
-    document.getElementById('menu-overlay').style.display = 'none';
-  }
-
-  setPaused(p) {
-    this.paused = p;
-    document.getElementById('pause-overlay').style.display = p ? 'flex' : 'none';
-    if (p) this.M.Runner.stop(this.runner);
-    else this.M.Runner.run(this.runner, this.engine);
-  }
-
-  // ---- Init ----
-  start() {
-    let t = 0;
-    const wait = () => {
-      if (window.Matter && this.canvas) this.init();
-      else if (t++ < 120) setTimeout(wait, 50);
-    };
-    wait();
-  }
-
-  teardown() {
-    try {
-      if (this.render) this.M.Render.stop(this.render);
-      if (this.runner) this.M.Runner.stop(this.runner);
-      if (this.engine) this.M.Engine.clear(this.engine);
-      if (this.canvas && this._dn) {
-        this.canvas.removeEventListener('pointerdown', this._dn);
-        this.canvas.removeEventListener('pointermove', this._mv);
-        window.removeEventListener('pointerup', this._up);
-      }
-    } catch (e) {}
-  }
-
-  init() {
-    const M = window.Matter; this.M = M;
-    this.engine = M.Engine.create({ enableSleeping: true });
-    this.engine.gravity.y = 1;
-    this.world = this.engine.world;
-    this.render = M.Render.create({
-      canvas: this.canvas,
-      engine: this.engine,
-      options: { width: this.W, height: this.H, wireframes: false, background: 'transparent', pixelRatio: 1 }
+  init(){
+    if(!this.canvasRef.current||!window.Matter)return;
+    const M=window.Matter;this.M=M;
+    this.engine=M.Engine.create({enableSleeping:true});
+    this.engine.gravity.y=0.5;
+    this.world=this.engine.world;
+    this.render=M.Render.create({
+      canvas:this.canvasRef.current,engine:this.engine,
+      options:{width:this.W,height:this.H,wireframes:false,background:'transparent',pixelRatio:1,hasBounds:true}
     });
+    this.render.bounds={min:{x:0,y:0},max:{x:this.W/this.ZOOM,y:this.H/this.ZOOM}};
     M.Render.run(this.render);
-    this.runner = M.Runner.create();
-    M.Runner.run(this.runner, this.engine);
-
-    M.Events.on(this.render, 'afterRender', () => {
-      const ctx = this.render.context;
-      ctx.globalCompositeOperation = 'source-over';
-      try { this.drawForeground(ctx); } catch (e) { console.error('drawForeground error', e); }
-      ctx.globalCompositeOperation = 'destination-over';
-      try { this.drawBackground(ctx); } catch (e) { console.error('drawBackground error', e); }
-      ctx.globalCompositeOperation = 'source-over';
-      this.shake = Math.max(0, this.shake * .78 - .08);
+    this.runner=M.Runner.create();
+    M.Runner.run(this.runner,this.engine);
+    M.Events.on(this.render,'afterRender',()=>{
+      const ctx=this.render.context;
+      ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';
+      try{this.drawForeground(ctx);}catch(e){console.error('FG',e);}
+      ctx.globalCompositeOperation='destination-over';
+      try{this.drawBackground(ctx);}catch(e){console.error('BG',e);}
+      ctx.globalCompositeOperation='source-over';
+      this.shake=Math.max(0,this.shake*.78-.08);
     });
-
-    M.Events.on(this.engine, 'afterUpdate', () => this.tick());
-
-    M.Events.on(this.engine, 'collisionStart', ev => {
-      for (const p of ev.pairs) {
-        const rv = Math.hypot(
-          p.bodyA.velocity.x - p.bodyB.velocity.x,
-          p.bodyA.velocity.y - p.bodyB.velocity.y
-        );
-        if (rv > 5 && this.boulder && (p.bodyA === this.boulder || p.bodyB === this.boulder)) {
-          this.shake = Math.max(this.shake, 12);
-          const sp = (p.collision.supports && p.collision.supports[0]) || this.boulder.position;
-          this.spawnImpact(sp.x, sp.y, 18);
+    M.Events.on(this.engine,'afterUpdate',()=>this.tick());
+    M.Events.on(this.engine,'collisionStart',ev=>{
+      for(const p of ev.pairs){
+        const rv=Math.hypot(p.bodyA.velocity.x-p.bodyB.velocity.x,p.bodyA.velocity.y-p.bodyB.velocity.y);
+        if(rv>5&&this.boulder&&(p.bodyA===this.boulder||p.bodyB===this.boulder)){
+          this.shake=Math.max(this.shake,12);
+          const sp=(p.collision.supports&&p.collision.supports[0])||this.boulder.position;
+          this.spawnImpact(sp.x,sp.y,18);
         }
-        if (rv > 3) [p.bodyA, p.bodyB].forEach(b => { if (!b.isStatic) b.cl = Math.min(3, (b.cl || 0) + 1); });
+        if(rv>1.5&&this.gameState==='flying'){
+          [p.bodyA,p.bodyB].forEach(b=>{
+            if(b.isStatic&&b.mat){
+              if(!this.boulderHitCastle){this.boulderHitCastle=true;this.impactX=b.position.x;this.impactY=b.position.y;}
+              this.M.Body.setStatic(b,false);this.dynBodies.push(b);
+              b.cl=Math.min(3,(b.cl||0)+1);
+              for(const e of this.enemies){if(!e.dead&&e.isStatic&&e.parentBlock===b)this.M.Body.setStatic(e,false);}
+              for(const cb of this.castleBlocks){
+                if(cb.isStatic&&Math.hypot(cb.position.x-b.position.x,cb.position.y-b.position.y)<110){
+                  this.M.Body.setStatic(cb,false);this.dynBodies.push(cb);
+                  // Also free any guards sitting on this chain-reacted block
+                  for(const e of this.enemies){if(!e.dead&&e.isStatic&&e.parentBlock===cb)this.M.Body.setStatic(e,false);}
+                }
+              }
+            }else if(!b.isStatic&&b.mat){b.cl=Math.min(3,(b.cl||0)+1);}
+          });
+        }
       }
     });
-
     this.setupInput();
     this.buildLevel();
   }
 
-  buildLevel() {
-    const M = this.M;
-    M.Composite.clear(this.world, false);
-    this.enemies = []; this.dynBodies = []; this.boulder = null;
-    this.stillF = 0; this.flyF = 0; this.gameState = 'aiming';
-    this.trebAngle = this.A_LOAD; this.swinging = false; this.swingF = 0;
-    this.dragging = false; this.dragStart = null; this.particles = [];
-    this.score = 0; this.ammo = 5;
-
-    const add = b => { M.Composite.add(this.world, b); if (!b.isStatic) this.dynBodies.push(b); return b; };
-
-    // Boundaries
-    add(M.Bodies.rectangle(this.W / 2, this.GY + 38, this.W + 400, 76, { isStatic: true, friction: .9, render: { visible: false } }));
-    add(M.Bodies.rectangle(-30, this.H / 2, 60, this.H * 2, { isStatic: true, render: { visible: false } }));
-    add(M.Bodies.rectangle(this.W + 30, this.H / 2, 60, this.H * 2, { isStatic: true, render: { visible: false } }));
-
-    this.buildCastle(add);
-    this.hideModal();
-    this.setPaused(false);
-    this.paused = false;
-    if (this.hint) this.hint.style.display = '';
-    this.updateHUD();
+  buildLevel(){
+    const M=this.M;M.Composite.clear(this.world,false);
+    this.enemies=[];this.dynBodies=[];this.boulder=null;this.castleBlocks=[];
+    this.stillF=0;this.flyF=0;this.gameState='aiming';
+    this.trebAngle=this.A_LOAD;this.swinging=false;this.swingF=0;
+    this.dragging=false;this.dragStart=null;this.particles=[];
+    this.rollingOnGround=false;this.rollingHitSet=new Set();this.activeBoulders=[];
+    this.cameraReturning=false;this.boulderHitCastle=false;this.impactX=0;this.impactY=0;this.watchSettleF=0;
+    this.prevTrailPoints=[];this.currentTrailPoints=[];
+    this.pendAngle=-0.22;this.pendOmega=0.006;
+    this.camX=0;this.camY=0;this.gateX=null;this.flagBlocks=[];
+    if(this.render){this.render.bounds.min.x=0;this.render.bounds.max.x=this.W/this.ZOOM;this.render.bounds.min.y=0;this.render.bounds.max.y=this.H/this.ZOOM;}
+    const add=b=>{M.Composite.add(this.world,b);if(!b.isStatic)this.dynBodies.push(b);return b;};
+    add(M.Bodies.rectangle(this.worldW/2,this.GY+38,this.worldW+400,76,{isStatic:true,friction:.9,render:{visible:false}}));
+    add(M.Bodies.rectangle(-30,this.H/2,60,this.H*2,{isStatic:true,render:{visible:false}}));
+    add(M.Bodies.rectangle(this.worldW+30,this.H/2,60,this.H*2,{isStatic:true,render:{visible:false}}));
+    const builders=[this.buildCastle0,this.buildCastle1,this.buildCastle2,this.buildCastle3,this.buildCastle4];
+    builders[this.state.selectedMap].call(this,add);
+    const def=this.mapDefs[this.state.selectedMap];
+    const recAim=[42,45,38,35,48][this.state.selectedMap]||42;
+    const recPow=[65,70,55,45,60][this.state.selectedMap]||65;
+    this.setState({score:0,ammo:def.ammo,enemiesLeft:this.enemies.length,paused:false,showModal:false,aimDeg:recAim,power:recPow});
+    if(this.hintRef.current)this.hintRef.current.style.display='';
   }
 
-  buildCastle(add) {
-    const M = this.M, gy = this.GY, bW = 42, bH = 28;
-    const SR = (d = false) => ({ fillStyle: d ? '#9A9182' : '#B7AE9A', strokeStyle: '#7A7060', lineWidth: 1.5 });
-    const WR = () => ({ fillStyle: '#8A5A30', strokeStyle: '#5C3A1F', lineWidth: 1.5 });
-    const mk = (x, y, w = bW, h = bH, r = {}) => add(M.Bodies.rectangle(x, y, w, h, { friction: .55, restitution: .1, render: SR(), ...r }));
-    const mkE = (x, y, k) => {
-      const b = k === 'king'
-        ? M.Bodies.rectangle(x, y, 26, 28, { friction: .4, restitution: .2, render: { fillStyle: '#F2A93B', strokeStyle: '#C9851E', lineWidth: 2 } })
-        : M.Bodies.circle(x, y, 13, { friction: .4, restitution: .25, render: { fillStyle: '#E8533A', strokeStyle: '#A8341E', lineWidth: 2 } });
-      b.gk = k; b.sx = x; b.sy = y; b.dead = false;
-      add(b); this.enemies.push(b);
-    };
-
-    // Left tower (4 rows)
-    for (let r = 0; r < 4; r++) { const y = gy - bH / 2 - r * bH; mk(680 - bW / 2, y); mk(680 + bW / 2, y); }
-    add(M.Bodies.rectangle(680, gy - 4 * bH - 9, bW * 2 + 6, 18, { friction: .55, render: WR() }));
-    mkE(680, gy - 4 * bH - 30, 'guard');
-
-    // Center keep (7 rows — taller)
-    for (let r = 0; r < 7; r++) { const y = gy - bH / 2 - r * bH; mk(792 - bW / 2, y, bW, bH, { render: SR(true) }); mk(792 + bW / 2, y, bW, bH, { render: SR(true) }); }
-    add(M.Bodies.rectangle(792, gy - 7 * bH - 10, bW * 2 + 12, 20, { friction: .55, render: WR() }));
-    mkE(792 - 12, gy - 7 * bH - 34, 'guard');
-    mkE(792 + 12, gy - 7 * bH - 34, 'king');
-    mkE(792, gy - 14, 'guard');
-
-    // Right tower (4 rows)
-    for (let r = 0; r < 4; r++) { const y = gy - bH / 2 - r * bH; mk(904 - bW / 2, y); mk(904 + bW / 2, y); }
-    add(M.Bodies.rectangle(904, gy - 4 * bH - 9, bW * 2 + 6, 18, { friction: .55, render: WR() }));
-    mkE(904, gy - 4 * bH - 30, 'guard');
-
-    // Connecting walls
-    [728, 750].forEach(x => { for (let r = 0; r < 2; r++) mk(x, gy - bH / 2 - r * bH, bW - 6, bH); });
-    [840, 862].forEach(x => { for (let r = 0; r < 2; r++) mk(x, gy - bH / 2 - r * bH, bW - 6, bH); });
-
-    // Barrels
-    add(M.Bodies.circle(644, gy - 14, 13, { friction: .5, render: { fillStyle: '#9A6840', strokeStyle: '#6B4427', lineWidth: 2 } }));
-    add(M.Bodies.circle(946, gy - 14, 13, { friction: .5, render: { fillStyle: '#9A6840', strokeStyle: '#6B4427', lineWidth: 2 } }));
+  // ── Block helpers ────────────────────────────────────────────────────────
+  _mkC(add,x,y,w,h,dk=false){
+    const b=add(this.M.Bodies.rectangle(x,y,w,h,{isStatic:true,friction:.55,restitution:.04,render:{fillStyle:dk?'#5E5850':'#8C8480',strokeStyle:dk?'#383432':'#545050',lineWidth:2}}));
+    b.mat='st';b.bw=w;b.bh=h;this.castleBlocks.push(b);return b;
+  }
+  _mkP(add,x,y,w,h=14,dk=false){
+    const b=add(this.M.Bodies.rectangle(x,y,w,h,{isStatic:true,friction:.6,restitution:.06,render:{fillStyle:dk?'#6A6258':'#989088',strokeStyle:dk?'#403C36':'#5C5650',lineWidth:2}}));
+    b.mat='st';b.bw=w;b.bh=h;this.castleBlocks.push(b);return b;
+  }
+  _mkW(add,x,y,w,h=14){
+    const b=add(this.M.Bodies.rectangle(x,y,w,h,{isStatic:true,friction:.7,restitution:.08,render:{fillStyle:'#9A6B38',strokeStyle:'#6A4820',lineWidth:2}}));
+    b.mat='wd';b.bw=w;b.bh=h;this.castleBlocks.push(b);return b;
+  }
+  _mkE(add,x,y,type,pb=null){
+    const b=type==='king'
+      ?add(this.M.Bodies.rectangle(x,y,24,30,{isStatic:true,friction:.4,restitution:.1,render:{visible:false}}))
+      :add(this.M.Bodies.circle(x,y,12,{isStatic:true,friction:.4,restitution:.1,render:{visible:false}}));
+    b.gk=type;b.sx=x;b.sy=y;b.dead=false;
+    if(pb)b.parentBlock=pb;
+    this.enemies.push(b);
   }
 
-  // ---- Input ----
-  setupInput() {
-    const c = this.canvas;
-    const toLocal = e => {
-      const r = c.getBoundingClientRect();
-      return { x: (e.clientX - r.left) * (this.W / r.width), y: (e.clientY - r.top) * (this.H / r.height) };
-    };
+  // ── Map 0: Stone Keep ────────────────────────────────────────────────────
+  buildCastle0(add){
+    const gy=this.GY,ox=1260,cW=16,cH=248;
+    const LTl=622+ox,LTr=698+ox,LTcx=660+ox;
+    this._mkC(add,LTl,gy-cH/2,cW,cH);this._mkC(add,LTr,gy-cH/2,cW,cH);
+    const LT_p1=this._mkP(add,LTcx,gy-78,90,14);
+    const LT_p2=this._mkP(add,LTcx,gy-156,90,14);
+    const LT_top=this._mkP(add,LTcx,gy-cH-7,100,14);
+    this._mkP(add,LTl,gy-cH-20,24,12);this._mkP(add,LTr,gy-cH-20,24,12);
+    this._mkE(add,LTcx,gy-78-19,'guard',LT_p1);
+    this._mkE(add,LTcx-14,gy-156-19,'guard',LT_p2);
+    this._mkW(add,727+ox,gy-38,68,14);
+    const GL=755+ox,GR=831+ox,Gcx=793+ox;
+    this._mkC(add,GL,gy-90,26,180,true);this._mkC(add,GR,gy-90,26,180,true);
+    this._mkP(add,Gcx,gy-188,128,16,true);
+    this._mkC(add,Gcx,gy-208,20,32,true);
+    const G_roof=this._mkP(add,Gcx,gy-226,64,14,true);
+    this._mkP(add,Gcx-22,gy-234,20,12,true);this._mkP(add,Gcx+22,gy-234,20,12,true);
+    const G_kp=this._mkP(add,Gcx,gy-78,72,14);
+    this._mkE(add,Gcx,gy-78-28,'king',G_kp);
+    this._mkW(add,859+ox,gy-38,68,14);
+    const RTl=884+ox,RTr=960+ox,RTcx=922+ox;
+    this._mkC(add,RTl,gy-cH/2,cW,cH);this._mkC(add,RTr,gy-cH/2,cW,cH);
+    const RT_p1=this._mkP(add,RTcx,gy-78,90,14);
+    const RT_p2=this._mkP(add,RTcx,gy-156,90,14);
+    const RT_top=this._mkP(add,RTcx,gy-cH-7,100,14);
+    this._mkP(add,RTl,gy-cH-20,24,12);this._mkP(add,RTr,gy-cH-20,24,12);
+    this._mkE(add,RTcx+14,gy-78-19,'guard',RT_p1);
+    this._mkE(add,RTcx,gy-156-19,'guard',RT_p2);
+    this.gateX=Gcx;
+    this.flagBlocks=[{b:LT_top,col:'#E8533A'},{b:G_roof,col:'#F2A93B'},{b:RT_top,col:'#E8533A'}];
+  }
 
-    this._dn = e => {
-      if (this.gameState !== 'aiming' || this.paused || document.getElementById('modal-overlay').style.display !== 'none' || document.getElementById('menu-overlay').style.display !== 'none') return;
-      const p = toLocal(e);
-      if (Math.hypot(p.x - this.PV.x, p.y - this.PV.y) > 260) return;
-      this.dragging = true; this.dragStart = { ...p }; c.style.cursor = 'grabbing';
-    };
-    this._mv = e => { if (this.dragging) this.dragAim(toLocal(e)); };
-    this._up = () => {
-      if (this.dragging) {
-        this.dragging = false;
-        if (this.canvas) this.canvas.style.cursor = 'grab';
-        this.fire();
+  // ── Map 1: Twin Spires ───────────────────────────────────────────────────
+  buildCastle1(add){
+    const gy=this.GY,ox=1260,cH=310,cW=18;
+    const LX=720+ox,RX=890+ox;
+    this._mkC(add,LX-11,gy-cH/2,cW,cH);this._mkC(add,LX+11,gy-cH/2,cW,cH);
+    const LCap=this._mkP(add,LX,gy-cH-9,64,18);
+    for(const dx of[-19,-7,7,19])this._mkP(add,LX+dx,gy-cH-23,10,12);
+    this._mkC(add,RX-11,gy-cH/2,cW,cH);this._mkC(add,RX+11,gy-cH/2,cW,cH);
+    const RCap=this._mkP(add,RX,gy-cH-9,64,18);
+    for(const dx of[-19,-7,7,19])this._mkP(add,RX+dx,gy-cH-23,10,12);
+    const bridgeY=gy-Math.round(cH*0.55);
+    const bridge=this._mkP(add,(LX+RX)/2,bridgeY,RX-LX+22,14);
+    this._mkE(add,LX,gy-cH-32,'guard',LCap);
+    this._mkE(add,RX,gy-cH-32,'guard',RCap);
+    this._mkE(add,(LX+RX)/2-22,bridgeY-18,'guard',bridge);
+    this._mkE(add,(LX+RX)/2+22,bridgeY-18,'guard',bridge);
+    this.flagBlocks=[{b:LCap,col:'#E8533A'},{b:RCap,col:'#E8533A'}];
+  }
+
+  // ── Map 2: Wooden Fort ───────────────────────────────────────────────────
+  buildCastle2(add){
+    const gy=this.GY,ox=1260,cx=790+ox;
+    this._mkW(add,cx-90,gy-17,14,34);this._mkW(add,cx,gy-17,14,34);this._mkW(add,cx+90,gy-17,14,34);
+    const b0=this._mkW(add,cx,gy-38,220,16);
+    this._mkE(add,cx-65,gy-38-18,'guard',b0);this._mkE(add,cx+65,gy-38-18,'guard',b0);
+    this._mkW(add,cx-52,gy-97,12,98);this._mkW(add,cx+52,gy-97,12,98);
+    const b1=this._mkW(add,cx,gy-150,150,14);
+    this._mkE(add,cx-36,gy-150-18,'guard',b1);this._mkE(add,cx+36,gy-150-18,'guard',b1);
+    this._mkW(add,cx-22,gy-213,12,112);this._mkW(add,cx+22,gy-213,12,112);
+    const b2=this._mkW(add,cx,gy-272,96,14);
+    this._mkE(add,cx-16,gy-272-18,'guard',b2);
+    this._mkE(add,cx+16,gy-272-28,'king',b2);
+    this.flagBlocks=[{b:b2,col:'#F2A93B'}];
+  }
+
+  // ── Map 3: The Ramparts ──────────────────────────────────────────────────
+  buildCastle3(add){
+    const gy=this.GY,ox=1260,cx=810+ox;
+    const wallW=500,wallH=52;
+    const wall=this._mkP(add,cx,gy-wallH/2,wallW,wallH,true);
+    const mW=22,mH=20,wallTop=gy-wallH,step=wallW/9;
+    for(let i=0;i<9;i++){
+      if(i%2===0)this._mkP(add,cx-wallW/2+step*(i+0.5),wallTop-mH/2,mW,mH,true);
+    }
+    const guardY=wallTop-12;
+    for(const gx of[-196,-140,-84,-28,28,84,140,196])
+      this._mkE(add,cx+gx,guardY,'guard',wall);
+    this.flagBlocks=[{b:wall,col:'#E8533A'}];
+  }
+
+  // ── Map 4: Grand Citadel ─────────────────────────────────────────────────
+  buildCastle4(add){
+    const gy=this.GY,ox=1260,cx=800+ox;
+    const LOx=cx-250,ROx=cx+250;
+    this._mkC(add,LOx,gy-110,20,220);
+    const LOcap=this._mkP(add,LOx,gy-224,64,14);
+    this._mkP(add,LOx-16,gy-236,12,10);this._mkP(add,LOx+16,gy-236,12,10);
+    this._mkC(add,ROx,gy-110,20,220);
+    const ROcap=this._mkP(add,ROx,gy-224,64,14);
+    this._mkP(add,ROx-16,gy-236,12,10);this._mkP(add,ROx+16,gy-236,12,10);
+    const LWall=this._mkP(add,cx-150,gy-26,200,14,true);
+    const RWall=this._mkP(add,cx+150,gy-26,200,14,true);
+    const LIx=cx-78,RIx=cx+78;
+    this._mkC(add,LIx-9,gy-145,16,290,true);this._mkC(add,LIx+9,gy-145,16,290,true);
+    const LIcap=this._mkP(add,LIx,gy-294,58,14,true);
+    this._mkC(add,RIx-9,gy-145,16,290,true);this._mkC(add,RIx+9,gy-145,16,290,true);
+    const RIcap=this._mkP(add,RIx,gy-294,58,14,true);
+    this._mkC(add,cx-18,gy-185,18,370,true);this._mkC(add,cx+18,gy-185,18,370,true);
+    const Ctop=this._mkP(add,cx,gy-374,88,16,true);
+    for(const dx of[-22,0,22])this._mkP(add,cx+dx,gy-388,18,10,true);
+    const bridge=this._mkP(add,cx,gy-210,RIx-LIx+18,12,true);
+    this._mkE(add,LOx,gy-224-18,'guard',LOcap);
+    this._mkE(add,ROx,gy-224-18,'guard',ROcap);
+    this._mkE(add,cx-150,gy-26-18,'guard',LWall);
+    this._mkE(add,cx+150,gy-26-18,'guard',RWall);
+    this._mkE(add,LIx,gy-294-18,'guard',LIcap);
+    this._mkE(add,RIx,gy-294-18,'guard',RIcap);
+    this._mkE(add,cx-18,gy-210-18,'guard',bridge);
+    this._mkE(add,cx+18,gy-210-18,'guard',bridge);
+    this._mkE(add,cx,gy-374-30,'king',Ctop);
+    this.flagBlocks=[{b:LOcap,col:'#E8533A'},{b:LIcap,col:'#E8533A'},{b:Ctop,col:'#F2A93B'},{b:RIcap,col:'#E8533A'},{b:ROcap,col:'#E8533A'}];
+  }
+
+  setupInput(){
+    const c=this.canvasRef.current;
+    const tL=e=>{const r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*(this.W/r.width)/this.ZOOM+this.camX,y:(e.clientY-r.top)*(this.H/r.height)/this.ZOOM};};
+    this._dn=e=>{
+      if(this.state.paused||this.state.showModal)return;
+      const p=tL(e);
+      if(Math.hypot(p.x-this.PV.x,p.y-this.PV.y)<240&&this.gameState==='aiming'){
+        this.dragging=true;this.dragStart={...p};c.style.cursor='crosshair';
+      }else{
+        this.cameraReturning=false;this.panning=true;this.panStart={x:e.clientX,y:e.clientY};this.panCamStart=this.camX;c.style.cursor='grabbing';
       }
     };
-
-    c.addEventListener('pointerdown', this._dn);
-    c.addEventListener('pointermove', this._mv);
-    window.addEventListener('pointerup', this._up);
-
-    // Sliders
-    document.getElementById('slider-aim').addEventListener('input', e => {
-      this.aimDeg = +e.target.value;
-      document.getElementById('label-aim').textContent = this.aimDeg + '°';
-    });
-    document.getElementById('slider-power').addEventListener('input', e => {
-      this.power = +e.target.value;
-      document.getElementById('label-power').textContent = this.power + '%';
-    });
-
-    // Buttons — HUD
-    document.getElementById('btn-fire').addEventListener('click', () => this.fire());
-    document.getElementById('btn-pause').addEventListener('click', () => this.setPaused(!this.paused));
-    document.getElementById('btn-restart').addEventListener('click', () => { if (this.M) { this.hideModal(); this.buildLevel(); } });
-
-    // Buttons — pause menu
-    document.getElementById('btn-pause-resume').addEventListener('click', () => this.setPaused(false));
-    document.getElementById('btn-pause-restart').addEventListener('click', () => { this.setPaused(false); if (this.M) this.buildLevel(); });
-    document.getElementById('btn-pause-quit').addEventListener('click', () => this.showMenu());
-
-    // Buttons — result modal
-    document.getElementById('btn-modal-home').addEventListener('click', () => this.showMenu());
-    document.getElementById('btn-modal-retry').addEventListener('click', () => { if (this.M) { this.hideModal(); this.buildLevel(); } });
-    document.getElementById('btn-modal-next').addEventListener('click', () => { if (this.M) { this.hideModal(); this.buildLevel(); } });
-    document.getElementById('btn-modal-menu').addEventListener('click', () => this.showMenu());
-    document.getElementById('btn-modal-tryagain').addEventListener('click', () => { if (this.M) { this.hideModal(); this.buildLevel(); } });
-
-    // Buttons — main menu
-    document.getElementById('btn-menu-play').addEventListener('click', () => { this.hideMenu(); if (this.M) this.buildLevel(); });
-    document.getElementById('btn-menu-howto').addEventListener('click', () => { document.getElementById('howto').scrollIntoView({ behavior: 'smooth' }); });
+    this._mv=e=>{
+      if(this.dragging){this.dragAim(tL(e));}
+      else if(this.panning){
+        const r=c.getBoundingClientRect();
+        const dx=(e.clientX-this.panStart.x)*(this.W/r.width)/this.ZOOM;
+        this.camX=Math.max(0,Math.min(this.worldW-this.W/this.ZOOM,this.panCamStart-dx));
+        if(this.render){this.render.bounds.min.x=this.camX;this.render.bounds.max.x=this.camX+this.W/this.ZOOM;}
+      }else{
+        const p=tL(e);
+        c.style.cursor=(this.gameState==='aiming'&&Math.hypot(p.x-this.PV.x,p.y-this.PV.y)<240)?'crosshair':'grab';
+      }
+    };
+    this._up=()=>{
+      if(this.dragging){this.dragging=false;if(this.canvasRef.current)this.canvasRef.current.style.cursor='grab';this.fire();}
+      else if(this.panning){this.panning=false;if(this.canvasRef.current)this.canvasRef.current.style.cursor='grab';}
+    };
+    c.addEventListener('pointerdown',this._dn);c.addEventListener('pointermove',this._mv);window.addEventListener('pointerup',this._up);
   }
 
-  dragAim(p) {
-    const dx = this.dragStart.x - p.x, dy = this.dragStart.y - p.y, d = Math.hypot(dx, dy);
-    if (d < 8) return;
-    let deg = Math.atan2(-dy, Math.abs(dx) || 0.001) * 180 / Math.PI;
-    deg = Math.max(8, Math.min(62, Math.round(deg)));
-    const pw = Math.max(20, Math.min(100, Math.round(d / this.maxPull * 100)));
-    this.aimDeg = deg; this.power = pw;
-    this.updateHUD();
+  dragAim(p){
+    const dx=this.dragStart.x-p.x,dy=this.dragStart.y-p.y,d=Math.hypot(dx,dy);
+    if(d<8)return;
+    let deg=Math.atan2(-dy,Math.abs(dx)||0.001)*180/Math.PI;
+    deg=Math.max(8,Math.min(62,Math.round(deg)));
+    const pw=Math.max(20,Math.min(100,Math.round(d/this.maxPull*100)));
+    this.setState({aimDeg:deg,power:pw});
   }
 
-  aimVel() {
-    const r = this.aimDeg * Math.PI / 180, v = (this.power / 100) * this.VMAX;
-    return { x: Math.cos(r) * v, y: -Math.sin(r) * v };
+  aimVel(){const r=this.state.aimDeg*Math.PI/180,v=(this.state.power/100)*this.VMAX;return{x:Math.cos(r)*v,y:-Math.sin(r)*v};}
+  aimVelAt(deg){const r=deg*Math.PI/180,v=(this.state.power/100)*this.VMAX;return{x:Math.cos(r)*v,y:-Math.sin(r)*v};}
+  spawnPos(){const r=this.state.aimDeg*Math.PI/180;const tipX=this.PV.x+this.AL*Math.cos(this.trebAngle);const tipY=this.PV.y+this.AL*Math.sin(this.trebAngle);return{x:tipX+this.SL*Math.cos(r),y:tipY-this.SL*Math.sin(r)};}
+
+  fire(){
+    if(this.gameState!=='aiming'||this.state.paused||this.state.showModal||this.swinging)return;
+    this.swinging=true;this.swingF=0;this.gameState='swinging';this.activeBoulders=[];
+    if(this.hintRef.current)this.hintRef.current.style.display='none';
   }
 
-  spawnPos() {
-    const r = this.aimDeg * Math.PI / 180;
-    return { x: this.relTip.x + this.SL * Math.cos(r), y: this.relTip.y - this.SL * Math.sin(r) };
-  }
-
-  fire() {
-    if (this.gameState !== 'aiming' || this.paused || document.getElementById('modal-overlay').style.display !== 'none' || this.swinging) return;
-    this.swinging = true; this.swingF = 0; this.gameState = 'swinging';
-    if (this.hint) this.hint.style.display = 'none';
-  }
-
-  // ---- Tick ----
-  tick() {
-    if (!this.M) return;
-
-    if (this.swinging) {
+  tick(){
+    if(!this.M||!this.engine)return;
+    if(this.gameState==='aiming'){
+      const gP=0.32,L=this.SL;
+      this.pendOmega+=-(gP/L)*Math.sin(this.pendAngle);this.pendOmega*=0.9992;this.pendAngle+=this.pendOmega;
+    }
+    if(this.swinging){
       this.swingF++;
-      const p = Math.min(this.swingF / this.SF, 1), e = p * p * p * p * p; // quintic: heavy counterweight drag, violent whip
-      this.trebAngle = this.A_LOAD + (this.A_REST - this.A_LOAD) * e;
-
-      if (this.swingF === this.RELEASE_FRAME && !this.boulder) {
-        const M = this.M, sp = this.spawnPos(), v = this.aimVel();
-        const b = M.Bodies.circle(sp.x, sp.y, 16, {
-          density: .026, friction: .4, restitution: .2,
-          render: { fillStyle: '#8C8378', strokeStyle: '#6E675B', lineWidth: 2 },
-          label: 'boulder'
-        });
-        M.Composite.add(this.world, b); this.dynBodies.push(b); this.boulder = b;
-        M.Body.setVelocity(b, v);
-        this.spawnImpact(sp.x, sp.y, 5);
-      }
-
-      if (this.swingF >= this.SF) { this.swinging = false; this.gameState = 'flying'; this.stillF = 0; this.flyF = 0; }
-    }
-
-    if (this.gameState === 'flying') {
-      this.flyF++;
-      for (const e of this.enemies) {
-        if (e.dead) continue;
-        if (Math.hypot(e.position.x - e.sx, e.position.y - e.sy) > 82 || e.position.y > 530 || e.position.x < -20 || e.position.x > this.W + 20) {
-          e.dead = true;
-          this.score += 1000;
-          this.updateHUD();
-          this.spawnImpact(e.position.x, e.position.y, 9);
+      const p=Math.min(this.swingF/this.SF,1),e=p*p*p*p*p*p*p;
+      this.trebAngle=this.A_LOAD+(this.A_REST-this.A_LOAD)*e;
+      if(this.swingF===this.RELEASE_FRAME&&!this.boulder){
+        const M=this.M,sp=this.spawnPos(),bt=this.state.bulletType;
+        if(bt==='heavy'){
+          const v=this.aimVel();
+          const b=M.Bodies.circle(sp.x,sp.y,24,{density:.09,friction:.5,frictionAir:0,restitution:.12,render:{fillStyle:'#6A5848',strokeStyle:'#4A3828',lineWidth:2.5},label:'boulder'});
+          M.Composite.add(this.world,b);this.dynBodies.push(b);this.boulder=b;
+          M.Body.setVelocity(b,{x:v.x*.68,y:v.y*.68});this.activeBoulders=[b];this.spawnImpact(sp.x,sp.y,8);
+        }else if(bt==='spread'){
+          const perpR=(this.state.aimDeg+90)*Math.PI/180;
+          const px=Math.cos(perpR),py=-Math.sin(perpR);
+          const boulders=[-12,0,12].map((da,idx)=>{
+            const v=this.aimVelAt(this.state.aimDeg+da),off=(idx-1)*9;
+            const b=M.Bodies.circle(sp.x+px*off,sp.y+py*off,10,{density:.015,friction:.35,frictionAir:0,restitution:.28,render:{fillStyle:'#A8A098',strokeStyle:'#787068',lineWidth:1.5},label:'boulder'});
+            M.Composite.add(this.world,b);this.dynBodies.push(b);M.Body.setVelocity(b,{x:v.x*1.04,y:v.y*1.04});return b;
+          });
+          this.boulder=boulders[1];this.activeBoulders=boulders;this.spawnImpact(sp.x,sp.y,5);
+        }else{
+          const v=this.aimVel();
+          const b=M.Bodies.circle(sp.x,sp.y,16,{density:.026,friction:.4,frictionAir:0,restitution:.2,render:{fillStyle:'#8C8378',strokeStyle:'#6E675B',lineWidth:2},label:'boulder'});
+          M.Composite.add(this.world,b);this.dynBodies.push(b);this.boulder=b;
+          M.Body.setVelocity(b,v);this.activeBoulders=[b];this.spawnImpact(sp.x,sp.y,5);
         }
       }
-
-      if (this.boulder && (this.boulder.position.y > this.H + 80 || Math.abs(this.boulder.position.x - this.W / 2) > this.W)) {
-        this.M.Composite.remove(this.world, this.boulder);
-        this.dynBodies = this.dynBodies.filter(b => b !== this.boulder);
-        this.boulder = null;
+      if(this.swingF>=this.SF){this.swinging=false;this.gameState='flying';this.stillF=0;this.flyF=0;}
+    }
+    // Structural support — flood-fill from ground-touching blocks.
+    // A block is "supported" if it touches (overlaps+threshold) a ground block or any supported block.
+    // Anything not reachable from the ground → make dynamic and fall.
+    if(this.castleBlocks&&this.M){
+      const T=10; // adjacency tolerance in px
+      // Seed: static blocks whose bottom reaches the ground
+      const supported=new Set();
+      for(const b of this.castleBlocks){
+        if(b.isStatic&&b.position.y+(b.bh||14)/2>=this.GY-8)supported.add(b);
       }
-
-      let mx = 0;
-      for (const b of this.dynBodies) { const s = Math.hypot(b.velocity.x, b.velocity.y); if (s > mx) mx = s; }
-      if (mx < 1.5) this.stillF++; else this.stillF = 0;
-      if (this.stillF > 26 || this.flyF > 300) this.endTurn();
-    }
-
-    for (const p of this.particles) { p.x += p.vx; p.y += p.vy; p.vy += .18; p.vx *= .95; p.life--; }
-    this.particles = this.particles.filter(p => p.life > 0);
-  }
-
-  spawnImpact(x, y, n = 18) {
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2, s = Math.random() * 5.5 + 1.5;
-      const col = ['#C8A875', '#9A9182', '#E8D4A0', '#D4965A', '#B0A898'][i % 5];
-      this.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 2.5, life: Math.floor(Math.random() * 20 + 12), maxLife: 32, r: Math.random() * 5 + 2, col });
-    }
-    for (let i = 0; i < 6; i++) {
-      const a = Math.random() * Math.PI * 2, s = Math.random() * 1.5 + .5;
-      this.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 1, life: Math.floor(Math.random() * 30 + 20), maxLife: 50, r: Math.random() * 12 + 6, col: 'rgba(180,165,145,' });
-    }
-  }
-
-  endTurn() {
-    const alive = this.enemies.filter(e => !e.dead).length;
-    this.ammo--;
-    if (this.boulder) {
-      this.M.Composite.remove(this.world, this.boulder);
-      this.dynBodies = this.dynBodies.filter(b => b !== this.boulder);
-      this.boulder = null;
-    }
-    if (alive <= 0) {
-      this.gameState = 'won';
-      this.score += this.ammo * 300;
-      this.starsEarned = this.ammo >= 2 ? 3 : this.ammo === 1 ? 2 : 1;
-      this.updateHUD();
-      this.showModal('victory', 'Castle captured! Ammo bonus earned.');
-    } else if (this.ammo <= 0) {
-      this.gameState = 'lost';
-      this.starsEarned = 0;
-      this.updateHUD();
-      this.showModal('defeat', `Out of ammo — ${alive} still standing.`);
-    } else {
-      this.gameState = 'aiming';
-      this.trebAngle = this.A_LOAD;
-      this.updateHUD();
-    }
-  }
-
-  // ---- Draw ----
-  drawBackground(ctx) {
-    const W = this.W, H = this.H;
-    const sky = ctx.createLinearGradient(0, 0, 0, H);
-    sky.addColorStop(0, '#9CC2D2'); sky.addColorStop(.45, '#C9DDCF');
-    sky.addColorStop(.72, '#EFDEB4'); sky.addColorStop(1, '#F7D89A');
-    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
-
-    const sun = ctx.createRadialGradient(820, 110, 8, 820, 110, 190);
-    sun.addColorStop(0, 'rgba(255,247,221,.92)'); sun.addColorStop(.4, 'rgba(252,233,180,.46)'); sun.addColorStop(1, 'rgba(248,215,154,0)');
-    ctx.fillStyle = sun; ctx.fillRect(560, 0, 400, 370);
-    ctx.beginPath(); ctx.arc(820, 110, 40, 0, Math.PI * 2); ctx.fillStyle = '#FFF4CE'; ctx.fill();
-
-    // Far hills (misty)
-    ctx.fillStyle = '#AEC6B2';
-    ctx.beginPath(); ctx.moveTo(0, 392); ctx.lineTo(200, 352); ctx.lineTo(430, 388); ctx.lineTo(660, 350); ctx.lineTo(880, 390); ctx.lineTo(960, 366); ctx.lineTo(960, 460); ctx.lineTo(0, 460); ctx.fill();
-
-    // Near hills
-    ctx.fillStyle = '#86A06C';
-    ctx.beginPath(); ctx.moveTo(0, 420); ctx.lineTo(260, 386); ctx.lineTo(500, 416); ctx.lineTo(720, 388); ctx.lineTo(960, 418); ctx.lineTo(960, this.GY); ctx.lineTo(0, this.GY); ctx.fill();
-
-    // Ground
-    const gr = ctx.createLinearGradient(0, this.GY, 0, H);
-    gr.addColorStop(0, '#82A268'); gr.addColorStop(1, '#5E7E47');
-    ctx.fillStyle = gr; ctx.fillRect(0, this.GY, W, H - this.GY);
-    ctx.strokeStyle = '#4C6A38'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(0, this.GY); ctx.lineTo(W, this.GY); ctx.stroke();
-  }
-
-  drawTrebuchet(ctx) {
-    const px = this.PV.x, py = this.PV.y, gy = this.GY, ang = this.trebAngle;
-    // Long arm tip = sling end. Loaded: lower-LEFT (behind trebuchet). After fire: upper-RIGHT.
-    const lx = px + this.AL * Math.cos(ang), ly = py + this.AL * Math.sin(ang);
-    // Short arm tip = counterweight side. Loaded: upper-RIGHT. After fire: lower-LEFT.
-    const sx = px - this.AS * Math.cos(ang), sy = py - this.AS * Math.sin(ang);
-
-    // Ground shadow
-    ctx.save(); ctx.globalAlpha = .14; ctx.fillStyle = '#3F3020';
-    ctx.beginPath(); ctx.ellipse(px + 26, gy, 136, 14, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-
-    const plank = (x1, y1, x2, y2, w, col, alpha = 1) => {
-      const len = Math.hypot(x2 - x1, y2 - y1); if (len < 1) return;
-      ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-      ctx.strokeStyle = 'rgba(46,26,10,.22)'; ctx.lineWidth = 1.8;
-      const nx = -(y2 - y1) / len * w * .36, ny = (x2 - x1) / len * w * .36;
-      for (let i = 1; i <= 4; i++) {
-        const t = i / 5, mx = x1 + (x2 - x1) * t, my = y1 + (y2 - y1) * t;
-        ctx.beginPath(); ctx.moveTo(mx - nx, my - ny); ctx.lineTo(mx + nx, my + ny); ctx.stroke();
+      // Propagate: any static block touching a supported one is also supported
+      let changed=true;
+      while(changed){
+        changed=false;
+        for(const b of this.castleBlocks){
+          if(!b.isStatic||supported.has(b))continue;
+          const bL=b.position.x-(b.bw||16)/2,bR=b.position.x+(b.bw||16)/2;
+          const bT=b.position.y-(b.bh||14)/2,bB=b.position.y+(b.bh||14)/2;
+          for(const s of supported){
+            const sL=s.position.x-(s.bw||16)/2,sR=s.position.x+(s.bw||16)/2;
+            const sT=s.position.y-(s.bh||14)/2,sB=s.position.y+(s.bh||14)/2;
+            if(bL<sR+T&&bR>sL-T&&bT<sB+T&&bB>sT-T){supported.add(b);changed=true;break;}
+          }
+        }
       }
+      // Any static block not reachable from ground → falls
+      for(const b of this.castleBlocks){
+        if(b.isStatic&&!supported.has(b)){
+          this.M.Body.setStatic(b,false);
+          if(!this.dynBodies.includes(b))this.dynBodies.push(b);
+          for(const e of this.enemies){if(!e.dead&&e.isStatic&&e.parentBlock===b)this.M.Body.setStatic(e,false);}
+        }
+      }
+    }
+    // Always release guards whose support block has gone dynamic — runs every tick, not just flying
+    for(const e of this.enemies){
+      if(!e.dead&&e.isStatic){
+        if(e.parentBlock&&!e.parentBlock.isStatic){this.M.Body.setStatic(e,false);}
+        else if(!e.parentBlock&&e.position.y<this.GY-10){this.M.Body.setStatic(e,false);}
+      }
+    }
+    if(this.gameState==='flying'){
+      this.flyF++;
+      if(this.boulder&&this.flyF%4===0)this.currentTrailPoints.push({x:this.boulder.position.x,y:this.boulder.position.y});
+      if(!this.panning){
+        if(this.boulder&&!this.boulderHitCastle){
+          const targetX=this.boulder.position.x-this.W*0.38,targetY=this.boulder.position.y-(this.H/this.ZOOM)*0.52;
+          this.camX+=(targetX-this.camX)*0.09;this.camY+=(targetY-this.camY)*0.09;
+        }else if(this.boulderHitCastle){
+          const menuOffsetWorld=(this.H/this.ZOOM)*0.18;
+          const targetX=this.impactX-(this.W/this.ZOOM)*0.48,targetY=this.GY-(this.H/this.ZOOM)*0.72+menuOffsetWorld;
+          this.camX+=(targetX-this.camX)*0.04;this.camY+=(targetY-this.camY)*0.18;
+        }
+        this.camX=Math.max(0,Math.min(this.worldW-this.W/this.ZOOM,this.camX));
+        this.camY=Math.max(-1150,Math.min(0,this.camY));
+        if(this.render){this.render.bounds.min.x=this.camX;this.render.bounds.max.x=this.camX+this.W/this.ZOOM;this.render.bounds.min.y=this.camY;this.render.bounds.max.y=this.camY+this.H/this.ZOOM;}
+      }
+      for(const e of this.enemies){
+        if(e.dead)continue;
+        if(e.position.y>this.GY+80||e.position.x<-100||e.position.x>this.worldW+100){
+          e.dead=true;this.setState(s=>({score:s.score+1000,enemiesLeft:Math.max(0,s.enemiesLeft-1)}));this.spawnImpact(e.position.x,e.position.y,9);
+        }
+      }
+      for(let i=this.castleBlocks.length-1;i>=0;i--){
+        const b=this.castleBlocks[i];
+        const fallen=b.position.y>this.H+80||b.position.x<-100||b.position.x>this.worldW+100;
+        if((b.cl||0)>=3||fallen){
+          this.M.Composite.remove(this.world,b);this.dynBodies=this.dynBodies.filter(d=>d!==b);this.castleBlocks.splice(i,1);
+          if(!fallen)this.spawnImpact(b.position.x,b.position.y,6);
+        }
+      }
+      for(const ab of this.activeBoulders){
+        if(!ab)continue;
+        const bvx=ab.velocity.x,bvy=ab.velocity.y,onGround=ab.position.y>=this.GY-20&&Math.abs(bvy)<4;
+        if(onGround&&Math.abs(bvx)>0.3){
+          if(!ab._rolling)ab._rolling=true;
+          ab._rollDustT=(ab._rollDustT||0)+1;
+          if(ab._rollDustT%3===0){
+            const bx=ab.position.x,dir=bvx>0?1:-1;
+            for(let i=0;i<3;i++){const s=Math.random()*1.2+0.4;this.particles.push({x:bx+(Math.random()-.5)*14,y:this.GY-3,vx:-dir*s*0.8+(Math.random()-.5)*0.6,vy:-Math.random()*1.8-0.4,life:24,maxLife:24,r:Math.random()*9+4,col:'rgba(175,160,140,'});}
+          }
+          const rollR=(ab.circleRadius||16)+Math.abs(bvx)*2.8;
+          for(const e of this.enemies){
+            if(e.dead||this.rollingHitSet.has(e))continue;
+            if(Math.hypot(ab.position.x-e.position.x,ab.position.y-e.position.y)<rollR+16){
+              this.rollingHitSet.add(e);const rollBonus=Math.round(400+400*(Math.abs(bvx)/this.VMAX));
+              e.dead=true;this.setState(s=>({score:s.score+rollBonus,enemiesLeft:Math.max(0,s.enemiesLeft-1)}));this.spawnImpact(e.position.x,e.position.y,9);
+            }
+          }
+        }else{ab._rolling=false;}
+      }
+      this.rollingOnGround=!!(this.boulder&&this.boulder._rolling);
+      for(let i=this.activeBoulders.length-1;i>=0;i--){
+        const ab=this.activeBoulders[i];
+        if(ab.position.y>this.H+80||ab.position.x<-100||ab.position.x>this.worldW+100){
+          this.M.Composite.remove(this.world,ab);this.dynBodies=this.dynBodies.filter(b=>b!==ab);
+          if(this.boulder===ab)this.boulder=null;this.activeBoulders.splice(i,1);
+        }
+      }
+      if(!this.boulder&&this.activeBoulders.length>0)this.boulder=this.activeBoulders[0];
+      let mx=0;for(const b of this.activeBoulders){if(!b)continue;const s=Math.hypot(b.velocity.x,b.velocity.y);if(s>mx)mx=s;}
+      if(mx<1.5)this.stillF++;else this.stillF=0;
+      if(this.boulderHitCastle){
+        let dmx=0;for(const b of this.dynBodies){const s=Math.hypot(b.velocity.x,b.velocity.y);if(s>dmx)dmx=s;}
+        if(dmx<1.0)this.watchSettleF++;else this.watchSettleF=0;
+        if(this.watchSettleF>110||this.flyF>700)this.endTurn();
+      }else{
+        if(this.stillF>45||this.flyF>500)this.endTurn();
+      }
+    }
+    if(this.cameraReturning){
+      const diffX=-this.camX,diffY=-this.camY;
+      if(Math.abs(diffX)<2&&Math.abs(diffY)<2){this.camX=0;this.camY=0;this.cameraReturning=false;}
+      else{this.camX+=diffX*0.06;this.camY+=diffY*0.06;}
+      if(this.render){this.render.bounds.min.x=this.camX;this.render.bounds.max.x=this.camX+this.W/this.ZOOM;this.render.bounds.min.y=this.camY;this.render.bounds.max.y=this.camY+this.H/this.ZOOM;}
+    }
+    for(const p of this.particles){p.x+=p.vx;p.y+=p.vy;p.vy+=.18;p.vx*=.95;p.life--;}
+    this.particles=this.particles.filter(p=>p.life>0);
+  }
+
+  spawnImpact(x,y,n=18){
+    for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=Math.random()*5.5+1.5,col=['#C8A875','#9A9182','#E8D4A0','#D4965A','#B0A898'][i%5];
+      this.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-2.5,life:Math.floor(Math.random()*20+12),maxLife:32,r:Math.random()*5+2,col});}
+    for(let i=0;i<6;i++){const a=Math.random()*Math.PI*2,s=Math.random()*1.5+.5;
+      this.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1,life:Math.floor(Math.random()*30+20),maxLife:50,r:Math.random()*12+6,col:'rgba(180,165,145,'});}
+  }
+
+  endTurn(){
+    const alive=this.enemies.filter(e=>!e.dead).length,na=this.state.ammo-1;
+    this.setState({ammo:na});
+    this.boulder=null;this.activeBoulders=[];this.rollingOnGround=false;this.rollingHitSet=new Set();
+    this.boulderHitCastle=false;this.impactX=0;this.impactY=0;this.watchSettleF=0;
+    if(this.currentTrailPoints.length>1)this.prevTrailPoints=this.currentTrailPoints.slice();
+    this.currentTrailPoints=[];
+    this.pendAngle=-0.18+(Math.random()-.5)*.12;this.pendOmega=0.005+Math.random()*.004;
+    if(alive<=0){this.gameState='won';this.setState(s=>({score:s.score+na*300,showModal:true,modalTitle:'Victory!',modalAccent:'#E8533A',modalMsg:'Castle captured! Ammo bonus earned.'}));}
+    else if(na<=0){this.gameState='lost';this.setState({showModal:true,modalTitle:'Defeat',modalAccent:'#5B4A36',modalMsg:`Out of ammo — ${alive} still standing.`});}
+    else{this.gameState='aiming';this.trebAngle=this.A_LOAD;this.cameraReturning=true;if(this.hintRef.current)this.hintRef.current.style.display='none';}
+  }
+
+  drawBackground(ctx){
+    ctx.save();ctx.globalAlpha=1;
+    const cW=this.W,cH=this.H;
+    const sky=ctx.createLinearGradient(0,0,0,cH);
+    sky.addColorStop(0,'#9CC2D2');sky.addColorStop(.45,'#C9DDCF');sky.addColorStop(.72,'#EFDEB4');sky.addColorStop(1,'#F7D89A');
+    ctx.fillStyle=sky;ctx.fillRect(0,0,cW,cH);
+    const sunX=cW*0.875-(this.camX*this.ZOOM*0.025),sunY=cH*0.2-(this.camY*this.ZOOM*0.1);
+    const sun=ctx.createRadialGradient(sunX,sunY,8,sunX,sunY,190);
+    sun.addColorStop(0,'rgba(255,247,221,.92)');sun.addColorStop(.4,'rgba(252,233,180,.46)');sun.addColorStop(1,'rgba(248,215,154,0)');
+    ctx.fillStyle=sun;ctx.fillRect(sunX-200,Math.max(0,sunY-200),400,400);
+    ctx.beginPath();ctx.arc(sunX,sunY,40,0,Math.PI*2);ctx.fillStyle='#FFF4CE';ctx.fill();
+    ctx.scale(this.ZOOM,this.ZOOM);ctx.translate(-this.camX,-this.camY);
+    const gy=this.GY,wW=this.worldW,segs=Math.ceil(wW/960)+1;
+    ctx.fillStyle='#AEC6B2';ctx.beginPath();ctx.moveTo(-100,gy-8);
+    for(let s=0;s<segs;s++){const ox=s*960;ctx.lineTo(ox+200,gy-116);ctx.lineTo(ox+430,gy-80);ctx.lineTo(ox+660,gy-118);ctx.lineTo(ox+880,gy-78);ctx.lineTo(ox+960,gy-8);}
+    ctx.lineTo(wW+200,gy-8);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#86A06C';ctx.beginPath();ctx.moveTo(-100,gy);
+    for(let s=0;s<segs;s++){const ox=s*960;ctx.lineTo(ox+260,gy-82);ctx.lineTo(ox+500,gy-52);ctx.lineTo(ox+720,gy-80);ctx.lineTo(ox+960,gy);}
+    ctx.lineTo(wW+200,gy);ctx.closePath();ctx.fill();
+    const gr=ctx.createLinearGradient(0,this.GY,0,this.GY+300);
+    gr.addColorStop(0,'#82A268');gr.addColorStop(1,'#5E7E47');
+    ctx.fillStyle=gr;ctx.fillRect(-100,this.GY,wW+300,300);
+    ctx.strokeStyle='#4C6A38';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-100,this.GY);ctx.lineTo(wW+200,this.GY);ctx.stroke();
+    ctx.restore();
+  }
+
+  drawTrebuchet(ctx){
+    const px=this.PV.x,py=this.PV.y,gy=this.GY,ang=this.trebAngle;
+    const lx=px+this.AL*Math.cos(ang),ly=py+this.AL*Math.sin(ang);
+    const sx=px-this.AS*Math.cos(ang),sy=py-this.AS*Math.sin(ang);
+    ctx.save();ctx.globalAlpha=.14;ctx.fillStyle='#3F3020';ctx.beginPath();ctx.ellipse(px+26,gy,136,14,0,0,Math.PI*2);ctx.fill();ctx.restore();
+    const plank=(x1,y1,x2,y2,w,col,alpha=1)=>{
+      const len=Math.hypot(x2-x1,y2-y1);if(len<1)return;
+      ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=col;ctx.lineWidth=w;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+      ctx.strokeStyle='rgba(46,26,10,.22)';ctx.lineWidth=1.8;
+      const nx=-(y2-y1)/len*w*.36,ny=(x2-x1)/len*w*.36;
+      for(let i=1;i<=4;i++){const t=i/5,mx=x1+(x2-x1)*t,my=y1+(y2-y1)*t;ctx.beginPath();ctx.moveTo(mx-nx,my-ny);ctx.lineTo(mx+nx,my+ny);ctx.stroke();}
       ctx.restore();
     };
-
-    // Ground sill
-    ctx.strokeStyle = '#7A5230'; ctx.lineWidth = 18; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(102, gy - 3); ctx.lineTo(374, gy - 3); ctx.stroke();
-
-    // Rear A-frame
-    plank(140, gy, px - 8, py + 18, 10, '#6B4427', .70);
-    plank(px + 10, py + 18, 254, gy, 10, '#6B4427', .70);
-    // Front A-frame
-    plank(110, gy, px - 4, py + 12, 15, '#8A5A30');
-    plank(px + 6, py + 12, 318, gy, 15, '#8A5A30');
-    // Forward brace toward castle
-    plank(px + 8, py + 18, 374, gy - 2, 12, '#7A5230');
-
-    // Lower cross braces
-    ctx.strokeStyle = '#6B4427'; ctx.lineWidth = 9; ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(128, gy - 76); ctx.lineTo(298, gy - 94);
-    ctx.moveTo(128, gy - 94); ctx.lineTo(298, gy - 76);
-    ctx.stroke();
-    // Upper cross braces
-    ctx.lineWidth = 7;
-    ctx.beginPath();
-    ctx.moveTo(130, gy - 152); ctx.lineTo(280, gy - 168);
-    ctx.moveTo(130, gy - 168); ctx.lineTo(280, gy - 152);
-    ctx.stroke();
-
-    // Axle housing
-    ctx.strokeStyle = '#9A6840'; ctx.lineWidth = 22; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(px - 28, py + 10); ctx.lineTo(px + 28, py + 10); ctx.stroke();
-    ctx.strokeStyle = '#7A5030'; ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.moveTo(px - 28, py + 10); ctx.lineTo(px + 28, py + 10); ctx.stroke();
-    ctx.fillStyle = '#3A3A40';
-    for (const ox of [-20, 0, 20]) { ctx.beginPath(); ctx.arc(px + ox, py + 10, 3.5, 0, Math.PI * 2); ctx.fill(); }
-
-    // Counterweight chain
-    ctx.strokeStyle = '#3A3A40'; ctx.lineWidth = 4; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + 24); ctx.stroke();
-    ctx.strokeStyle = '#6C6C74'; ctx.lineWidth = 2.5;
-    for (let i = 4; i < 24; i += 7) { ctx.beginPath(); ctx.ellipse(sx, sy + i, 3.5, 4.5, 0, 0, Math.PI * 2); ctx.stroke(); }
-
-    // Counterweight box
-    ctx.save(); ctx.translate(sx, sy + 46);
-    ctx.fillStyle = '#5C3F26'; ctx.fillRect(-23, -28, 46, 58);
-    ctx.fillStyle = '#3A3A40';
-    for (const yb of [-28, -15, -2, 11, 24]) { ctx.fillRect(-23, yb, 46, 5); }
-    ctx.fillRect(-3, -28, 6, 58);
-    ctx.fillStyle = '#7A7A84';
-    for (const [bx, by] of [[-16, -24], [15, -24], [-16, 25], [15, 25]]) { ctx.beginPath(); ctx.arc(bx, by, 2.8, 0, Math.PI * 2); ctx.fill(); }
-    ctx.strokeStyle = '#3A3A40'; ctx.lineWidth = 1.5; ctx.strokeRect(-23, -28, 46, 58);
-    ctx.restore();
-
-    // Throwing arm
-    ctx.strokeStyle = '#A87848'; ctx.lineWidth = 16; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(lx, ly); ctx.stroke();
-    const cd = Math.cos(ang), sd = Math.sin(ang), tot = this.AL + this.AS;
-    ctx.strokeStyle = 'rgba(60,32,10,.26)'; ctx.lineWidth = 2.5;
-    for (let i = 1; i <= 9; i++) {
-      const t = (i / 10) * tot - this.AS;
-      ctx.beginPath(); ctx.moveTo(px + t * cd - sd * 7, py + t * sd + cd * 7); ctx.lineTo(px + t * cd + sd * 7, py + t * sd - cd * 7); ctx.stroke();
-    }
-    ctx.strokeStyle = '#3A3A40'; ctx.lineWidth = 8; ctx.lineCap = 'round';
-    for (const t of [-this.AS + 12, 55, this.AL - 20]) {
-      const ax = px + t * cd, ay = py + t * sd;
-      ctx.beginPath(); ctx.moveTo(ax - sd * 9, ay + cd * 9); ctx.lineTo(ax + sd * 9, ay - cd * 9); ctx.stroke();
-    }
-    // Pivot pin
-    ctx.fillStyle = '#2E2E36'; ctx.beginPath(); ctx.arc(px, py, 11, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#8A8A96'; ctx.beginPath(); ctx.arc(px, py, 5.5, 0, Math.PI * 2); ctx.fill();
-
-    // Sling + boulder (rope physics) — only while boulder is loaded
-    if (this.gameState !== 'flying') {
-      let boulderX, boulderY;
-      if (this.gameState === 'aiming' || !this.swinging) {
-        // Loaded: sling hangs straight down — boulder rests near ground on left side
-        boulderX = lx; boulderY = ly + this.SL;
-      } else {
-        // Rope physics: gravity-dominant at slow start → centrifugal trailing as arm whips
-        const swingP = Math.min(this.swingF / this.SF, 1);
-        const angVelNorm = 5 * Math.pow(swingP, 4); // derivative of quintic ease [0..5]
-        const cf_t = Math.min(1, angVelNorm * 0.26);
-        // Clockwise rotation (angle increases) — sling trails opposite to centrifugal direction
-        const dx_ = Math.sin(ang) * cf_t;
-        const dy_ = (1 - cf_t) - Math.cos(ang) * cf_t;
-        const dl = Math.hypot(dx_, dy_) || 1;
-        boulderX = lx + this.SL * dx_ / dl;
-        boulderY = ly + this.SL * dy_ / dl;
-        // Snap to aim direction in last 8 frames before release — the "whip"
-        const ftr = this.RELEASE_FRAME - this.swingF;
-        if (ftr <= 8 && ftr >= 0) {
-          const snap = 1 - ftr / 8;
-          const ar = this.aimDeg * Math.PI / 180;
-          boulderX = boulderX * (1 - snap) + (lx + this.SL * Math.cos(ar)) * snap;
-          boulderY = boulderY * (1 - snap) + (ly - this.SL * Math.sin(ar)) * snap;
+    ctx.strokeStyle='#7A5230';ctx.lineWidth=18;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(102,gy-3);ctx.lineTo(374,gy-3);ctx.stroke();
+    plank(140,gy,px-8,py+18,10,'#6B4427',.70);plank(px+10,py+18,254,gy,10,'#6B4427',.70);
+    plank(110,gy,px-4,py+12,15,'#8A5A30');plank(px+6,py+12,318,gy,15,'#8A5A30');plank(px+8,py+18,374,gy-2,12,'#7A5230');
+    ctx.strokeStyle='#6B4427';ctx.lineWidth=9;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(128,gy-76);ctx.lineTo(298,gy-94);ctx.moveTo(128,gy-94);ctx.lineTo(298,gy-76);ctx.stroke();
+    ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(130,gy-152);ctx.lineTo(280,gy-168);ctx.moveTo(130,gy-168);ctx.lineTo(280,gy-152);ctx.stroke();
+    ctx.strokeStyle='#9A6840';ctx.lineWidth=22;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(px-28,py+10);ctx.lineTo(px+28,py+10);ctx.stroke();
+    ctx.strokeStyle='#7A5030';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(px-28,py+10);ctx.lineTo(px+28,py+10);ctx.stroke();
+    ctx.fillStyle='#3A3A40';for(const ox of[-20,0,20]){ctx.beginPath();ctx.arc(px+ox,py+10,3.5,0,Math.PI*2);ctx.fill();}
+    ctx.strokeStyle='#3A3A40';ctx.lineWidth=4;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx,sy+24);ctx.stroke();
+    ctx.strokeStyle='#6C6C74';ctx.lineWidth=2.5;
+    for(let i=4;i<24;i+=7){ctx.beginPath();ctx.ellipse(sx,sy+i,3.5,4.5,0,0,Math.PI*2);ctx.stroke();}
+    ctx.save();ctx.translate(sx,sy+46);
+    ctx.fillStyle='#5C3F26';ctx.fillRect(-23,-28,46,58);
+    ctx.fillStyle='#3A3A40';for(const yb of[-28,-15,-2,11,24])ctx.fillRect(-23,yb,46,5);
+    ctx.fillRect(-3,-28,6,58);
+    ctx.fillStyle='#7A7A84';for(const[bx,by]of[[-16,-24],[15,-24],[-16,25],[15,25]]){ctx.beginPath();ctx.arc(bx,by,2.8,0,Math.PI*2);ctx.fill();}
+    ctx.strokeStyle='#3A3A40';ctx.lineWidth=1.5;ctx.strokeRect(-23,-28,46,58);ctx.restore();
+    ctx.strokeStyle='#A87848';ctx.lineWidth=16;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(lx,ly);ctx.stroke();
+    const cd=Math.cos(ang),sd=Math.sin(ang),tot=this.AL+this.AS;
+    ctx.strokeStyle='rgba(60,32,10,.26)';ctx.lineWidth=2.5;
+    for(let i=1;i<=9;i++){const t=(i/10)*tot-this.AS;ctx.beginPath();ctx.moveTo(px+t*cd-sd*7,py+t*sd+cd*7);ctx.lineTo(px+t*cd+sd*7,py+t*sd-cd*7);ctx.stroke();}
+    ctx.strokeStyle='#3A3A40';ctx.lineWidth=8;ctx.lineCap='round';
+    for(const t of[-this.AS+12,55,this.AL-20]){const ax=px+t*cd,ay=py+t*sd;ctx.beginPath();ctx.moveTo(ax-sd*9,ay+cd*9);ctx.lineTo(ax+sd*9,ay-cd*9);ctx.stroke();}
+    ctx.fillStyle='#2E2E36';ctx.beginPath();ctx.arc(px,py,11,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#8A8A96';ctx.beginPath();ctx.arc(px,py,5.5,0,Math.PI*2);ctx.fill();
+    if(this.gameState!=='flying'){
+      let boulderX,boulderY;
+      if(this.gameState==='aiming'){
+        boulderX=lx+this.SL*Math.sin(this.pendAngle);boulderY=ly+this.SL*Math.cos(this.pendAngle);
+      }else if(!this.swinging){
+        const sp=this.spawnPos();boulderX=sp.x;boulderY=sp.y;
+      }else{
+        const swingP=Math.min(this.swingF/this.SF,1),angVelNorm=7*Math.pow(swingP,6),cf_t=Math.min(1,angVelNorm*0.26);
+        const dx_=Math.sin(ang)*cf_t,dy_=(1-cf_t)-Math.cos(ang)*cf_t,dl=Math.hypot(dx_,dy_)||1;
+        boulderX=lx+this.SL*dx_/dl;boulderY=ly+this.SL*dy_/dl;
+        const ftr=this.RELEASE_FRAME-this.swingF;
+        if(ftr<=8&&ftr>=0){const snap=1-ftr/8,ar=this.state.aimDeg*Math.PI/180;boulderX=boulderX*(1-snap)+(lx+this.SL*Math.cos(ar))*snap;boulderY=boulderY*(1-snap)+(ly-this.SL*Math.sin(ar))*snap;}
+      }
+      ctx.strokeStyle='#8A5A30';ctx.lineWidth=3.5;ctx.setLineDash([5,4]);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(boulderX,boulderY);ctx.stroke();ctx.setLineDash([]);
+      if(!this.boulder){
+        const bt=this.state.bulletType,bSz=bt==='heavy'?24:bt==='spread'?9:16;
+        const bFill=bt==='heavy'?'#6A5848':bt==='spread'?'#A8A098':'#8C8378';
+        const bStk=bt==='heavy'?'#4A3828':bt==='spread'?'#787068':'#5A5248';
+        const bg=ctx.createRadialGradient(boulderX-bSz*.3,boulderY-bSz*.3,1,boulderX,boulderY,bSz);
+        bg.addColorStop(0,'rgba(210,205,198,.85)');bg.addColorStop(.5,bFill);bg.addColorStop(1,'#4A4238');
+        ctx.beginPath();ctx.arc(boulderX,boulderY,bSz,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
+        ctx.strokeStyle=bStk;ctx.lineWidth=2;ctx.stroke();
+        if(bt==='spread'){
+          const pr=(this.state.aimDeg+90)*Math.PI/180;
+          for(const off of[-9,9]){const ox=Math.cos(pr)*off,oy=-Math.sin(pr)*off;ctx.beginPath();ctx.arc(boulderX+ox,boulderY+oy,7,0,Math.PI*2);ctx.fillStyle='rgba(168,160,152,.7)';ctx.fill();ctx.strokeStyle='rgba(120,112,104,.8)';ctx.lineWidth=1.5;ctx.stroke();}
         }
       }
-      // Sling rope (dashed)
-      ctx.strokeStyle = '#8A5A30'; ctx.lineWidth = 3.5; ctx.setLineDash([5, 4]);
-      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(boulderX, boulderY); ctx.stroke();
-      ctx.setLineDash([]);
-      // Boulder visual (until Matter.js physics takes over at release)
-      if (!this.boulder) {
-        const bg = ctx.createRadialGradient(boulderX - 5, boulderY - 5, 2, boulderX, boulderY, 16);
-        bg.addColorStop(0, '#AAAAA0'); bg.addColorStop(.55, '#8C8378'); bg.addColorStop(1, '#6A6258');
-        ctx.beginPath(); ctx.arc(boulderX, boulderY, 16, 0, Math.PI * 2); ctx.fillStyle = bg; ctx.fill();
-        ctx.strokeStyle = '#5A5248'; ctx.lineWidth = 2; ctx.stroke();
-        ctx.fillStyle = 'rgba(80,70,60,.5)';
-        ctx.beginPath(); ctx.arc(boulderX - 5, boulderY - 4, 4, 0, Math.PI * 2); ctx.fill();
-      }
     }
   }
 
-  drawForeground(ctx) {
-    const sx = (Math.random() - .5) * this.shake, sy = (Math.random() - .5) * this.shake;
-    if (this.shake > .5) { ctx.save(); ctx.translate(sx, sy); }
-    this.drawTrebuchet(ctx);
-
-    // Trajectory preview while aiming
-    if (this.gameState === 'aiming') {
-      const o = this.spawnPos(), v = this.aimVel();
-      ctx.fillStyle = 'rgba(46,33,23,.4)';
-      for (let i = 1; i <= 30; i++) {
-        const t = i * 2.6, x = o.x + v.x * t, y = o.y + v.y * t + .5 * this.PG * t * t;
-        if (y > this.GY || x > this.W) break;
-        const r = 4 - i * .1;
-        ctx.beginPath(); ctx.arc(x, y, Math.max(.9, r), 0, Math.PI * 2); ctx.fill();
-      }
-      // Launch point marker
-      ctx.strokeStyle = 'rgba(232,83,58,.8)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(o.x, o.y, 6, 0, Math.PI * 2); ctx.stroke();
+  drawForeground(ctx){
+    ctx.save();ctx.globalAlpha=1;ctx.scale(this.ZOOM,this.ZOOM);ctx.translate(-this.camX,-this.camY);
+    const shx=(Math.random()-.5)*this.shake,shy=(Math.random()-.5)*this.shake;
+    if(this.shake>.5)ctx.translate(shx,shy);
+    this.drawTrebuchet(ctx);this.drawCastleDetails(ctx);
+    if(this.gameState==='aiming'){
+      const r_aim=this.state.aimDeg*Math.PI/180;
+      // Arc origin = long-arm tip at load position (where sling attaches to arm) — stable, no pendulum wobble
+      const o={x:this.PV.x+this.AL*Math.cos(this.A_LOAD),y:this.PV.y+this.AL*Math.sin(this.A_LOAD)},bt=this.state.bulletType;
+      const drawArc=(vel,alpha,r0)=>{
+        ctx.fillStyle=`rgba(46,33,23,${(alpha||1)*0.4})`;
+        for(let i=1;i<=64;i++){
+          const t=i*4,_x=o.x+vel.x*t,_y=o.y+vel.y*t+.5*this.PG*t*t;
+          if(_y>this.GY)break;
+          const _vx=_x-this.camX;if(_vx<-20||_vx>this.W/this.ZOOM+20)continue;
+          const _r=(r0||4)-i*.07;ctx.beginPath();ctx.arc(_x,_y,Math.max(.9,_r),0,Math.PI*2);ctx.fill();
+        }
+      };
+      if(bt==='spread'){for(const da of[-12,0,12])drawArc(this.aimVelAt(this.state.aimDeg+da),da===0?1:.55,da===0?4:3);}
+      else if(bt==='heavy'){const v=this.aimVel();drawArc({x:v.x*.68,y:v.y*.68},1,5.5);}
+      else drawArc(this.aimVel());
+      ctx.strokeStyle='rgba(232,83,58,.8)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(o.x,o.y,6,0,Math.PI*2);ctx.stroke();
     }
+    if(this.prevTrailPoints.length>1){
+      for(let i=0;i<this.prevTrailPoints.length;i++){
+        const pt=this.prevTrailPoints[i],fade=0.12+0.14*(i/this.prevTrailPoints.length),r=3.5-2*(i/this.prevTrailPoints.length);
+        ctx.fillStyle=`rgba(232,83,58,${fade})`;ctx.beginPath();ctx.arc(pt.x,pt.y,Math.max(1,r),0,Math.PI*2);ctx.fill();
+      }
+    }
+    for(const e of this.enemies){if(e.dead)continue;this.drawEnemyFig(ctx,e);if(e.cl>0)this.drawCrack(ctx,e);}
+    for(const b of this.dynBodies)if((b.cl||0)>0&&b!==this.boulder&&!b.gk)this.drawCrack(ctx,b);
+    for(const p of this.particles){
+      const al=Math.max(0,p.life/p.maxLife);
+      if(p.col.startsWith('rgba')){ctx.fillStyle=p.col+al+')';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();}
+      else{ctx.globalAlpha=al;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
+    }
+    if(this.boulder&&this.rollingOnGround){
+      const bx=this.boulder.position.x,by=this.boulder.position.y,bvx=this.boulder.velocity.x,ang=this.boulder.angle;
+      const blur=Math.min(Math.abs(bvx)*3,36),dir=bvx<0?1:-1;
+      if(blur>2){ctx.save();ctx.globalAlpha=0.14;const grd=ctx.createLinearGradient(bx,by,bx+dir*blur,by);grd.addColorStop(0,'#8C8378');grd.addColorStop(1,'rgba(140,131,120,0)');ctx.strokeStyle=grd;ctx.lineWidth=24;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+dir*blur,by);ctx.stroke();ctx.restore();}
+      ctx.save();ctx.translate(bx,by);ctx.rotate(ang);ctx.strokeStyle='rgba(80,70,62,0.52)';ctx.lineWidth=2;ctx.lineCap='round';
+      for(let i=0;i<3;i++){const a=i*Math.PI*2/3;ctx.beginPath();ctx.moveTo(Math.cos(a)*3,Math.sin(a)*3);ctx.lineTo(Math.cos(a)*12,Math.sin(a)*12);ctx.stroke();}
+      ctx.restore();
+      ctx.save();ctx.globalAlpha=0.18;ctx.fillStyle='#3A2E20';ctx.beginPath();ctx.ellipse(bx,this.GY+4,32+Math.abs(bvx)*1.4,7,0,0,Math.PI*2);ctx.fill();ctx.restore();
+    }
+    ctx.restore();
+  }
 
-    // Draw enemy faces
-    for (const e of this.enemies) {
-      if (e.dead) continue;
-      ctx.save(); ctx.translate(e.position.x, e.position.y); ctx.rotate(e.angle);
-      if (e.gk === 'guard') {
-        ctx.fillStyle = '#FBF3DD'; ctx.beginPath(); ctx.arc(-4, -2, 3.5, 0, Math.PI * 2); ctx.arc(4, -2, 3.5, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#2E2117'; ctx.beginPath(); ctx.arc(-4, -2, 1.8, 0, Math.PI * 2); ctx.arc(4, -2, 1.8, 0, Math.PI * 2); ctx.fill();
-      } else {
-        ctx.fillStyle = '#FBF3DD'; ctx.beginPath(); ctx.arc(-5, -2, 4, 0, Math.PI * 2); ctx.arc(5, -2, 4, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#2E2117'; ctx.beginPath(); ctx.arc(-5, -2, 2, 0, Math.PI * 2); ctx.arc(5, -2, 2, 0, Math.PI * 2); ctx.fill();
-        // Crown
-        ctx.fillStyle = '#F2A93B'; ctx.strokeStyle = '#2E2117'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(-12, -15); ctx.lineTo(-12, -7); ctx.lineTo(-6, -11); ctx.lineTo(0, -7); ctx.lineTo(6, -11); ctx.lineTo(12, -7); ctx.lineTo(12, -15); ctx.closePath(); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#E8533A';
-        for (const cx of [-12, 0, 12]) { ctx.beginPath(); ctx.arc(cx, -15, 2.5, 0, Math.PI * 2); ctx.fill(); }
+  drawCastleDetails(ctx){
+    const gy=this.GY;
+    ctx.save();
+    if(!this.castleBlocks){ctx.restore();return;}
+    for(const b of this.castleBlocks){
+      if(b.position.y>gy+20)continue;
+      ctx.save();ctx.translate(b.position.x,b.position.y);ctx.rotate(b.angle);
+      const w=b.bw||16,h=b.bh||14;
+      if(b.mat==='st'||b.mat==='sd'){
+        ctx.strokeStyle=b.mat==='sd'?'rgba(34,32,29,.52)':'rgba(72,66,60,.42)';ctx.lineWidth=1;ctx.beginPath();
+        if(w>h){ctx.moveTo(-w/2+4,0);ctx.lineTo(w/2-4,0);}
+        ctx.moveTo(0,-h/2+2);ctx.lineTo(0,h/2-2);ctx.stroke();
+      }else if(b.mat==='wd'){
+        ctx.strokeStyle='rgba(64,32,6,.38)';ctx.lineWidth=1;
+        for(let xi=-w/2+5;xi<w/2-4;xi+=6){ctx.beginPath();ctx.moveTo(xi,-h/2+2);ctx.lineTo(xi+1,h/2-2);ctx.stroke();}
       }
       ctx.restore();
-      if (e.cl > 0) this.drawCrack(ctx, e);
     }
-
-    // Crack marks on all dynamic blocks
-    for (const b of this.dynBodies) if ((b.cl || 0) > 0 && b !== this.boulder) this.drawCrack(ctx, b);
-
-    // Particles
-    for (const p of this.particles) {
-      const al = Math.max(0, p.life / p.maxLife);
-      if (p.col.startsWith('rgba')) {
-        ctx.fillStyle = p.col + al + ')';
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-      } else {
-        ctx.globalAlpha = al; ctx.fillStyle = p.col;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-    }
-
-    if (this.shake > .5) ctx.restore();
+    ctx.restore();
   }
 
-  drawCrack(ctx, body) {
-    if (!body.cl || body.cl < 1) return;
-    ctx.save(); ctx.translate(body.position.x, body.position.y); ctx.rotate(body.angle);
-    ctx.strokeStyle = 'rgba(46,33,23,.72)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
-    if (body.cl >= 1) { ctx.beginPath(); ctx.moveTo(-5, -9); ctx.lineTo(2, 0); ctx.lineTo(-3, 10); ctx.stroke(); }
-    if (body.cl >= 2) { ctx.beginPath(); ctx.moveTo(8, -6); ctx.lineTo(1, 4); ctx.lineTo(6, 13); ctx.stroke(); }
-    if (body.cl >= 3) { ctx.strokeStyle = 'rgba(46,33,23,.9)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-11, 4); ctx.lineTo(0, -1); ctx.lineTo(12, 5); ctx.stroke(); }
+  drawEnemyFig(ctx,e){
+    const type=e.gk;ctx.save();ctx.translate(e.position.x,e.position.y);ctx.rotate(e.angle);ctx.lineCap='round';ctx.lineJoin='round';
+    if(type==='guard'){
+      ctx.strokeStyle='#2E2117';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(-3,6);ctx.lineTo(-4,16);ctx.moveTo(3,6);ctx.lineTo(4,16);ctx.stroke();
+      ctx.fillStyle='#9A9284';ctx.strokeStyle='#2E2117';ctx.lineWidth=1.8;ctx.beginPath();if(ctx.roundRect)ctx.roundRect(-6,-5,12,13,2);else ctx.rect(-6,-5,12,13);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#E8533A';ctx.fillRect(-3,-5,6,13);ctx.strokeStyle='#2E2117';ctx.lineWidth=1.5;ctx.strokeRect(-3,-5,6,13);
+      ctx.fillStyle='#8A5A30';ctx.strokeStyle='#2E2117';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(-6,-3);ctx.lineTo(-13,-3);ctx.lineTo(-14,5);ctx.lineTo(-10,11);ctx.lineTo(-6,9);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.strokeStyle='#E8533A';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(-10,-2);ctx.lineTo(-10,10);ctx.moveTo(-7,4);ctx.lineTo(-14,4);ctx.stroke();
+      ctx.strokeStyle='#8A5A30';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(7,-2);ctx.lineTo(10,-24);ctx.stroke();
+      ctx.fillStyle='#B0B8C0';ctx.strokeStyle='#2E2117';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(8,-24);ctx.lineTo(10,-31);ctx.lineTo(12,-24);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle='#F5D9C0';ctx.strokeStyle='#2E2117';ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(0,-13,5.5,Math.PI*.1,Math.PI*.9,true);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle='#2E2117';ctx.beginPath();ctx.arc(-2,-13.5,1.3,0,Math.PI*2);ctx.arc(2,-13.5,1.3,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#8A8278';ctx.strokeStyle='#2E2117';ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(0,-15,7,Math.PI,0,false);ctx.lineTo(7,-10);ctx.lineTo(-7,-10);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle='#2E2117';ctx.fillRect(-5,-14,10,3);
+    }else{
+      ctx.fillStyle='rgba(232,83,58,.22)';ctx.strokeStyle='rgba(165,52,24,.5)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-9,-4);ctx.lineTo(-13,20);ctx.lineTo(13,20);ctx.lineTo(9,-4);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.strokeStyle='#2E2117';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(-3,8);ctx.lineTo(-4,18);ctx.moveTo(3,8);ctx.lineTo(4,18);ctx.stroke();
+      ctx.fillStyle='#F2A93B';ctx.strokeStyle='#2E2117';ctx.lineWidth=1.8;ctx.beginPath();if(ctx.roundRect)ctx.roundRect(-7,-5,14,15,2);else ctx.rect(-7,-5,14,15);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#2E2117';ctx.fillRect(-7,5,14,3);ctx.fillStyle='#F2A93B';ctx.strokeStyle='#2E2117';ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(0,6.5,3,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.strokeStyle='#C9851E';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(9,6);ctx.lineTo(14,-16);ctx.stroke();
+      ctx.fillStyle='#F2A93B';ctx.strokeStyle='#2E2117';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(14,-16,4.5,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#E8533A';ctx.beginPath();ctx.arc(14,-16,2.2,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#F5D9C0';ctx.strokeStyle='#2E2117';ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(0,-14,7,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#2E2117';ctx.beginPath();ctx.arc(-2.5,-14.5,1.5,0,Math.PI*2);ctx.arc(2.5,-14.5,1.5,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#2E2117';ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(0,-12,2.5,.25,Math.PI-.25);ctx.stroke();
+      ctx.fillStyle='#C8A462';ctx.strokeStyle='#2E2117';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-4,-9);ctx.lineTo(-3,-5);ctx.lineTo(0,-4);ctx.lineTo(3,-5);ctx.lineTo(4,-9);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle='#F2A93B';ctx.strokeStyle='#2E2117';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(-9,-20);ctx.lineTo(-9,-26);ctx.lineTo(-4.5,-23);ctx.lineTo(0,-29);ctx.lineTo(4.5,-23);ctx.lineTo(9,-26);ctx.lineTo(9,-20);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle='#E8533A';ctx.beginPath();ctx.arc(-9,-20,2.5,0,Math.PI*2);ctx.arc(0,-29,2.5,0,Math.PI*2);ctx.arc(9,-20,2.5,0,Math.PI*2);ctx.fill();
+    }
     ctx.restore();
+  }
+
+  drawCrack(ctx,body){
+    if(!body.cl||body.cl<1)return;
+    ctx.save();ctx.translate(body.position.x,body.position.y);ctx.rotate(body.angle);
+    ctx.strokeStyle='rgba(46,33,23,.72)';ctx.lineWidth=1.6;ctx.lineCap='round';
+    if(body.cl>=1){ctx.beginPath();ctx.moveTo(-5,-9);ctx.lineTo(2,0);ctx.lineTo(-3,10);ctx.stroke();}
+    if(body.cl>=2){ctx.beginPath();ctx.moveTo(8,-6);ctx.lineTo(1,4);ctx.lineTo(6,13);ctx.stroke();}
+    if(body.cl>=3){ctx.strokeStyle='rgba(46,33,23,.9)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-11,4);ctx.lineTo(0,-1);ctx.lineTo(12,5);ctx.stroke();}
+    ctx.restore();
+  }
+
+  drawFlag(ctx,x,y,col){
+    ctx.save();ctx.strokeStyle='#8A5A30';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-30);ctx.stroke();
+    ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(x,y-30);ctx.lineTo(x+24,y-23);ctx.lineTo(x,y-16);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#2E2117';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
+  }
+
+  onSelectNormal=()=>this.setState({bulletType:'normal'});
+  onSelectSpread=()=>this.setState({bulletType:'spread'});
+  onSelectHeavy=()=>this.setState({bulletType:'heavy'});
+  onAimChange=e=>this.setState({aimDeg:+e.target.value});
+  onPowerChange=e=>this.setState({power:+e.target.value});
+  onFire=()=>this.fire();
+  onAngleDown=(e)=>{e.stopPropagation();this.angleDragging=true;this._updateAngle(e);};
+  onAngleMove=(e)=>{if(!this.angleDragging)return;this._updateAngle(e);};
+  onAngleUp=()=>{this.angleDragging=false;};
+  _updateAngle=(e)=>{
+    const svg=e.currentTarget,rect=svg.getBoundingClientRect();
+    const svgX=(e.clientX-rect.left)*(96/rect.width),svgY=(e.clientY-rect.top)*(88/rect.height);
+    const dx=svgX-8,dy=78-svgY;if(dx<=0)return;
+    let d=Math.atan2(Math.max(0,dy),dx)*180/Math.PI;
+    d=Math.max(8,Math.min(62,Math.round(d)));this.setState({aimDeg:d});
+  };
+  onChargeDown=(e)=>{
+    e.preventDefault();
+    if(this.gameState!=='aiming'||this.state.paused||this.state.showModal||this.chargeTimer)return;
+    this.chargeStartTime=Date.now();this.setState({charging:true,power:20});
+    this.chargeTimer=setInterval(()=>{
+      const pct=Math.round(Math.min(100,20+(Date.now()-this.chargeStartTime)/4000*80));
+      this.setState({power:pct});
+      if(pct>=100){clearInterval(this.chargeTimer);this.chargeTimer=null;this.setState({charging:false});this.fire();}
+    },40);
+  };
+  onChargeUp=()=>{
+    if(!this.chargeTimer)return;
+    clearInterval(this.chargeTimer);this.chargeTimer=null;
+    if(this.state.charging){this.setState({charging:false});this.fire();}
+  };
+  onChargeLeave=(e)=>{if(this.state.charging)this.onChargeUp();};
+  onRestart=()=>{
+    if(this.M){
+      this.camX=0;this.camY=0;
+      if(this.render){this.render.bounds.min.x=0;this.render.bounds.max.x=this.W/this.ZOOM;this.render.bounds.min.y=0;this.render.bounds.max.y=this.H/this.ZOOM;}
+      this.buildLevel();
+    }
+  };
+  onTogglePause=()=>{
+    if(!this.runner)return;
+    const np=!this.state.paused;this.setState({paused:np});
+    if(np)this.M.Runner.stop(this.runner);else this.M.Runner.run(this.runner,this.engine);
+  };
+  onGoMenu=()=>this.setState({screen:'menu',paused:false,showModal:false});
+  onGoMapSelect=()=>{
+    if(this.state.paused&&this.runner&&this.M){this.M.Runner.run(this.runner,this.engine);}
+    this.setState({screen:'mapselect',paused:false,showModal:false});
+  };
+  onStartGame=()=>this.setState({screen:'game'});
+  onSelectMap0=()=>this.setState({selectedMap:0});
+  onSelectMap1=()=>this.setState({selectedMap:1});
+  onSelectMap2=()=>this.setState({selectedMap:2});
+  onSelectMap3=()=>this.setState({selectedMap:3});
+  onSelectMap4=()=>this.setState({selectedMap:4});
+
+
+  // ── Vanilla state + DOM wiring (replaces React render/lifecycle) ──────────
+  setState(patch){
+    if(typeof patch==='function')patch=patch(this.state);
+    Object.assign(this.state,patch);
+    this.onMaybeScreenChange();
+    this.syncUI();
+  }
+
+  onMaybeScreenChange(){
+    const prev=this._screenWas;
+    if(prev===this.state.screen)return;
+    this._screenWas=this.state.screen;
+    if(prev!=='game'&&this.state.screen==='game')this.waitAndInit();
+    else if(prev==='game'&&this.state.screen!=='game')this.teardown();
+  }
+
+  bindUI(){
+    const $=id=>document.getElementById(id);
+    // navigation
+    $('btn-play').onclick=this.onGoMapSelect;
+    $('btn-mapback').onclick=this.onGoMenu;
+    $('btn-launch').onclick=this.onStartGame;
+    $('btn-maps').onclick=this.onGoMapSelect;
+    for(let i=0;i<5;i++)$('map-card-'+i).onclick=()=>this.setState({selectedMap:i});
+    // in-game controls
+    $('btn-pause').onclick=this.onTogglePause;
+    $('btn-restart').onclick=this.onRestart;
+    // pause menu
+    $('btn-resume').onclick=this.onTogglePause;
+    $('btn-prestart').onclick=this.onRestart;
+    $('btn-pmaps').onclick=this.onGoMapSelect;
+    $('btn-pmenu').onclick=this.onGoMenu;
+    // result modal
+    $('btn-again').onclick=this.onRestart;
+    $('btn-mmaps').onclick=this.onGoMapSelect;
+    $('btn-mmenu').onclick=this.onGoMenu;
+    // ammo-type chips
+    $('chip-normal').onclick=this.onSelectNormal;
+    $('chip-spread').onclick=this.onSelectSpread;
+    $('chip-heavy').onclick=this.onSelectHeavy;
+    // arc dial
+    const dial=$('dial');
+    dial.addEventListener('pointerdown',this.onAngleDown);
+    dial.addEventListener('pointermove',this.onAngleMove);
+    window.addEventListener('pointerup',this.onAngleUp);
+    dial.addEventListener('pointerleave',this.onAngleUp);
+    // charge-to-fire
+    const fire=$('fire-btn');
+    fire.addEventListener('pointerdown',this.onChargeDown);
+    fire.addEventListener('pointerup',this.onChargeUp);
+    fire.addEventListener('pointerleave',this.onChargeLeave);
+  }
+
+  syncUI(){
+    const $=id=>document.getElementById(id),st=this.state;
+    // screen visibility
+    $('screen-menu').style.display=st.screen==='menu'?'flex':'none';
+    $('screen-mapselect').style.display=st.screen==='mapselect'?'block':'none';
+    $('screen-game').style.display=st.screen==='game'?'block':'none';
+    // battlefield selection
+    for(let i=0;i<5;i++)$('map-card-'+i).classList.toggle('selected',st.selectedMap===i);
+    // game header + HUD
+    const def=this.mapDefs[st.selectedMap]||this.mapDefs[0];
+    $('game-mapname').textContent=def.name;
+    $('game-mapsub').textContent=def.sub;
+    $('hud-sub').textContent=def.sub;
+    $('hud-score').textContent=st.score.toLocaleString();
+    $('hud-ammo').textContent=st.ammo;
+    $('hud-enemies').textContent=st.enemiesLeft+' left';
+    // ammo-type chips
+    $('chip-normal').classList.toggle('selected',st.bulletType==='normal');
+    $('chip-spread').classList.toggle('selected',st.bulletType==='spread');
+    $('chip-heavy').classList.toggle('selected',st.bulletType==='heavy');
+    // arc-dial geometry (matches V3 renderVals)
+    const OX=8,OY=78,R=66,aDeg=st.aimDeg,aRad=aDeg*Math.PI/180;
+    const toPt=d=>({x:OX+R*Math.cos(d*Math.PI/180),y:OY-R*Math.sin(d*Math.PI/180)});
+    const tip=toPt(aDeg),p8=toPt(8),p62=toPt(62);
+    $('dial-arc').setAttribute('d',`M ${p8.x.toFixed(1)} ${p8.y.toFixed(1)} A ${R} ${R} 0 0 1 ${p62.x.toFixed(1)} ${p62.y.toFixed(1)}`);
+    $('dial-sector').setAttribute('d',`M ${OX} ${OY} L ${OX+R} ${OY} A ${R} ${R} 0 0 1 ${tip.x.toFixed(1)} ${tip.y.toFixed(1)} Z`);
+    $('dial-ticks').setAttribute('d',[15,30,45,60].map(d=>{const c=Math.cos(d*Math.PI/180),s=Math.sin(d*Math.PI/180);return `M${(OX+(R-5)*c).toFixed(1)} ${(OY-(R-5)*s).toFixed(1)} L${(OX+(R+4)*c).toFixed(1)} ${(OY-(R+4)*s).toFixed(1)}`;}).join(' '));
+    const ahR=R-10,ax=OX+ahR*Math.cos(aRad),ay=OY-ahR*Math.sin(aRad),apx=Math.sin(aRad)*5,apy=Math.cos(aRad)*5;
+    $('dial-head').setAttribute('d',`M ${tip.x.toFixed(1)} ${tip.y.toFixed(1)} L ${(ax+apx).toFixed(1)} ${(ay+apy).toFixed(1)} L ${(ax-apx).toFixed(1)} ${(ay-apy).toFixed(1)} Z`);
+    const line=$('dial-line');line.setAttribute('x2',tip.x.toFixed(1));line.setAttribute('y2',tip.y.toFixed(1));
+    const lR=R+13,deg=$('dial-deg');
+    deg.setAttribute('x',(OX+lR*Math.cos(aRad)).toFixed(1));
+    deg.setAttribute('y',(OY-lR*Math.sin(aRad)+3.5).toFixed(1));
+    deg.textContent=aDeg+'°';
+    // power + charge meter
+    const chargeBarH=Math.round(((st.power-20)/80)*100);
+    $('pwr-bar').style.width=chargeBarH+'%';
+    $('pwr-label').textContent=st.power+'%';
+    $('fire-fill').style.height=chargeBarH+'%';
+    $('fire-label').textContent=st.charging?st.power+'%':'FIRE';
+    $('fire-hint').textContent=st.charging?'release':'hold';
+    // pause + result overlays
+    $('pause-overlay').style.display=st.paused?'flex':'none';
+    $('modal-overlay').style.display=st.showModal?'flex':'none';
+    if(st.showModal){
+      const badge=$('modal-title');badge.textContent=st.modalTitle;badge.style.background=st.modalAccent;
+      $('modal-msg').textContent=st.modalMsg;
+      $('modal-score').textContent=st.score.toLocaleString();
+    }
   }
 }
 
-const game = new CrushGame();
-game.start();
+new Game();
 </script>
 </body>
 </html>

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
 import { PhysicsWorld } from './physics/PhysicsWorld';
 import { level1 } from './game/Level';
 import { GameState, type GamePhase } from './state/GameState';
@@ -10,7 +11,9 @@ import { createBlockMesh, resizeBlockMesh, addCastleDetails, updateBlockMesh } f
 import { createEnemyMesh, syncEnemyMesh } from './game/Enemy';
 import { ParticleSystem } from './game/Particles';
 import { Effects } from './game/Effects';
+import { stoneTexture } from './game/textures';
 import { CommandBar } from './ui/CommandBar';
+import { Hud } from './ui/Hud';
 import { PauseModal } from './ui/PauseModal';
 import { ResultModal } from './ui/ResultModal';
 import { A_LOAD, PV } from './config';
@@ -28,6 +31,8 @@ export function App() {
   const [ammo, setAmmo] = useState(5);
   const [selectedAmmo, setSelectedAmmo] = useState<AmmoType>('standard');
   const [score, setScore] = useState(0);
+  const [enemiesLeft, setEnemiesLeft] = useState(0);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -41,6 +46,7 @@ export function App() {
     createBackground(scene);
     addCastleDetails(scene);
 
+    console.log('[App effect MOUNT]');
     const treb = new Trebuchet();
     trebRef.current = treb;
     scene.add(treb.group);
@@ -157,6 +163,9 @@ export function App() {
     let onAmmoChanged: (n: unknown) => void;
     let onAmmoTypeChanged: (t: unknown) => void;
     let onScoreChanged: (n: unknown) => void;
+    let onEnemiesChanged: (n: unknown) => void;
+    const onPauseEvt = () => setPaused(true);
+    const onResumeEvt = () => setPaused(false);
 
     physics.init().then(() => {
       events.on('phase-changed', onPhaseChanged);
@@ -176,6 +185,12 @@ export function App() {
 
       onScoreChanged = (n: unknown) => setScore(n as number);
       events.on('score-changed', onScoreChanged);
+
+      onEnemiesChanged = (n: unknown) => setEnemiesLeft(n as number);
+      events.on('enemies-changed', onEnemiesChanged);
+
+      events.on('pause', onPauseEvt);
+      events.on('resume', onResumeEvt);
 
       physics.loadLevel(level1);
 
@@ -257,11 +272,10 @@ export function App() {
         treb.update();
         physics.step();
 
-        // Show trajectory during aiming
+        // Show trajectory during aiming (3D world coords — same source as the launch)
         if (gameState.phase === 'aiming') {
-          const sp = treb.spawnPos();
-          const v = treb.aimVel();
-          effects.showTrajectory(sp, v as any, 468);
+          const { pos, vel } = treb.spawnBoulder();
+          effects.showTrajectory(pos, vel);
         } else {
           effects.hideTrajectory();
         }
@@ -284,8 +298,8 @@ export function App() {
           if (!mesh) {
             const t = b.rigidBody.translation();
             const size = getColliderSize(b.collider);
-            const geo = new THREE.SphereGeometry(size.x, 12, 12);
-            const mat = new THREE.MeshStandardMaterial({ color: 0x8C8378, roughness: 0.9 });
+            const geo = new THREE.IcosahedronGeometry(size.x, 1);
+            const mat = new THREE.MeshStandardMaterial({ color: 0x9A9085, roughness: 1, flatShading: true, map: stoneTexture() });
             mesh = new THREE.Mesh(geo, mat);
             mesh.castShadow = true;
             scene.add(mesh);
@@ -320,6 +334,9 @@ export function App() {
       events.off('ammo-changed', onAmmoChanged);
       events.off('ammo-type-changed', onAmmoTypeChanged);
       events.off('score-changed', onScoreChanged);
+      events.off('enemies-changed', onEnemiesChanged);
+      events.off('pause', onPauseEvt);
+      events.off('resume', onResumeEvt);
       physics.destroy();
       world.dispose();
       particles.clear();
@@ -332,68 +349,21 @@ export function App() {
 
   return (
     <div style={{ maxWidth: 980, margin: '40px auto', position: 'relative' }}>
-      <div style={{ width: 980, height: 540, position: 'relative', border: '4px solid #2E2117', borderRadius: 22, overflow: 'hidden' }}>
+      <div style={{ width: 980, height: 540, position: 'relative', border: '4px solid #2E2117', borderRadius: 22, overflow: 'hidden', boxShadow: '0 10px 0 #2E2117, 0 26px 40px rgba(0,0,0,.28)' }}>
         <canvas ref={canvasRef} width={960} height={540}
           style={{ display: 'block', width: '100%', height: '100%' }} />
-        {gameStateRef.current?.paused && (
-          <PauseModal
-            onResume={() => gameStateRef.current?.togglePause()}
-            onQuit={() => window.location.reload()}
-          />
-        )}
-        {(phase === 'won' || phase === 'lost') && (
-          <ResultModal
-            score={score}
-            won={phase === 'won'}
-            onPlayAgain={() => window.location.reload()}
-          />
-        )}
-      </div>
-      <CommandBar
-        aimDeg={aimDeg}
-        power={power}
-        selectedAmmo={selectedAmmo}
-        disabled={disabled}
-        onAimChange={(deg) => {
-          setAimDeg(deg);
-          if (trebRef.current) trebRef.current.aimAngle = deg;
-        }}
-        onPowerChange={(pct) => {
-          setPower(pct);
-          if (trebRef.current) trebRef.current.power = pct;
-        }}
-        onAmmoSelect={(type) => {
-          if (gameStateRef.current) gameStateRef.current.selectAmmo(type);
-        }}
-        onFire={() => {
-          if (gameStateRef.current && trebRef.current) {
-            gameStateRef.current.fire();
-            trebRef.current.fire();
-          }
-        }}
-        onPause={() => {
-          if (gameStateRef.current) gameStateRef.current.togglePause();
-        }}
-      />
-    <div ref={containerRef} style={{ maxWidth: 960, width: '100%', aspectRatio: '16/9', margin: '40px auto', position: 'relative', overflow: 'hidden' }}>
-      <canvas ref={canvasRef}
-        style={{ display: 'block', width: '100%', height: '100%', border: '2px solid #333', borderRadius: 8, touchAction: 'none' }} />
-
-      {isPlaying && (
-        <HUD
+        <Hud
+          level={1}
           score={score}
-          enemiesAlive={enemiesAlive}
-          ammo={ammo}
-          onPause={handlePause}
-          onRestart={handleRestart}
+          enemiesLeft={enemiesLeft}
+          onPause={() => gameStateRef.current?.togglePause()}
+          onRestart={() => window.location.reload()}
         />
-      )}
-
-      {showControls && (
-        <Controls
+        <CommandBar
           aimDeg={aimDeg}
           power={power}
-          disabled={false}
+          selectedAmmo={selectedAmmo}
+          disabled={disabled}
           onAimChange={(deg) => {
             setAimDeg(deg);
             if (trebRef.current) trebRef.current.aimAngle = deg;
@@ -402,6 +372,9 @@ export function App() {
             setPower(pct);
             if (trebRef.current) trebRef.current.power = pct;
           }}
+          onAmmoSelect={(type) => {
+            if (gameStateRef.current) gameStateRef.current.selectAmmo(type);
+          }}
           onFire={() => {
             if (gameStateRef.current && trebRef.current) {
               gameStateRef.current.fire();
@@ -409,37 +382,18 @@ export function App() {
             }
           }}
         />
-      )}
-
-      {isPlaying && <Hint visible={hintVisible} />}
-
-      {phase === 'menu' && (
-        <MainMenu onPlay={handlePlay} onHowToPlay={handleHowToPlay} />
-      )}
-
-      {paused && (
-        <PauseModal
-          onResume={handleResume}
-          onRestart={handleRestart}
-          onQuit={handleQuit}
-          soundEnabled={soundEnabled}
-          musicEnabled={musicEnabled}
-          onToggleSound={handleToggleSound}
-          onToggleMusic={handleToggleMusic}
-        />
-      )}
-
-      {result && (
-        <ResultModal
-          result={result}
-          score={score}
-          bestScore={bestScore}
-          starsEarned={result === 'victory' ? (ammo >= 2 ? 3 : ammo === 1 ? 2 : 1) : 0}
-          onHome={handleQuit}
-          onRetry={handleRestart}
-          onNext={result === 'victory' ? handleRestart : null}
-        />
-      )}
+        {paused && (
+          <PauseModal onResume={() => gameStateRef.current?.togglePause()} />
+        )}
+        {(phase === 'won' || phase === 'lost') && (
+          <ResultModal
+            score={score}
+            won={phase === 'won'}
+            enemiesLeft={enemiesLeft}
+            onPlayAgain={() => window.location.reload()}
+          />
+        )}
+      </div>
     </div>
   );
 }

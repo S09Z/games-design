@@ -20,12 +20,14 @@ export class GameState {
     this.physics = physics;
 
     this.physics.onTurnEnded = () => this.endTurn();
-    this.physics.onEnemyKilled = (_idx: number) => {
+    // Score/count via the event bus so the physics.onEnemyKilled callback
+    // stays free for view concerns (particles in App.tsx).
+    events.on('enemy-killed', () => {
       this.enemiesAlive--;
       this.score += SCORE_PER_KILL;
       events.emit('score-changed', this.score);
       events.emit('enemies-changed', this.enemiesAlive);
-    };
+    });
   }
 
   private setPhase(p: GamePhase) {
@@ -59,6 +61,7 @@ export class GameState {
   }
 
   endTurn() {
+    console.log('[endTurn] ammo before--', this.ammo, new Error().stack);
     this.setPhase('settling');
     this.ammo--;
 
